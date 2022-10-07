@@ -129,23 +129,29 @@ int main(int argc, const char **argv)
 	std::string sunrise_time;
 	std::string sunset_time;
 
+	int add = -1;
+	int sub = -1;
+
 	app.add_flag("-v,--version", [] ([[maybe_unused]] int64_t t) {
 		cout << VERSION << '\n';
 		std::exit(0);
 	}, "Print version and exit");
+
+	app.add_flag("--add", add, "Interpret value as increment");
+	app.add_flag("--sub", sub, "Interpret value as decrement");
 
 	app.add_option("-s,--screen", scr_no,
 	               "Screen on which to act. If omitted, any changes will be applied on all screens.")->check(CLI::Range(0, 99));
 
 	std::string brt_grp("Brightness options");
 	app.add_option("-b,--brightness", brt,
-	               "Set screen brightness percentage.")->check(CLI::Range(5, 100))->group(brt_grp);
+	               "Set screen brightness percentage.")->check(CLI::Range(1, 100))->group(brt_grp);
 	app.add_option("-B,--brt-mode", bm,
 	               "Brightness mode. 0 = manual, 1 = screenshot, 2 = ALS (if available)")->check(CLI::Range(0, 2))->group(brt_grp);
 	app.add_option("-N,--brt-auto-min", brt_auto_min,
-	               "Set minimum automatic brightness.")->check(CLI::Range(5, 100))->group(brt_grp);
+	               "Set minimum automatic brightness.")->check(CLI::Range(1, 100))->group(brt_grp);
 	app.add_option("-M,--brt-auto-max", brt_auto_max,
-	               "Set maximum automatic brightness.")->check(CLI::Range(5, 100))->group(brt_grp);
+	               "Set maximum automatic brightness.")->check(CLI::Range(1, 100))->group(brt_grp);
 	app.add_option("-L,--brt-auto-offset", brt_auto_offset,
 	               "Set automatic brightness offset. Higher = brighter image.")->check(CLI::Range(-100, 100))->group(brt_grp);
 	app.add_option("--brt-auto-speed", brt_auto_speed,
@@ -201,6 +207,8 @@ int main(int argc, const char **argv)
 		{"sunrise_time", sunrise_time},
 		{"sunset_time", sunset_time},
 		{"temp_adaptation_time", adapt_time},
+		{"add", add},
+		{"sub", sub}
 	};
 
 	send(msg.dump());

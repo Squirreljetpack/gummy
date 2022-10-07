@@ -129,7 +129,9 @@ int Xorg::get_screen_brightness(int scr_idx)
 
 void Xorg::set_gamma(int scr_idx, int brt_step, int temp_step)
 {
-	apply_gamma_ramp(outputs[scr_idx], brt_step, temp_step);
+	apply_gamma_ramp(outputs[scr_idx],
+	                 std::clamp(brt_step, brt_steps_min, brt_steps_max),
+	                 temp_step);
 }
 
 void Xorg::apply_gamma_ramp(Output &o, int brt_step, int temp_step)

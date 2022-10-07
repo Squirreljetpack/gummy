@@ -96,6 +96,8 @@ struct Message
 	int temp_day_k           = -1;
 	int temp_night_k         = -1;
 	int temp_adaptation_time = -1;
+	int add                  = -1;
+	int sub                  = -1;
 	std::string sunrise_time;
 	std::string sunset_time;
 };
