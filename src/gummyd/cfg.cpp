@@ -262,4 +262,6 @@ Message::Message(const std::string &j)
 	sunrise_time         = msg["sunrise_time"];
 	sunset_time          = msg["sunset_time"];
 	temp_adaptation_time = msg["temp_adaptation_time"];
+	add                  = msg["add"];
+	sub                  = msg["sub"];
 }

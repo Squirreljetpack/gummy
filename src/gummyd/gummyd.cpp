@@ -104,7 +104,15 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 				cfg.screens[i].brt_step = brt_steps_max;
 				brtctl.backlights[i].set(opts.brt_perc * 255 / 100);
 			} else {
-				cfg.screens[i].brt_step = int(remap(opts.brt_perc, 0, 100, 0, brt_steps_max));
+				int tmp = cfg.screens[i].brt_step;
+				const int val = int(remap(opts.brt_perc, 0, 100, 0, brt_steps_max));
+				if (opts.add == 0 && opts.sub == 0)
+					tmp = val;
+				else if (opts.add > 0)
+					tmp += val;
+				else if (opts.sub > 0)
+					tmp -= val;
+				cfg.screens[i].brt_step = std::clamp(tmp, brt_steps_min, brt_steps_max);
 			}
 		}
 
