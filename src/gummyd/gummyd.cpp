@@ -137,8 +137,8 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 		}
 
 		if (opts.temp_k != -1) {
-			cfg.screens[i].temp_step = int(remap(opts.temp_k, temp_k_min, temp_k_max, 0, temp_steps_max));
 			cfg.screens[i].temp_auto = false;
+			cfg.screens[i].temp_step = int(remap(opts.temp_k, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max));
 		} else if (opts.temp_auto != -1) {
 			cfg.screens[i].temp_auto = bool(opts.temp_auto);
 			if (opts.temp_auto == 1) {

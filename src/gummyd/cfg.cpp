@@ -32,7 +32,7 @@ Config::Config()
       temp_auto(false),
       temp_auto_fps(45),
       temp_auto_speed(60),
-      temp_auto_high(temp_k_min),
+      temp_auto_high(temp_k_max),
       temp_auto_low(3400),
       temp_auto_sunrise("06:00"),
       temp_auto_sunset("16:00")

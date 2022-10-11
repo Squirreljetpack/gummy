@@ -154,7 +154,7 @@ void core::temp_adjust_loop(Temp_Manager &t, Timestamps &ts, bool catch_up)
 			animation_s = 2;
 	}
 
-	const int target_step = int(remap(target_temp, temp_k_max, temp_k_min, temp_steps_max, 0));
+	const int target_step = int(remap(target_temp, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max));
 	if (t.current_step != target_step) {
 		Animation a = animation_init(t.current_step, target_step, cfg.temp_auto_fps, animation_s * 1000);
 		temp_animation_loop(t, a, -1, t.current_step, target_step);

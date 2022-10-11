@@ -51,7 +51,7 @@ double remap(double x, double a, double b, double ay, double by)
 
 double step_to_kelvin(int step, size_t color_ch)
 {
-	return remap(step, 0, temp_steps_max, 1, ingo_thies_table[color_ch]);
+	return remap(step, temp_steps_min, temp_steps_max, ingo_thies_table[color_ch], 1);
 };
 
 Animation animation_init(int start, int end, int fps, int duration_ms)

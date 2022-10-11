@@ -163,13 +163,13 @@ int main(int argc, const char **argv)
 
 	std::string temp_grp("Temperature options");
 	app.add_option("-t,--temperature", temp,
-	               "Set screen temperature in kelvins.\nSetting this option will disable automatic temperature if enabled.")->check(CLI::Range(temp_k_max, temp_k_min))->group(temp_grp);
+	               "Set screen temperature in kelvins.\nSetting this option will disable automatic temperature if enabled.")->check(CLI::Range(temp_k_min, temp_k_max))->group(temp_grp);
 	app.add_option("-T,--temp-mode", tm,
 	               "Temperature mode. 0 for manual, 1 for automatic.")->check(CLI::Range(0, 1))->group(temp_grp);
 	app.add_option("-j,--temp-day", temp_day,
-	               "Set day time temperature in kelvins.")->check(CLI::Range(temp_k_max, temp_k_min))->group(temp_grp);
+	               "Set day time temperature in kelvins.")->check(CLI::Range(temp_k_min, temp_k_max))->group(temp_grp);
 	app.add_option("-k,--temp-night", temp_night,
-	               "Set night time temperature in kelvins.")->check(CLI::Range(temp_k_max, temp_k_min))->group(temp_grp);
+	               "Set night time temperature in kelvins.")->check(CLI::Range(temp_k_min, temp_k_max))->group(temp_grp);
 	app.add_option("-y,--sunrise-time", sunrise_time,
 	               "Set sunrise time in 24h format, for example `06:00`.")->check(time_format_callback)->group(temp_grp);
 	app.add_option("-u,--sunset-time", sunset_time,
