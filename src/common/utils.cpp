@@ -49,7 +49,7 @@ double remap(double x, double a, double b, double ay, double by)
 	return lerp(normalize(x, a, b), ay, by);
 }
 
-double step_to_kelvin(int step, size_t color_ch)
+double temp_step_to_color_mult(int step, size_t color_ch)
 {
 	return remap(step, temp_steps_min, temp_steps_max, ingo_thies_table[color_ch], 1);
 };

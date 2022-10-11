@@ -146,9 +146,9 @@ void Xorg::apply_gamma_ramp(Output &o, int brt_step, int temp_step)
 	uint16_t *g = &o.ramps[1 * o.ramp_sz];
 	uint16_t *b = &o.ramps[2 * o.ramp_sz];
 
-	const double r_mult = step_to_kelvin(temp_step, 0),
-	             g_mult = step_to_kelvin(temp_step, 1),
-	             b_mult = step_to_kelvin(temp_step, 2);
+	const double r_mult = temp_step_to_color_mult(temp_step, 0),
+	             g_mult = temp_step_to_color_mult(temp_step, 1),
+	             b_mult = temp_step_to_color_mult(temp_step, 2);
 
 	const int    ramp_mult = (UINT16_MAX + 1) / o.ramp_sz;
 	const double brt_mult  = normalize(brt_step, 0, brt_steps_max) * ramp_mult;
