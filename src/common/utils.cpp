@@ -60,7 +60,7 @@ Animation animation_init(int start, int end, int fps, int duration_ms)
 	a.start_step = start;
 	a.diff       = end - start;
 	a.fps        = fps;
-	a.duration_s = duration_ms / 1000;
+	a.duration_s = duration_ms / 1000.;
 	a.slice      = 1. / a.fps;
 	a.elapsed    = 0.;
 	return a;
