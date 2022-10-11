@@ -29,8 +29,8 @@ constexpr int brt_steps_min  = 100;
 constexpr int brt_steps_max  = 500;
 constexpr int temp_steps_min = 0;
 constexpr int temp_steps_max = 500;
-constexpr int temp_k_min     = 6500;
-constexpr int temp_k_max     = 2000;
+constexpr int temp_k_min     = 2000;
+constexpr int temp_k_max     = 6500;
 
 /* Color ramp by Ingo Thies. From Redshift:
  * https://github.com/jonls/redshift/blob/master/README-colorramp */
