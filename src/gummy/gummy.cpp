@@ -161,9 +161,23 @@ int main(int argc, const char **argv)
 	app.add_option("--als-poll-rate", als_poll,
 	               "How often to check for ambient light changes in milliseconds. Only relevant for screens with brightness mode 2.")->check(CLI::Range(1, 30000))->group(brt_grp);
 
+	auto temp_range_callback = [&] (std::string &x) {
+		int val = std::stoi(x);
+		if (app.count("--add") == 0 && app.count("--sub") == 0) {
+			if (val < temp_k_min || val > temp_k_max)
+				return std::string("Value not in range " + std::to_string(temp_k_min) + " to " + std::to_string(temp_k_max));
+		}
+		if (val < 0)
+			return std::string("Invalid value");
+		return std::string("");
+	};
+
 	std::string temp_grp("Temperature options");
 	app.add_option("-t,--temperature", temp,
-	               "Set screen temperature in kelvins.\nSetting this option will disable automatic temperature if enabled.")->check(CLI::Range(temp_k_min, temp_k_max))->group(temp_grp);
+	               "Set screen temperature in kelvins.\nSetting this option will disable automatic temperature if enabled.")
+	               ->check(CLI::Validator(temp_range_callback, "INT in [2000 - 6500]"))
+	               ->group(temp_grp);
+
 	app.add_option("-T,--temp-mode", tm,
 	               "Temperature mode. 0 for manual, 1 for automatic.")->check(CLI::Range(0, 1))->group(temp_grp);
 	app.add_option("-j,--temp-day", temp_day,
