@@ -108,10 +108,8 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 				const int val = int(remap(opts.brt_perc, 0, 100, 0, brt_steps_max));
 				if (opts.add == 0 && opts.sub == 0)
 					tmp = val;
-				else if (opts.add > 0)
-					tmp += val;
-				else if (opts.sub > 0)
-					tmp -= val;
+				else
+					tmp += opts.add > 0 ? val : -val;
 				cfg.screens[i].brt_step = std::clamp(tmp, brt_steps_min, brt_steps_max);
 			}
 		}
@@ -138,7 +136,20 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 
 		if (opts.temp_k != -1) {
 			cfg.screens[i].temp_auto = false;
-			cfg.screens[i].temp_step = int(remap(opts.temp_k, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max));
+			int tmp = cfg.screens[i].temp_step;
+
+			if (opts.add == 0 && opts.sub == 0) {
+				tmp = int(remap(opts.temp_k, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max));
+			} else {
+				// convert in kelvins and add/subtract
+				const int cur_temp_k = remap(tmp, temp_steps_min, temp_steps_max, temp_k_min, temp_k_max)
+				+ (opts.add > 0 ? opts.temp_k : -opts.temp_k);
+				// convert again in step
+				tmp = remap(cur_temp_k, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max);
+			}
+
+			cfg.screens[i].temp_step = std::clamp(tmp, temp_steps_min, temp_steps_max);
+
 		} else if (opts.temp_auto != -1) {
 			cfg.screens[i].temp_auto = bool(opts.temp_auto);
 			if (opts.temp_auto == 1) {
