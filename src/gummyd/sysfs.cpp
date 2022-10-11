@@ -24,6 +24,7 @@
 #include <syslog.h>
 #include <libudev.h>
 #include <cmath>
+#include "../common/utils.h"
 
 std::vector<Sysfs::Backlight> Sysfs::get_bl()
 {
@@ -91,15 +92,21 @@ void Sysfs::Device::set(const std::string &attr, const std::string &val)
 
 Sysfs::Backlight::Backlight(udev *udev, const std::string &path)
 	: _dev(udev, path),
-	  _max_brt(std::stoi(_dev.get("max_brightness")))
+      _max_brt(std::stoi(_dev.get("max_brightness"))),
+      _cur(std::stoi(_dev.get("brightness")))
 {
 
 }
 
 void Sysfs::Backlight::set(int brt)
 {
-	brt = std::clamp(brt, 0, _max_brt);
-	_dev.set("brightness", std::to_string(brt).c_str());
+	_cur = std::clamp(brt, 0, _max_brt);
+	_dev.set("brightness", std::to_string(_cur).c_str());
+}
+
+int Sysfs::Backlight::step() const
+{
+	return remap(_cur, 0, _max_brt, brt_steps_min, brt_steps_max);
 }
 
 int Sysfs::Backlight::max_brt() const 

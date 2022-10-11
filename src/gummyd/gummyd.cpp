@@ -87,6 +87,8 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 
 	for (size_t i = start; i <= end; ++i) {
 
+		const bool backlight_present = i < brtctl.backlights.size();
+
 		if (opts.brt_mode != -1) {
 			if (opts.brt_mode == ALS && brtctl.als.empty()) {
 				// do nothing
@@ -100,18 +102,18 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 			cfg.screens[i].brt_mode = MANUAL;
 			monitor_pause(brtctl.monitors[i]);
 
-			if (i < brtctl.backlights.size()) {
-				cfg.screens[i].brt_step = brt_steps_max;
-				brtctl.backlights[i].set(opts.brt_perc * 255 / 100);
-			} else {
-				int tmp = cfg.screens[i].brt_step;
-				const int val = int(remap(opts.brt_perc, 0, 100, 0, brt_steps_max));
-				if (opts.add == 0 && opts.sub == 0)
-					tmp = val;
-				else
-					tmp += opts.add > 0 ? val : -val;
+			const int val = int(remap(opts.brt_perc, 0, 100, 0, brt_steps_max));
+
+			int tmp = backlight_present ? brtctl.backlights[i].step() : cfg.screens[i].brt_step;
+			if (opts.add == 0 && opts.sub == 0)
+				tmp = val;
+			else
+				tmp += opts.add > 0 ? val : -val;
+
+			if (backlight_present)
+				brtctl.backlights[i].set(remap(tmp, brt_steps_min, brt_steps_max, 0, brtctl.backlights[i].max_brt()));
+			else
 				cfg.screens[i].brt_step = std::clamp(tmp, brt_steps_min, brt_steps_max);
-			}
 		}
 
 		if (opts.brt_auto_min != -1) {

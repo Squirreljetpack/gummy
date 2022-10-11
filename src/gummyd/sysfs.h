@@ -43,10 +43,12 @@ namespace Sysfs
 	public:
 		Backlight(udev*, const std::string &path);
 		int max_brt() const;
+		int step() const;
 		void set(int);
 	private:
 		Device _dev;
 		int _max_brt;
+		int _cur;
 	};
 
 	class ALS
