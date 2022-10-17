@@ -27,7 +27,7 @@
 
 core::Temp_Manager::Temp_Manager(Xorg *xorg)
     : xorg(xorg),
-      current_step(0),
+      current_step(temp_steps_max),
       notified(false)
 {
 	auto_sync.wake_up = false;
