@@ -51,8 +51,12 @@ double remap(double x, double a, double b, double ay, double by)
 
 double temp_step_to_color_mult(int step, size_t color_ch)
 {
-	return remap(step, temp_steps_min, temp_steps_max, ingo_thies_table[color_ch], 1);
-};
+	constexpr size_t max_rows_idx = ingo_thies_table.size() / 3 - 1;
+	const double tmp = remap(step, temp_steps_min, temp_steps_max, 0, max_rows_idx);
+	const size_t row = floor(tmp);
+	const size_t upper_idx = (row + 1) * 3 > max_rows_idx * 3 ? max_rows_idx * 3 : (row + 1) * 3;
+	return lerp(std::abs(row - tmp), ingo_thies_table[row * 3 + color_ch], ingo_thies_table[upper_idx + color_ch]);
+}
 
 Animation animation_init(int start, int end, int fps, int duration_ms)
 {
