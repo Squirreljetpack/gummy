@@ -65,11 +65,11 @@ void Config::init(size_t detected_screens)
 	while (new_screens--)
 		screens.emplace_back(Screen());
 
-	// If temp auto is on, set temp_step to 0 for a smooth transition
+	// If temp auto is on, set temp_step to 6500K for a smooth transition
 	if (temp_auto) {
 		for (size_t i = 0; i < screens.size(); ++i) {
 			if (screens[i].temp_auto) {
-				screens[i].temp_step = 0;
+				screens[i].temp_step = temp_steps_max;
 			}
 		}
 	}
