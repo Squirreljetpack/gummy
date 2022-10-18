@@ -75,6 +75,12 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 			return;
 		}
 		start = end = opts.scr_no;
+
+		// make sure global temp switch is on when enabling temp on one screen
+		if (opts.temp_auto == 1) {
+			cfg.temp_auto = true;
+			notify_temp = true;
+		}
 	} else {
 		if (opts.temp_k != -1) {
 			cfg.temp_auto = false;
