@@ -195,6 +195,8 @@ int message_loop(Xorg &xorg, core::Brightness_Manager &brtctl, core::Temp_Manage
 	apply_options(Message(s), xorg, brtctl, tempctl);
 	cfg.write();
 
+	// need to close explicity for tail recursion
+	fs.close();
 	return message_loop(xorg, brtctl, tempctl);
 }
 
