@@ -49,7 +49,7 @@ Config::Screen::Screen()
       brt_auto_polling_rate(1000),
       brt_step(brt_steps_max),
       temp_auto(false),
-      temp_step(0)
+      temp_step(temp_steps_max)
 {
 }
 
