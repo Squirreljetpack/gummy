@@ -91,6 +91,8 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 		}
 	}
 
+	bool notify_als = false;
+
 	for (size_t i = start; i <= end; ++i) {
 
 		const bool backlight_present = i < brtctl.backlights.size();
@@ -124,14 +126,17 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 
 		if (opts.brt_auto_min != -1) {
 			cfg.screens[i].brt_auto_min = int(remap(opts.brt_auto_min, 0, 100, 0, brt_steps_max));
+			notify_als = true;
 		}
 
 		if (opts.brt_auto_max != -1) {
 			cfg.screens[i].brt_auto_max = int(remap(opts.brt_auto_max, 0, 100, 0, brt_steps_max));
+			notify_als = true;
 		}
 
 		if (opts.brt_auto_offset != -1) {
 			cfg.screens[i].brt_auto_offset = int(remap(opts.brt_auto_offset, 0, 100, 0, brt_steps_max));
+			notify_als = true;
 		}
 
 		if (opts.brt_auto_speed != -1) {
@@ -168,6 +173,10 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 		xorg.set_gamma(i,
 		               cfg.screens[i].brt_step,
 		               cfg.screens[i].temp_step);
+	}
+
+	if (notify_als) {
+		core::als_notify(brtctl.als_ev);
 	}
 
 	if (notify_temp) {

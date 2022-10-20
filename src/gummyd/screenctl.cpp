@@ -353,11 +353,13 @@ void core::monitor_capture_loop(Monitor &mon, Sync &brt_ev, Previous_capture_sta
 		}
 		return mon.xorg->get_screen_brightness(mon.id);
 	}();
+
 	if (mon.flags.paused || mon.flags.stopped)
 		return;
+
 	ss_delta += abs(prev.ss_brt - ss_brt);
 
-	if (ss_delta > scr.brt_auto_threshold) {
+	if (ss_delta > scr.brt_auto_threshold || scr.brt_mode == ALS) {
 		ss_delta = 0;
 		{
 			std::lock_guard lk(brt_ev.mtx);
@@ -405,7 +407,8 @@ void core::monitor_brt_adjust_loop(Monitor &mon, Sync &brt_ev, int cur_step)
 	}();
 
 	if (mon.flags.cfg_updated) {
-		cur_step = scr.brt_step;
+		if (scr.brt_mode == SCREENSHOT)
+			cur_step = scr.brt_step;
 		mon.flags.cfg_updated = false;
 	}
 
