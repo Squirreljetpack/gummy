@@ -121,7 +121,7 @@ void core::temp_adjust_loop(Temp_Manager &t, Timestamps &ts, bool catch_up)
 	}
 
 	if (!cfg.temp_auto)
-		return;
+		return temp_adjust_loop(t, ts, !catch_up);
 
 	ts.cur = std::time(nullptr);
 	const bool daytime = is_daytime(ts);
