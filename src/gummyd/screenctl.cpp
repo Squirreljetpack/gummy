@@ -340,7 +340,7 @@ void core::monitor_is_auto_loop(Monitor &mon, Sync &brt_ev)
 		brt_ev.cv.notify_one();
 		return;
 	}
-	monitor_capture_loop(mon, brt_ev, Previous_capture_state{0,0,0,0}, 0);
+	monitor_capture_loop(mon, brt_ev, Previous_capture_state{0,0,0,0}, 255);
 	monitor_is_auto_loop(mon, brt_ev);
 }
 
