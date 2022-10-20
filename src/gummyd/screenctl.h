@@ -103,8 +103,8 @@ void monitor_resume(Monitor&);
 void monitor_stop(Monitor&);
 void monitor_toggle(Monitor&, bool);
 
-void monitor_is_auto_loop(Monitor&, Sync &brt_sync);
-void monitor_capture_loop(Monitor&, Sync &brt_ev, Sync &als_ev, Previous_capture_state, int ss_delta);
+void monitor_is_auto_loop(Monitor&, Sync &brt_ev);
+void monitor_capture_loop(Monitor&, Sync &brt_ev, Previous_capture_state, int ss_delta);
 void monitor_brt_adjust_loop(Monitor&, Sync &brt_sync, int cur_step);
 int  monitor_brt_animation_loop(Monitor&, Animation, int prev_step, int cur_step, int target_step, int ss_brt);
 
@@ -120,8 +120,8 @@ struct Brightness_Manager
 	std::vector<Sysfs::ALS>       als;
 	std::vector<std::thread>      threads;
 	std::vector<Monitor>          monitors;
-	Sync als_stop;
 	Sync als_ev;
+	Sync als_stop;
 };
 
 void als_capture_loop(Sysfs::ALS&, Sync&, Sync&);

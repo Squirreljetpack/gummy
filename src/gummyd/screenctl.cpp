@@ -235,7 +235,7 @@ void core::Brightness_Manager::start()
 	als_stop.wake_up = false;
 	als_ev.wake_up = false;
 	if (als.size() > 0)
-		threads.emplace_back([&] { als_capture_loop(als[0], als_stop, als_ev); });
+		threads.emplace_back([&] { als_capture_loop(als[0], als_ev, als_stop); });
 	for (auto &m : monitors)
 		threads.emplace_back([&] { monitor_init(m); });
 }
@@ -250,40 +250,43 @@ void core::Brightness_Manager::stop()
 		t.join();
 }
 
-void core::als_capture_loop(Sysfs::ALS &als, Sync &stop, Sync &ev)
+void core::als_capture_loop(Sysfs::ALS &als, Sync &ev, Sync &stop)
 {
 	const int prev_step = als.lux_step();
 	als.update();
 	if (prev_step != als.lux_step())
 		als_notify(ev);
+
 	{
 		std::unique_lock lk(stop.mtx);
 		stop.cv.wait_for(lk, std::chrono::milliseconds(cfg.als_polling_rate));
 	}
+
 	if (stop.wake_up)
 		return;
-	als_capture_loop(als, stop, ev);
+
+	als_capture_loop(als, ev, stop);
+}
+
+void core::als_notify(Sync &ev)
+{
+	ev.cv.notify_all();
+}
+
+int core::als_await(Sysfs::ALS &als, Sync &ev)
+{
+	{
+		std::unique_lock lk(ev.mtx);
+		ev.cv.wait(lk);
+	}
+
+	return als.lux_step();
 }
 
 void core::als_capture_stop(Sync &stop)
 {
 	stop.wake_up = true;
 	stop.cv.notify_one();
-}
-
-void core::als_notify(Sync &ev)
-{
-	std::lock_guard lk(ev.mtx);
-	ev.wake_up = true;
-	ev.cv.notify_one();
-}
-
-int core::als_await(Sysfs::ALS &als, Sync &ev)
-{
-	std::unique_lock lk(ev.mtx);
-	ev.cv.wait(lk, [&] { return ev.wake_up; });
-	ev.wake_up = false;
-	return als.lux_step();
 }
 
 core::Monitor::Monitor(Xorg *xorg,
@@ -337,16 +340,17 @@ void core::monitor_is_auto_loop(Monitor &mon, Sync &brt_ev)
 		brt_ev.cv.notify_one();
 		return;
 	}
-	monitor_capture_loop(mon, brt_ev, *mon.als_ev, Previous_capture_state{0,0,0,0}, 0);
+	monitor_capture_loop(mon, brt_ev, Previous_capture_state{0,0,0,0}, 0);
 	monitor_is_auto_loop(mon, brt_ev);
 }
 
-void core::monitor_capture_loop(Monitor &mon, Sync &brt_ev, Sync &als_ev, Previous_capture_state prev, int ss_delta)
+void core::monitor_capture_loop(Monitor &mon, Sync &brt_ev, Previous_capture_state prev, int ss_delta)
 {
 	const auto &scr = cfg.screens[mon.id];
 	const int ss_brt = [&] {
-		if (scr.brt_mode == ALS)
-			return als_await(*mon.als, als_ev);
+		if (scr.brt_mode == ALS) {
+			return als_await(*mon.als, *mon.als_ev);
+		}
 		return mon.xorg->get_screen_brightness(mon.id);
 	}();
 	if (mon.flags.paused || mon.flags.stopped)
@@ -377,7 +381,7 @@ void core::monitor_capture_loop(Monitor &mon, Sync &brt_ev, Sync &als_ev, Previo
 
 	if (scr.brt_mode == SCREENSHOT)
 		std::this_thread::sleep_for(std::chrono::milliseconds(scr.brt_auto_polling_rate));
-	monitor_capture_loop(mon, brt_ev, als_ev, prev, ss_delta);
+	monitor_capture_loop(mon, brt_ev, prev, ss_delta);
 }
 
 void core::monitor_brt_adjust_loop(Monitor &mon, Sync &brt_ev, int cur_step)
