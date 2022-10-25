@@ -13,10 +13,14 @@ AUR packages:
 - [stable](https://aur.archlinux.org/packages/gummy/)
 - [bleeding edge](https://aur.archlinux.org/packages/gummy-git/)
 
-RPM packages:
-- to be added
+NixOS packages:
+- [stable](https://search.nixos.org/packages?channel=unstable&show=gummy&query=gummy). **Note**: You have to add the following line to `configuration.nix`: `services.udev.packages = [ pkgs.gummy ];`
+
+
+
 
 A reboot may be needed after the installation to ensure udev rules for backlight adjustments are loaded.
+
 
 ## Building from source
 
