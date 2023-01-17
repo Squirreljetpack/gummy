@@ -36,17 +36,17 @@ int calc_brightness(uint8_t *buf, uint64_t buf_sz, int bytes_per_pixel, int stri
 
 double lerp(double x, double a, double b)
 {
-	return (1 - x) * a + x * b;
+	return ((1 - x) * a) + (x * b);
 }
 
-double normalize(double x, double a, double b)
+double invlerp(double x, double a, double b)
 {
 	return (x - a) / (b - a);
 }
 
 double remap(double x, double a, double b, double ay, double by)
 {
-	return lerp(normalize(x, a, b), ay, by);
+	return lerp(invlerp(x, a, b), ay, by);
 }
 
 double temp_step_to_color_mult(int step, size_t color_ch)

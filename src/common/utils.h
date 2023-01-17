@@ -29,7 +29,7 @@ int calc_brightness(uint8_t *buf,
                     int stride = 1024);
 
 double lerp(double x, double a, double b);
-double normalize(double x, double a, double b);
+double invlerp(double x, double a, double b);
 double remap(double x, double a, double b, double ay, double by);
 double temp_step_to_color_mult(int step, size_t color_ch);
 
