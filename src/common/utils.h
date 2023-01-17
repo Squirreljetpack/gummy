@@ -31,7 +31,8 @@ int calc_brightness(uint8_t *buf,
 double lerp(double x, double a, double b);
 double invlerp(double x, double a, double b);
 double remap(double x, double a, double b, double ay, double by);
-double temp_step_to_color_mult(int step, size_t color_ch);
+double remap_to_idx(int val, int val_min, int val_max, size_t arr_sz);
+double mant(double x);
 
 struct Animation
 {

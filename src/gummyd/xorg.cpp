@@ -134,24 +134,28 @@ void Xorg::set_gamma(int scr_idx, int brt_step, int temp_step)
 	                 temp_step);
 }
 
+/**
+ * The gamma ramp is a set of unsigned 16-bit values for each color channel.
+ * Ramp size varies on different systems.
+ * Default values with ramp_sz = 2048 look like this for each channel:
+ * [ 0, 32, 64, 96, ... UINT16_MAX - 32 ]
+ * So, when ramp_sz = 2048, each value is increased in steps of 32,
+ * When ramp_sz = 1024 (usually on iGPUs), it's 64, and so on.
+ */
 void Xorg::apply_gamma_ramp(Output &o, int brt_step, int temp_step)
 {
-	/**
-	 * The ramp multiplier equals 32 when ramp_sz = 2048, 64 when 1024, etc.
-	 * Assuming ramp_sz = 2048 and pure state (default brightness/temp)
-	 * the RGB channels look like:
-	 * [ 0, 32, 64, 96, ... UINT16_MAX - 32 ]
-	 */
 	uint16_t *r = &o.ramps[0 * o.ramp_sz];
 	uint16_t *g = &o.ramps[1 * o.ramp_sz];
 	uint16_t *b = &o.ramps[2 * o.ramp_sz];
 
-	const double r_mult = temp_step_to_color_mult(temp_step, 0),
-	             g_mult = temp_step_to_color_mult(temp_step, 1),
-	             b_mult = temp_step_to_color_mult(temp_step, 2);
+	const int    ramp_step = (UINT16_MAX + 1) / o.ramp_sz;
+	const double brt_mult = invlerp(brt_step, 0, brt_steps_max) * ramp_step;
 
-	const int    ramp_mult = (UINT16_MAX + 1) / o.ramp_sz;
-	const double brt_mult  = normalize(brt_step, 0, brt_steps_max) * ramp_mult;
+	const double idx_lerp = remap_to_idx(temp_step, temp_steps_min, temp_steps_max, ingo_thies_table.size());
+	const int    idx    = std::floor(idx_lerp);
+	const double r_mult = lerp(mant(idx_lerp), ingo_thies_table[idx][0], ingo_thies_table[idx + 1][0]);
+	const double g_mult = lerp(mant(idx_lerp), ingo_thies_table[idx][1], ingo_thies_table[idx + 1][1]);
+	const double b_mult = lerp(mant(idx_lerp), ingo_thies_table[idx][2], ingo_thies_table[idx + 1][2]);
 
 	for (int i = 0; i < o.ramp_sz; ++i) {
 		const int val = std::clamp(int(i * brt_mult), 0, UINT16_MAX);
