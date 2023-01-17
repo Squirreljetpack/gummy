@@ -49,13 +49,19 @@ double remap(double x, double a, double b, double ay, double by)
 	return lerp(invlerp(x, a, b), ay, by);
 }
 
-double temp_step_to_color_mult(int step, size_t color_ch)
+/* Interpolate val to an array index.
+   The integral part of the return value is the index itself,
+   while the fractional part is the interpolation factor
+   between the index and the next one. */
+double remap_to_idx(int val, int val_min, int val_max, size_t arr_sz)
 {
-	constexpr size_t max_rows_idx = ingo_thies_table.size() / 3 - 1;
-	const double tmp = remap(step, temp_steps_min, temp_steps_max, 0, max_rows_idx);
-	const size_t row = floor(tmp);
-	const size_t upper_idx = (row + 1) * 3 > max_rows_idx * 3 ? max_rows_idx * 3 : (row + 1) * 3;
-	return lerp(std::abs(row - tmp), ingo_thies_table[row * 3 + color_ch], ingo_thies_table[upper_idx + color_ch]);
+	return remap(val, val_min, val_max, 0, arr_sz - 1);
+}
+
+// Get the fractional part of a floating point number.
+double mant(double x)
+{
+	return x - std::floor(x);
 }
 
 Animation animation_init(int start, int end, int fps, int duration_ms)
