@@ -91,7 +91,7 @@ Xorg::Xorg()
 			exit(1);
 		}
 		o.ramp_sz = gamma_rpl->size;
-		o.ramps.resize(3 * size_t(o.ramp_sz) * sizeof(uint16_t));
+		o.ramps.resize(size_t(o.ramp_sz) * 3);
 		free(gamma_rpl);
 
 		// couldn't make the following work when refactored into a function
