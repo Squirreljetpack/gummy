@@ -21,7 +21,6 @@
 #include "../common/utils.h"
 
 #include <mutex>
-#include <ctime>
 #include <sdbus-c++/sdbus-c++.h>
 #include <syslog.h>
 
@@ -53,8 +52,7 @@ void core::temp_start(Temp_Manager &t)
 
 	std::thread clock_thr([&] { temp_time_check_loop(t); } );
 
-	Timestamps ts;
-	timestamps_update(ts);
+	Timestamps ts = timestamps_update(cfg.temp_auto_sunrise, cfg.temp_auto_sunset, -(cfg.temp_auto_speed * 60));
 	temp_notify(t);
 	temp_adjust_loop(t, ts, true);
 
@@ -115,7 +113,7 @@ void core::temp_adjust_loop(Temp_Manager &t, Timestamps &ts, bool catch_up)
 		if (t.notified) {
 			t.notified = false;
 			catch_up = true;
-			timestamps_update(ts);
+			ts = timestamps_update(cfg.temp_auto_sunrise, cfg.temp_auto_sunset, -(cfg.temp_auto_speed * 60));
 		}
 		t.clock_sync.wake_up = false;
 	}
@@ -124,16 +122,16 @@ void core::temp_adjust_loop(Temp_Manager &t, Timestamps &ts, bool catch_up)
 		return temp_adjust_loop(t, ts, !catch_up);
 
 	ts.cur = std::time(nullptr);
-	const bool daytime = is_daytime(ts);
+	const bool daytime = ts.cur >= ts.start && ts.cur < ts.end;
 
 	int target_temp;
 	std::time_t time_to_subtract;
 	if (daytime) {
 		target_temp = cfg.temp_auto_high;
-		time_to_subtract = ts.sunrise;
+		time_to_subtract = ts.start;
 	} else {
 		target_temp = cfg.temp_auto_low;
-		time_to_subtract = ts.sunset;
+		time_to_subtract = ts.end;
 	}
 
 	const double adaptation_time_s = double(cfg.temp_auto_speed) * 60;
@@ -519,40 +517,4 @@ void core::Gamma_Refresh::loop(Xorg &xorg)
 	if (_quit)
 		return;
 	loop(xorg);
-}
-
-void timestamps_update(Timestamps &ts)
-{
-	// Get current timestamp
-	ts.cur = std::time(nullptr);
-
-	// Get tm struct from it
-	std::tm *cur_tm = std::localtime(&ts.cur);
-
-	// Set hour and min for sunrise
-	const std::string sr(cfg.temp_auto_sunrise);
-	cur_tm->tm_hour = std::stoi(sr.substr(0, 2));
-	cur_tm->tm_min  = std::stoi(sr.substr(3, 2));
-
-	// Subtract adaptation time
-	cur_tm->tm_sec  = 0;
-	cur_tm->tm_sec -= cfg.temp_auto_speed * 60;
-
-	ts.sunrise = std::mktime(cur_tm);
-
-	// Set hour and min for sunset
-	const std::string sn(cfg.temp_auto_sunset);
-	cur_tm->tm_hour = std::stoi(sn.substr(0, 2));
-	cur_tm->tm_min  = std::stoi(sn.substr(3, 2));
-
-	// Subtract adaptation time
-	cur_tm->tm_sec  = 0;
-	cur_tm->tm_sec -= cfg.temp_auto_speed * 60;
-
-	ts.sunset = std::mktime(cur_tm);
-}
-
-bool is_daytime(const Timestamps &ts)
-{
-	return ts.cur >= ts.sunrise && ts.cur < ts.sunset;
 }

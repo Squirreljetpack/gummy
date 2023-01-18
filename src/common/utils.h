@@ -21,6 +21,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <ctime>
+#include <string>
 
 int set_lock();
 int calc_brightness(uint8_t *buf,
@@ -43,9 +45,21 @@ struct Animation
 	int start_step;
 	int diff;
 };
+
 Animation animation_init(int start, int end, int fps, int duration_ms);
 
 double ease_out_expo(double t, double b , double c, double d);
 double ease_in_out_quad(double t, double b, double c, double d);
+
+struct Timestamps
+{
+    std::time_t cur;
+	std::time_t start;
+	std::time_t end;
+};
+
+Timestamps timestamps_update(const std::string &start, const std::string &end, int seconds);
+std::time_t timestamp_modify(std::time_t ts, int h, int m, int s);
+void print_timestamp(std::time_t ts);
 
 #endif // UTILS_H
