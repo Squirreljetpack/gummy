@@ -21,6 +21,8 @@
 
 #include <fcntl.h>
 #include <cmath>
+#include <ctime>
+#include <string>
 
 int calc_brightness(uint8_t *buf, uint64_t buf_sz, int bytes_per_pixel, int stride)
 {
@@ -105,4 +107,34 @@ int set_lock()
 		return 2;
 
 	return 0;
+}
+
+time_t timestamp_modify(std::time_t ts, int h, int m, int s)
+{
+	std::tm tm = *std::localtime(&ts);
+	tm.tm_hour = h;
+	tm.tm_min  = m;
+	tm.tm_sec  = 0;
+	tm.tm_sec += s;
+	return std::mktime(&tm);
+}
+
+Timestamps timestamps_update(const std::string &start, const std::string &end, int seconds)
+{
+	Timestamps ts;
+	ts.cur = std::time(nullptr);
+	ts.start = timestamp_modify(ts.cur,
+	    std::stoi(start.substr(0, 2)),
+	    std::stoi(start.substr(3, 2)),
+	    seconds);
+	ts.end = timestamp_modify(ts.cur,
+	    std::stoi(end.substr(0, 2)),
+	    std::stoi(end.substr(3, 2)),
+	    seconds);
+	return ts;
+}
+
+void print_timestamp(std::time_t ts)
+{
+	printf("%s\n", std::asctime(std::localtime(&ts)));
 }

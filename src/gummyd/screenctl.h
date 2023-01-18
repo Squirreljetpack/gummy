@@ -28,14 +28,6 @@
 #include <condition_variable>
 #include <sdbus-c++/ProxyInterfaces.h>
 
-struct Timestamps {
-	std::time_t cur;
-	std::time_t sunrise;
-	std::time_t sunset;
-};
-void timestamps_update(Timestamps &ts);
-bool is_daytime(const Timestamps &ts);
-
 struct Sync
 {
 	std::condition_variable cv;
