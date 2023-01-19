@@ -246,7 +246,7 @@ int main(int argc, char **argv)
 	threads.reserve(3);
 	threads.emplace_back([&] { g.loop(xorg); });
 	threads.emplace_back([&] { b.start(); });
-	threads.emplace_back([&] { core::temp_init(t); });
+	threads.emplace_back([&] { core::temp_start(t); });
 
 	message_loop(xorg, b, t);
 

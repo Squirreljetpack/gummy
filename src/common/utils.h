@@ -60,6 +60,6 @@ struct Timestamps
 
 Timestamps timestamps_update(const std::string &start, const std::string &end, int seconds);
 std::time_t timestamp_modify(std::time_t ts, int h, int m, int s);
-void print_timestamp(std::time_t ts);
+std::string timestamp_fmt(std::time_t ts);
 
 #endif // UTILS_H
