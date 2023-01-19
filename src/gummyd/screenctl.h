@@ -23,10 +23,10 @@
 #include "sysfs.h"
 #include "../common/defs.h"
 #include "../common/utils.h"
+#include <sdbus-c++/IProxy.h>
 
 #include <thread>
 #include <condition_variable>
-#include <sdbus-c++/ProxyInterfaces.h>
 
 struct Sync
 {
@@ -34,6 +34,13 @@ struct Sync
 	std::mutex mtx;
 	bool wake_up;
 };
+
+std::unique_ptr<sdbus::IProxy> dbus_register_signal_handler(
+    const std::string &service,
+    const std::string &obj_path,
+    const std::string &interface,
+    const std::string &signal_name,
+    std::function<void(sdbus::Signal &signal)> handler);
 
 namespace core {
 
@@ -46,15 +53,14 @@ namespace core {
 struct Temp_Manager
 {
 	Temp_Manager(Xorg*);
-	Xorg *xorg;
 	Sync auto_sync;
 	Sync clock_sync;
+	std::unique_ptr<sdbus::IProxy> dbus_proxy;
+	Xorg *xorg;
 	int  current_step;
 	bool notified;
 };
 
-void temp_on_system_wakeup(Temp_Manager&);
-void temp_init(Temp_Manager&);
 void temp_notify(Temp_Manager&);
 void temp_stop(Temp_Manager&);
 

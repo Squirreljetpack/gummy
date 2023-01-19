@@ -21,7 +21,6 @@
 #include "../common/utils.h"
 
 #include <mutex>
-#include <sdbus-c++/sdbus-c++.h>
 #include <syslog.h>
 
 core::Temp_Manager::Temp_Manager(Xorg *xorg)
@@ -33,14 +32,22 @@ core::Temp_Manager::Temp_Manager(Xorg *xorg)
 	clock_sync.wake_up = false;
 }
 
-void core::temp_init(Temp_Manager &t)
-{
-	temp_on_system_wakeup(t);
-	temp_start(t);
-}
-
 void core::temp_start(Temp_Manager &t)
 {
+	const auto notify_on_sys_resume = [&t] (sdbus::Signal &sig) {
+		bool suspended;
+		sig >> suspended;
+		if (!suspended)
+			temp_notify(t);
+	};
+
+	t.dbus_proxy = dbus_register_signal_handler(
+	"org.freedesktop.login1",
+	"/org/freedesktop/login1",
+	"org.freedesktop.login1.Manager",
+	"PrepareForSleep",
+	notify_on_sys_resume);
+
 	{
 		std::unique_lock lk(t.auto_sync.mtx);
 		t.auto_sync.cv.wait(lk, [&] {
@@ -188,26 +195,6 @@ void core::temp_animation_loop(Temp_Manager &t, Animation a, int prev_step, int 
 
 	std::this_thread::sleep_for(milliseconds(1000 / a.fps));
 	temp_animation_loop(t, a, cur_step, cur_step, target_step);
-}
-
-void core::temp_on_system_wakeup(Temp_Manager &t)
-{
-	const std::string service   = "org.freedesktop.login1";
-	const std::string obj_path  = "/org/freedesktop/login1";
-	const std::string interface = "org.freedesktop.login1.Manager";
-	const std::string signal    = "PrepareForSleep";
-	static auto proxy = sdbus::createProxy(service, obj_path);
-	try {
-		proxy->registerSignalHandler(interface, signal, [&t] (sdbus::Signal &sig) {
-			bool going_to_sleep;
-			sig >> going_to_sleep;
-			if (!going_to_sleep)
-				temp_notify(t);
-		});
-		proxy->finishRegistration();
-	} catch (sdbus::Error &e) {
-		syslog(LOG_ERR, "sdbus error: %s", e.what());
-	}
 }
 
 core::Brightness_Manager::Brightness_Manager(Xorg &xorg)
@@ -517,4 +504,21 @@ void core::Gamma_Refresh::loop(Xorg &xorg)
 	if (_quit)
 		return;
 	loop(xorg);
+}
+
+std::unique_ptr<sdbus::IProxy> dbus_register_signal_handler(
+    const std::string &service,
+    const std::string &obj_path,
+    const std::string &interface,
+    const std::string &signal_name,
+    std::function<void(sdbus::Signal &signal)> handler)
+{
+	auto proxy = sdbus::createProxy(service, obj_path);
+	try {
+		proxy->registerSignalHandler(interface, signal_name, handler);
+		proxy->finishRegistration();
+	} catch (sdbus::Error &e) {
+		syslog(LOG_ERR, "sdbus error: %s", e.what());
+	}
+	return proxy;
 }

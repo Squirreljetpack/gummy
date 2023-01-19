@@ -134,7 +134,9 @@ Timestamps timestamps_update(const std::string &start, const std::string &end, i
 	return ts;
 }
 
-void print_timestamp(std::time_t ts)
+std::string timestamp_fmt(std::time_t ts)
 {
-	printf("%s\n", std::asctime(std::localtime(&ts)));
+	std::string str(std::asctime(std::localtime(&ts)));
+	str.pop_back();
+	return str;
 }
