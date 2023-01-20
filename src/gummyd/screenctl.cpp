@@ -165,7 +165,7 @@ core::Brightness_Manager::Brightness_Manager(Xorg &xorg)
 		monitors.emplace_back(&xorg,
 		                      i < backlights.size() ? &backlights[i] : nullptr,
 		                      als.size() > 0 ? &als[0] : nullptr,
-		                      &als_ev,
+		                      &als_ch,
 		                      i);
 	}
 
@@ -174,72 +174,55 @@ core::Brightness_Manager::Brightness_Manager(Xorg &xorg)
 
 void core::Brightness_Manager::start()
 {
-	als_stop.wake_up = false;
-	als_ev.wake_up = false;
-	if (als.size() > 0)
-		threads.emplace_back([&] { als_capture_loop(als[0], als_ev, als_stop); });
+	if (als.size() > 0) {
+		channel_send(als_ch, 1);
+		threads.emplace_back([&] {
+			core::als_capture_loop(als[0], als_ch);
+		});
+	}
+
 	for (auto &m : monitors)
 		threads.emplace_back([&] { monitor_init(m); });
 }
 
 void core::Brightness_Manager::stop()
 {
-	als_capture_stop(als_stop);
-	als_capture_stop(als_ev);
+	channel_send(als_ch, 0);
 	for (auto &m : monitors)
 		monitor_stop(m);
 	for (auto &t : threads)
 		t.join();
 }
 
-void core::als_capture_loop(Sysfs::ALS &als, Sync &ev, Sync &stop)
+void core::als_capture_loop(Sysfs::ALS &als, Channel &ch)
 {
 	const int prev_step = als.lux_step();
 	als.update();
-	if (prev_step != als.lux_step())
-		als_notify(ev);
 
-	{
-		std::unique_lock lk(stop.mtx);
-		stop.cv.wait_for(lk, std::chrono::milliseconds(cfg.als_polling_rate));
+	printf("als_capture_loop: %d\n", als.lux_step());
+
+	if (prev_step != als.lux_step() || ch.data == 2) {
+		printf("als_capture_loop: sending signal\n");
+		channel_send(ch, 1);
 	}
 
-	if (stop.wake_up)
+	if (channel_recv_timeout(ch, cfg.als_polling_rate) == 0) {
+		printf("als_capture_loop: exit\n");
 		return;
-
-	als_capture_loop(als, ev, stop);
-}
-
-void core::als_notify(Sync &ev)
-{
-	ev.cv.notify_all();
-}
-
-int core::als_await(Sysfs::ALS &als, Sync &ev)
-{
-	{
-		std::unique_lock lk(ev.mtx);
-		ev.cv.wait(lk);
 	}
 
-	return als.lux_step();
-}
-
-void core::als_capture_stop(Sync &stop)
-{
-	stop.wake_up = true;
-	stop.cv.notify_one();
+	core::als_capture_loop(als, ch);
 }
 
 core::Monitor::Monitor(Xorg *xorg,
 		Sysfs::Backlight *bl,
         Sysfs::ALS *als,
-        Sync *als_ev,
+        Channel *als_ch,
 		int id)
    :  xorg(xorg),
       backlight(bl),
       als(als),
-      als_ev(als_ev),
+      als_ch(als_ch),
       id(id),
       ss_brt(0),
       flags({cfg.screens[id].brt_mode == MANUAL,0,0})
@@ -290,9 +273,14 @@ void core::monitor_capture_loop(Monitor &mon, Sync &brt_ev, Previous_capture_sta
 {
 	const auto &scr = cfg.screens[mon.id];
 	const int ss_brt = [&] {
+
 		if (scr.brt_mode == ALS) {
-			return als_await(*mon.als, *mon.als_ev);
+			printf("monitor_capture_loop: awaiting signal\n");
+			channel_recv(*mon.als_ch);
+			printf("monitor_capture_loop: received signal (%d)\n", mon.als->lux_step());
+			return mon.als->lux_step();
 		}
+
 		return mon.xorg->get_screen_brightness(mon.id);
 	}();
 
@@ -323,14 +311,22 @@ void core::monitor_capture_loop(Monitor &mon, Sync &brt_ev, Previous_capture_sta
 	prev.cfg_max    = scr.brt_auto_max;
 	prev.cfg_offset = scr.brt_auto_offset;
 
-	if (scr.brt_mode == SCREENSHOT)
-		std::this_thread::sleep_for(std::chrono::milliseconds(scr.brt_auto_polling_rate));
-	monitor_capture_loop(mon, brt_ev, prev, ss_delta);
+	if (scr.brt_mode == SCREENSHOT) {
+		if (mon.backlight) {
+			channel_recv_timeout(*mon.als_ch, scr.brt_auto_polling_rate);
+		} else {
+			std::this_thread::sleep_for(std::chrono::milliseconds(scr.brt_auto_polling_rate));
+		}
+	}
+
+	core::monitor_capture_loop(mon, brt_ev, prev, ss_delta);
 }
 
 void core::monitor_brt_adjust_loop(Monitor &mon, Sync &brt_ev, int cur_step)
 {
-	int ss_brt; {
+	int ss_brt;
+
+	{
 		std::unique_lock lk(brt_ev.mtx);
 		brt_ev.cv.wait(lk, [&] { return brt_ev.wake_up; });
 		brt_ev.wake_up = false;
@@ -401,14 +397,14 @@ void core::monitor_stop(Monitor &mon)
 void core::monitor_pause(Monitor &mon)
 {
 	mon.flags.paused = true;
-	als_notify(*mon.als_ev);
+	channel_send(*mon.als_ch, 2);
 }
 
 void core::monitor_resume(Monitor &mon)
 {
 	mon.flags.paused = false;
 	mon.cv.notify_one();
-	als_notify(*mon.als_ev);
+	channel_send(*mon.als_ch, 2);
 }
 
 void core::monitor_toggle(Monitor &mon, bool toggle)
