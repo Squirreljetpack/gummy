@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <ctime>
 #include <string>
+#include <condition_variable>
 
 int set_lock();
 int calc_brightness(uint8_t *buf,
@@ -61,5 +62,15 @@ struct Timestamps
 Timestamps timestamps_update(const std::string &start, const std::string &end, int seconds);
 std::time_t timestamp_modify(std::time_t ts, int h, int m, int s);
 std::string timestamp_fmt(std::time_t ts);
+
+struct Channel
+{
+    std::condition_variable cv;
+	std::mutex mtx;
+	int data;
+};
+int channel_recv(Channel &ch);
+int channel_recv_timeout(Channel &cv, int ms);
+void channel_send(Channel &ch, int);
 
 #endif // UTILS_H

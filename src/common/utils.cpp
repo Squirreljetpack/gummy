@@ -23,6 +23,7 @@
 #include <cmath>
 #include <ctime>
 #include <string>
+#include <chrono>
 
 int calc_brightness(uint8_t *buf, uint64_t buf_sz, int bytes_per_pixel, int stride)
 {
@@ -139,4 +140,34 @@ std::string timestamp_fmt(std::time_t ts)
 	std::string str(std::asctime(std::localtime(&ts)));
 	str.pop_back();
 	return str;
+}
+
+int channel_recv(Channel &ch)
+{
+	{
+		std::unique_lock lk(ch.mtx);
+		ch.cv.wait(lk);
+	}
+	return ch.data;
+}
+
+int channel_recv_timeout(Channel &ch, int ms)
+{
+	using namespace std::chrono;
+
+	{
+		std::unique_lock lk(ch.mtx);
+		ch.cv.wait_until(lk, system_clock::now() + milliseconds(ms));
+	}
+
+	return ch.data;
+}
+
+void channel_send(Channel &ch, int data)
+{
+	{
+		std::lock_guard lk(ch.mtx);
+		ch.data = data;
+	}
+	ch.cv.notify_all();
 }
