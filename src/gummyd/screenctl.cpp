@@ -33,7 +33,7 @@ void core::temp_start(Temp_Manager &t)
 		bool suspended;
 		sig >> suspended;
 		if (!suspended)
-			channel_send(t.ch, t.NOTIFIED);
+			t.ch.send(t.NOTIFIED);
 	};
 
 	t.dbus_proxy = dbus_register_signal_handler(
@@ -43,15 +43,15 @@ void core::temp_start(Temp_Manager &t)
 	    "PrepareForSleep",
 	    notify_on_sys_resume);
 
-	channel_send(t.ch, t.WORKING);
+	t.ch.send(t.WORKING);
 	core::temp_adjust_loop(t);
 }
 
 void core::temp_adjust_loop(Temp_Manager &t)
 {
-	printf("temp_adjust_loop: temp_auto: %d\n", cfg.temp_auto);
+	//printf("temp_adjust_loop: temp_auto: %d\n", cfg.temp_auto);
 
-	channel_send(t.ch, t.WORKING);
+	t.ch.send(t.WORKING);
 
 	if (cfg.temp_auto) {
 		core::temp_adjust(t, timestamps_update(
@@ -60,11 +60,11 @@ void core::temp_adjust_loop(Temp_Manager &t)
 		    -(cfg.temp_auto_speed * 60)), false);
 	}
 
-	printf("temp_adjust_loop: waiting until timeout\n");
+	//printf("temp_adjust_loop: waiting until timeout\n");
 
 	// retry without waiting if interrupted
-	if (t.ch.data != t.NOTIFIED) {
-		if (channel_recv_timeout(t.ch, 60000) == t.EXIT)
+	if (t.ch.data() != t.NOTIFIED) {
+		if (t.ch.recv_timeout(60000) == t.EXIT)
 			return;
 	}
 
@@ -73,7 +73,7 @@ void core::temp_adjust_loop(Temp_Manager &t)
 
 void core::temp_adjust(Temp_Manager &t, Timestamps ts, bool step)
 {
-	printf("temp_adjust: step %d\n", step);
+	//printf("temp_adjust: step %d\n", step);
 
 	ts.cur = std::time(nullptr);
 	const bool daytime = ts.cur >= ts.start && ts.cur < ts.end;
@@ -116,7 +116,7 @@ void core::temp_adjust(Temp_Manager &t, Timestamps ts, bool step)
 
 	core::temp_animation_loop(t, a, -1, t.current_step, target_step);
 
-	printf("temp_adjust: step %d done\n", step);
+	//printf("temp_adjust: step %d done\n", step);
 	if (!step)
 		core::temp_adjust(t, ts, !step);
 }
@@ -128,7 +128,7 @@ void core::temp_animation_loop(Temp_Manager &t, Animation a, int prev_step, int 
 		return;
 	}
 
-	if (t.ch.data == t.NOTIFIED) {
+	if (t.ch.data() == t.NOTIFIED) {
 		printf("temp_animation_loop: interrupted\n");
 		return;
 	}
@@ -175,21 +175,23 @@ core::Brightness_Manager::Brightness_Manager(Xorg &xorg)
 void core::Brightness_Manager::start()
 {
 	if (als.size() > 0) {
-		channel_send(als_ch, 1);
+		als_ch.send(1);
 		threads.emplace_back([&] {
 			core::als_capture_loop(als[0], als_ch);
 		});
 	}
 
 	for (auto &m : monitors)
-		threads.emplace_back([&] { monitor_init(m); });
+		threads.emplace_back([&] { core::monitor_init(m); });
 }
 
 void core::Brightness_Manager::stop()
 {
-	channel_send(als_ch, 0);
+	als_ch.send(0);
+
 	for (auto &m : monitors)
-		monitor_stop(m);
+		m.ch.send(0);
+
 	for (auto &t : threads)
 		t.join();
 }
@@ -199,14 +201,12 @@ void core::als_capture_loop(Sysfs::ALS &als, Channel &ch)
 	const int prev_step = als.lux_step();
 	als.update();
 
-	printf("als_capture_loop: %d\n", als.lux_step());
-
-	if (prev_step != als.lux_step() || ch.data == 2) {
+	if (prev_step != als.lux_step() || ch.data() == 2) {
 		printf("als_capture_loop: sending signal\n");
-		channel_send(ch, 1);
+		ch.send(1);
 	}
 
-	if (channel_recv_timeout(ch, cfg.als_polling_rate) == 0) {
+	if (ch.recv_timeout(cfg.als_polling_rate) == 0) {
 		printf("als_capture_loop: exit\n");
 		return;
 	}
@@ -223,9 +223,7 @@ core::Monitor::Monitor(Xorg *xorg,
       backlight(bl),
       als(als),
       als_ch(als_ch),
-      id(id),
-      ss_brt(0),
-      flags({cfg.screens[id].brt_mode == MANUAL,0,0})
+      id(id)
 {
 	if (!backlight) {
 		xorg->set_gamma(id,
@@ -237,106 +235,105 @@ core::Monitor::Monitor(Xorg *xorg,
 core::Monitor::Monitor(Monitor &&o)
     :  xorg(o.xorg),
        backlight(o.backlight),
-       id(o.id),
-       flags(o.flags)
+       id(o.id)
 {
 }
 
 void core::monitor_init(Monitor &mon)
 {
-	Sync brt_ev;
-	brt_ev.wake_up = false;
-	std::thread adjust_thr([&] {
-		monitor_brt_adjust_loop(mon, brt_ev, brt_steps_max);
+	std::thread thr([&] {
+		core::monitor_brt_adjust_loop(mon, brt_steps_max);
 	});
-	monitor_is_auto_loop(mon, brt_ev);
-	adjust_thr.join();
+	core::monitor_is_auto_loop(mon);
+
+	mon.brt_ch.send(-1);
+	thr.join();
 }
 
-void core::monitor_is_auto_loop(Monitor &mon, Sync &brt_ev)
+void core::monitor_is_auto_loop(Monitor &mon)
 {
-	std::mutex mtx; {
-		std::unique_lock lk(mtx);
-		mon.cv.wait(lk, [&] { return !mon.flags.paused; });
+	printf("brt_mode: %d\n", cfg.screens[mon.id].brt_mode);
+	mon.ch.send(1);
+
+	if (cfg.screens[mon.id].brt_mode != MANUAL) {
+		printf("monitor_is_auto_loop: starting monitor_capture_loop\n");
+		core::monitor_capture_loop(mon, monitor_capture_state{0, 0, 0, 0}, 255);
 	}
-	if (mon.flags.stopped) {
-		{ std::lock_guard lk(brt_ev.mtx);
-		brt_ev.wake_up = true; }
-		brt_ev.cv.notify_one();
-		return;
+
+	if (mon.ch.data() != 2) {
+		printf("monitor_is_auto_loop: awaiting\n");
+		if (mon.ch.recv() == 0) {
+			return;
+		}
 	}
-	monitor_capture_loop(mon, brt_ev, Previous_capture_state{0,0,0,0}, 255);
-	monitor_is_auto_loop(mon, brt_ev);
+
+	core::monitor_is_auto_loop(mon);
 }
 
-void core::monitor_capture_loop(Monitor &mon, Sync &brt_ev, Previous_capture_state prev, int ss_delta)
+void core::monitor_capture_loop(Monitor &mon, monitor_capture_state state, int ss_delta)
 {
+	printf("monitor_capture_loop\n");
 	const auto &scr = cfg.screens[mon.id];
+
 	const int ss_brt = [&] {
 
 		if (scr.brt_mode == ALS) {
-			printf("monitor_capture_loop: awaiting signal\n");
-			channel_recv(*mon.als_ch);
-			printf("monitor_capture_loop: received signal (%d)\n", mon.als->lux_step());
+			printf("monitor_capture_loop: awaiting ALS signal\n");
+			mon.als_ch->recv();
+			printf("monitor_capture_loop: received ALS signal\n");
 			return mon.als->lux_step();
 		}
 
 		return mon.xorg->get_screen_brightness(mon.id);
 	}();
 
-	if (mon.flags.paused || mon.flags.stopped)
+	if (mon.ch.data() == 2) {
+		printf("monitor_capture_loop: interrupted\n");
 		return;
+	}
 
-	ss_delta += abs(prev.ss_brt - ss_brt);
+	ss_delta += abs(state.ss_brt - ss_brt);
 
 	if (ss_delta > scr.brt_auto_threshold || scr.brt_mode == ALS) {
 		ss_delta = 0;
-		{
-			std::lock_guard lk(brt_ev.mtx);
-			brt_ev.wake_up = true;
-			mon.ss_brt = ss_brt;
-		}
-		brt_ev.cv.notify_one();
+		mon.brt_ch.send(ss_brt);
 	}
 
-	if (scr.brt_auto_min != prev.cfg_min
-	    || scr.brt_auto_max != prev.cfg_max
-	    || scr.brt_auto_offset != prev.cfg_offset) {
+	if (scr.brt_auto_min != state.cfg_min
+	    || scr.brt_auto_max != state.cfg_max
+	    || scr.brt_auto_offset != state.cfg_offset) {
 		ss_delta = 255;
-		mon.flags.cfg_updated = true; // not worth syncing
 	}
 
-	prev.ss_brt     = ss_brt;
-	prev.cfg_min    = scr.brt_auto_min;
-	prev.cfg_max    = scr.brt_auto_max;
-	prev.cfg_offset = scr.brt_auto_offset;
+	state.ss_brt     = ss_brt;
+	state.cfg_min    = scr.brt_auto_min;
+	state.cfg_max    = scr.brt_auto_max;
+	state.cfg_offset = scr.brt_auto_offset;
 
 	if (scr.brt_mode == SCREENSHOT) {
 		if (mon.backlight) {
-			channel_recv_timeout(*mon.als_ch, scr.brt_auto_polling_rate);
+			mon.als_ch->recv_timeout(scr.brt_auto_polling_rate);
 		} else {
 			std::this_thread::sleep_for(std::chrono::milliseconds(scr.brt_auto_polling_rate));
 		}
 	}
 
-	core::monitor_capture_loop(mon, brt_ev, prev, ss_delta);
+	core::monitor_capture_loop(mon, state, ss_delta);
 }
 
-void core::monitor_brt_adjust_loop(Monitor &mon, Sync &brt_ev, int cur_step)
+void core::monitor_brt_adjust_loop(Monitor &mon, int cur_step)
 {
-	int ss_brt;
+	printf("monitor_brt_adjust_loop: awaiting\n");
+	const int ss_brt = mon.brt_ch.recv();
+	printf("monitor_brt_adjust_loop: received %d\n", ss_brt);
 
-	{
-		std::unique_lock lk(brt_ev.mtx);
-		brt_ev.cv.wait(lk, [&] { return brt_ev.wake_up; });
-		brt_ev.wake_up = false;
-		ss_brt = mon.ss_brt;
+	if (ss_brt == -1) {
+		printf("monitor_brt_adjust_loop: quitting\n");
+		return;
 	}
 
-	if (mon.flags.stopped)
-		return;
-
 	const auto &scr = cfg.screens[mon.id];
+
 	const int target_step = [&] {
 		if (mon.als && scr.brt_mode == ALS)
 			return calc_brt_target_als(ss_brt, scr.brt_auto_min, scr.brt_auto_max, scr.brt_auto_offset);
@@ -344,11 +341,8 @@ void core::monitor_brt_adjust_loop(Monitor &mon, Sync &brt_ev, int cur_step)
 			return calc_brt_target(ss_brt, scr.brt_auto_min, scr.brt_auto_max, scr.brt_auto_offset);
 	}();
 
-	if (mon.flags.cfg_updated) {
-		if (scr.brt_mode == SCREENSHOT)
-			cur_step = scr.brt_step;
-		mon.flags.cfg_updated = false;
-	}
+	if (scr.brt_mode == SCREENSHOT)
+		cur_step = scr.brt_step;
 
 	if (cur_step != target_step) {
 		if (mon.backlight) {
@@ -360,15 +354,15 @@ void core::monitor_brt_adjust_loop(Monitor &mon, Sync &brt_ev, int cur_step)
 		}
 	}
 
-	monitor_brt_adjust_loop(mon, brt_ev, cur_step);
+	core::monitor_brt_adjust_loop(mon, cur_step);
 }
 
 int core::monitor_brt_animation_loop(Monitor &mon, Animation a, int prev_step, int cur_step, int target_step, int ss_brt)
 {
-	if (mon.ss_brt != ss_brt)
+	if (mon.ch.data() == 2) {
+		printf("monitor_brt_animation_loop: interrupted\n");
 		return cur_step;
-	if (mon.flags.paused || mon.flags.cfg_updated || mon.flags.stopped)
-		return cur_step;
+	}
 
 	a.elapsed += a.slice;
 	cur_step = int(round(ease_out_expo(a.elapsed, a.start_step, a.diff, a.duration_s)));
@@ -384,35 +378,7 @@ int core::monitor_brt_animation_loop(Monitor &mon, Animation a, int prev_step, i
 		return cur_step;
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000 / a.fps));
-	return monitor_brt_animation_loop(mon, a, cur_step, cur_step, target_step, ss_brt);
-}
-
-void core::monitor_stop(Monitor &mon)
-{
-	mon.flags.paused = false;
-	mon.flags.stopped = true;
-	mon.cv.notify_one();
-}
-
-void core::monitor_pause(Monitor &mon)
-{
-	mon.flags.paused = true;
-	channel_send(*mon.als_ch, 2);
-}
-
-void core::monitor_resume(Monitor &mon)
-{
-	mon.flags.paused = false;
-	mon.cv.notify_one();
-	channel_send(*mon.als_ch, 2);
-}
-
-void core::monitor_toggle(Monitor &mon, bool toggle)
-{
-	if (toggle)
-		monitor_resume(mon);
-	else
-		monitor_pause(mon);
+	return core::monitor_brt_animation_loop(mon, a, cur_step, cur_step, target_step, ss_brt);
 }
 
 int core::calc_brt_target_als(int als_brt, int min, int max, int offset)
@@ -435,8 +401,10 @@ void core::refresh_gamma(Xorg &xorg, Channel &ch)
 		               cfg.screens[i].brt_step,
 		               cfg.screens[i].temp_step);
 	}
-	if (channel_recv_timeout(ch, 10000) == 0)
+
+	if (ch.recv_timeout(10000) == 0)
 		return;
+
 	core::refresh_gamma(xorg, ch);
 }
 

@@ -23,17 +23,9 @@
 #include "sysfs.h"
 #include "../common/defs.h"
 #include "../common/utils.h"
+
 #include <sdbus-c++/IProxy.h>
-
 #include <thread>
-#include <condition_variable>
-
-struct Sync
-{
-	std::condition_variable cv;
-	std::mutex mtx;
-	bool wake_up;
-};
 
 std::unique_ptr<sdbus::IProxy> dbus_register_signal_handler(
     const std::string &service,
@@ -63,6 +55,7 @@ struct Temp_Manager
 	Xorg *xorg;
 	int current_step;
 };
+
 void temp_start(Temp_Manager&);
 void temp_adjust(Temp_Manager&, Timestamps, bool catch_up);
 void temp_adjust_loop(Temp_Manager&);
@@ -72,21 +65,16 @@ struct Monitor
 {
     Monitor(Xorg*, Sysfs::Backlight*, Sysfs::ALS*, Channel *als_ch, int id);
 	Monitor(Monitor&&);
-	std::condition_variable cv;
-	Xorg                    *xorg;
-	Sysfs::Backlight        *backlight;
-	Sysfs::ALS              *als;
-	Channel                 *als_ch;
+	Xorg *xorg;
+	Sysfs::Backlight *backlight;
+	Sysfs::ALS *als;
+	Channel ch;
+	Channel brt_ch;
+	Channel *als_ch;
 	int id;
-	int ss_brt;
-	struct {
-		bool paused;
-		bool stopped;
-		bool cfg_updated;
-	} flags;
 };
 
-struct Previous_capture_state
+struct monitor_capture_state
 {
 	int ss_brt;
 	int cfg_min;
@@ -95,14 +83,11 @@ struct Previous_capture_state
 };
 
 void monitor_init(Monitor&);
-void monitor_pause(Monitor&);
-void monitor_resume(Monitor&);
-void monitor_stop(Monitor&);
-void monitor_toggle(Monitor&, bool);
 
-void monitor_is_auto_loop(Monitor&, Sync &brt_ev);
-void monitor_capture_loop(Monitor&, Sync &brt_ev, Previous_capture_state, int ss_delta);
-void monitor_brt_adjust_loop(Monitor&, Sync &brt_sync, int cur_step);
+void monitor_is_auto_loop(Monitor&);
+void monitor_capture_loop(Monitor&, monitor_capture_state, int ss_delta);
+
+void monitor_brt_adjust_loop(Monitor&, int cur_step);
 int  monitor_brt_animation_loop(Monitor&, Animation, int prev_step, int cur_step, int target_step, int ss_brt);
 
 int  calc_brt_target(int ss_brt, int min, int max, int offset);
@@ -113,11 +98,11 @@ struct Brightness_Manager
 	Brightness_Manager(Xorg&);
 	void start();
 	void stop();
+	Channel als_ch;
 	std::vector<Sysfs::Backlight> backlights;
 	std::vector<Sysfs::ALS>       als;
 	std::vector<std::thread>      threads;
 	std::vector<Monitor>          monitors;
-	Channel als_ch;
 };
 
 void als_capture_loop(Sysfs::ALS &als, Channel &ch);

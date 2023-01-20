@@ -92,24 +92,20 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 		}
 	}
 
-
-
 	for (size_t i = start; i <= end; ++i) {
 
 		const bool backlight_present = i < brtctl.backlights.size();
 
 		if (opts.brt_mode != -1) {
-			if (opts.brt_mode == ALS && brtctl.als.empty()) {
-				// do nothing
-			} else {
-				cfg.screens[i].brt_mode = Brt_mode(opts.brt_mode);
-				monitor_toggle(brtctl.monitors[i], opts.brt_mode != MANUAL);
-			}
+			cfg.screens[i].brt_mode = Brt_mode(opts.brt_mode);
+			if (!brtctl.als.empty())
+				brtctl.als_ch.send(2);
+			    brtctl.monitors[i].ch.send(2);
 		}
 
 		if (opts.brt_perc != -1) {
 			cfg.screens[i].brt_mode = MANUAL;
-			monitor_pause(brtctl.monitors[i]);
+			brtctl.monitors[i].ch.send(2);
 
 			const int val = int(remap(opts.brt_perc, 0, 100, 0, brt_steps_max));
 
@@ -177,11 +173,11 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 	}
 
 	if (notify_als) {
-		channel_send(brtctl.als_ch, 1);
+		brtctl.als_ch.send(1);
 	}
 
 	if (notify_temp) {
-		channel_send(tempctl.ch, tempctl.NOTIFIED);
+		tempctl.ch.send(tempctl.NOTIFIED);
 	}
 }
 
@@ -240,7 +236,7 @@ int main(int argc, char **argv)
 	init_fifo();
 
 	Channel run;
-	run.data = 1;
+	run.send(1);
 
 	core::Brightness_Manager b(xorg);
 	core::Temp_Manager t(&xorg);
@@ -253,8 +249,8 @@ int main(int argc, char **argv)
 
 	message_loop(xorg, b, t);
 
-	channel_send(run, 0);
-	channel_send(t.ch, t.EXIT);
+	run.send(0);
+	t.ch.send(t.EXIT);
 
 	b.stop();
 
