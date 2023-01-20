@@ -53,25 +53,24 @@ namespace core {
 struct Temp_Manager
 {
 	Temp_Manager(Xorg*);
-	Sync auto_sync;
-	Sync clock_sync;
+	enum ch_code {
+		EXIT,
+		WORKING,
+		NOTIFIED
+	};
+	Channel ch;
 	std::unique_ptr<sdbus::IProxy> dbus_proxy;
 	Xorg *xorg;
-	int  current_step;
-	bool notified;
+	int current_step;
 };
-
-void temp_notify(Temp_Manager&);
-void temp_stop(Temp_Manager&);
-
 void temp_start(Temp_Manager&);
-void temp_time_check_loop(Temp_Manager&);
-void temp_adjust_loop(Temp_Manager&, Timestamps&, bool catch_up);
+void temp_adjust(Temp_Manager&, Timestamps, bool catch_up);
+void temp_adjust_loop(Temp_Manager&);
 void temp_animation_loop(Temp_Manager&, Animation, int prev_step, int cur_step, int target_step);
 
 struct Monitor
 {
-	Monitor(Xorg*, Sysfs::Backlight*, Sysfs::ALS*, Sync *als_ev, int id);
+    Monitor(Xorg*, Sysfs::Backlight*, Sysfs::ALS*, Sync *als_ev, int id);
 	Monitor(Monitor&&);
 	std::condition_variable cv;
 	Xorg                    *xorg;
@@ -127,17 +126,7 @@ void als_capture_stop(Sync&);
 void als_notify(Sync&);
 int  als_await(Sysfs::ALS&, Sync&);
 
-class Gamma_Refresh
-{
-public:
-	Gamma_Refresh();
-	void loop(Xorg&);
-	void stop();
-private:
-	std::condition_variable _cv;
-	bool _quit;
-};
-
+void refresh_gamma(Xorg&, Channel&);
 }
 
 #endif // SCREENCTL_H

@@ -180,7 +180,7 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 	}
 
 	if (notify_temp) {
-		core::temp_notify(tempctl);
+		channel_send(tempctl.ch, tempctl.NOTIFIED);
 	}
 }
 
@@ -238,21 +238,24 @@ int main(int argc, char **argv)
 	// Init fifo
 	init_fifo();
 
-	core::Gamma_Refresh g;
+	Channel run;
+	run.data = 1;
+
 	core::Brightness_Manager b(xorg);
 	core::Temp_Manager t(&xorg);
 
 	std::vector<std::thread> threads;
 	threads.reserve(3);
-	threads.emplace_back([&] { g.loop(xorg); });
+	threads.emplace_back([&] { core::refresh_gamma(xorg, run); });
 	threads.emplace_back([&] { b.start(); });
 	threads.emplace_back([&] { core::temp_start(t); });
 
 	message_loop(xorg, b, t);
 
-	temp_stop(t);
+	channel_send(run, 0);
+	channel_send(t.ch, t.EXIT);
+
 	b.stop();
-	g.stop();
 
 	for (auto &t : threads)
 		t.join();

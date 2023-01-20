@@ -20,113 +20,59 @@
 #include "cfg.h"
 #include "../common/utils.h"
 
-#include <mutex>
 #include <syslog.h>
 
 core::Temp_Manager::Temp_Manager(Xorg *xorg)
     : xorg(xorg),
-      current_step(temp_steps_max),
-      notified(false)
-{
-	auto_sync.wake_up = false;
-	clock_sync.wake_up = false;
-}
+      current_step(temp_steps_max)
+{}
 
 void core::temp_start(Temp_Manager &t)
 {
-	const auto notify_on_sys_resume = [&t] (sdbus::Signal &sig) {
+	const auto notify_on_sys_resume = [&] (sdbus::Signal &sig) {
 		bool suspended;
 		sig >> suspended;
 		if (!suspended)
-			temp_notify(t);
+			channel_send(t.ch, t.NOTIFIED);
 	};
 
 	t.dbus_proxy = dbus_register_signal_handler(
-	"org.freedesktop.login1",
-	"/org/freedesktop/login1",
-	"org.freedesktop.login1.Manager",
-	"PrepareForSleep",
-	notify_on_sys_resume);
+	    "org.freedesktop.login1",
+	    "/org/freedesktop/login1",
+	    "org.freedesktop.login1.Manager",
+	    "PrepareForSleep",
+	    notify_on_sys_resume);
 
-	{
-		std::unique_lock lk(t.auto_sync.mtx);
-		t.auto_sync.cv.wait(lk, [&] {
-			return cfg.temp_auto || t.auto_sync.wake_up;
-		});
-		if (t.auto_sync.wake_up)
+	channel_send(t.ch, t.WORKING);
+	core::temp_adjust_loop(t);
+}
+
+void core::temp_adjust_loop(Temp_Manager &t)
+{
+	printf("temp_adjust_loop\n");
+	channel_send(t.ch, t.WORKING);
+	core::temp_adjust(t, timestamps_update(
+	    cfg.temp_auto_sunrise,
+	    cfg.temp_auto_sunset,
+	    -(cfg.temp_auto_speed * 60)), false);
+
+	printf("temp_time_check_loop: waiting until timeout\n");
+	if (t.ch.data != t.NOTIFIED) { // retry if interrupted in the animation loop
+		if (channel_recv_timeout(t.ch, 60000) == t.EXIT)
 			return;
 	}
 
-	std::thread clock_thr([&] { temp_time_check_loop(t); } );
-
-	Timestamps ts = timestamps_update(cfg.temp_auto_sunrise, cfg.temp_auto_sunset, -(cfg.temp_auto_speed * 60));
-	temp_notify(t);
-	temp_adjust_loop(t, ts, true);
-
-	t.clock_sync.cv.notify_one();
-	clock_thr.join();
+	core::temp_adjust_loop(t);
 }
 
-void core::temp_notify(Temp_Manager &t)
+void core::temp_adjust(Temp_Manager &t, Timestamps ts, bool step)
 {
-	{
-		std::lock_guard(t.auto_sync.mtx);
-		t.notified = true;
-	}
-	t.auto_sync.cv.notify_one();
-}
+	printf("temp_adjust: step %d\n", step);
 
-void core::temp_stop(Temp_Manager &t)
-{
-	{
-		std::lock_guard(t.auto_sync.mtx);
-		t.auto_sync.wake_up = true;
-	}
-	t.auto_sync.cv.notify_one();
-	t.clock_sync.cv.notify_one();
-}
-
-void core::temp_time_check_loop(Temp_Manager &t)
-{
-	using namespace std::chrono;
-	using namespace std::chrono_literals;
-	{
-		std::unique_lock lk(t.clock_sync.mtx);
-		t.clock_sync.cv.wait_until(lk, system_clock::now() + 60s, [&t] {
-			return t.auto_sync.wake_up;
-		});
-		if (t.auto_sync.wake_up)
-			return;
-	}
-	if (!cfg.temp_auto)
+	if (!cfg.temp_auto) {
+		printf("temp_adjust: temp auto OFF. Returning\n");
 		return;
-	{
-		std::lock_guard lk(t.clock_sync.mtx);
-		t.clock_sync.wake_up = true;
 	}
-	t.auto_sync.cv.notify_one();
-	temp_time_check_loop(t);
-}
-
-void core::temp_adjust_loop(Temp_Manager &t, Timestamps &ts, bool catch_up)
-{
-	{
-		std::unique_lock lk(t.auto_sync.mtx);
-		t.auto_sync.cv.wait(lk, [&] {
-			return !catch_up || t.notified || t.clock_sync.wake_up || t.auto_sync.wake_up;
-		});
-		if (t.auto_sync.wake_up)
-			return;
-		if (t.notified) {
-			t.notified = false;
-			catch_up = true;
-			ts = timestamps_update(cfg.temp_auto_sunrise, cfg.temp_auto_sunset, -(cfg.temp_auto_speed * 60));
-		}
-		t.clock_sync.wake_up = false;
-	}
-
-	if (!cfg.temp_auto)
-		return temp_adjust_loop(t, ts, !catch_up);
 
 	ts.cur = std::time(nullptr);
 	const bool daytime = ts.cur >= ts.start && ts.cur < ts.end;
@@ -147,7 +93,7 @@ void core::temp_adjust_loop(Temp_Manager &t, Timestamps &ts, bool catch_up)
 		time_since_start_s = adaptation_time_s;
 
 	double animation_s = 2;
-	if (catch_up) {
+	if (!step) {
 		if (daytime) {
 			target_temp = remap(time_since_start_s, 0, adaptation_time_s, cfg.temp_auto_low, cfg.temp_auto_high);
 		} else {
@@ -160,28 +106,42 @@ void core::temp_adjust_loop(Temp_Manager &t, Timestamps &ts, bool catch_up)
 	}
 
 	const int target_step = int(remap(target_temp, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max));
-	if (t.current_step != target_step) {
-		Animation a = animation_init(t.current_step, target_step, cfg.temp_auto_fps, animation_s * 1000);
-		temp_animation_loop(t, a, -1, t.current_step, target_step);
-	}
 
-	temp_adjust_loop(t, ts, !catch_up);
+	Animation a = animation_init(
+	    t.current_step,
+	    target_step,
+	    cfg.temp_auto_fps,
+	    animation_s * 1000);
+
+	core::temp_animation_loop(t, a, -1, t.current_step, target_step);
+
+	printf("temp_adjust: step %d done\n", step);
+	if (!step)
+		core::temp_adjust(t, ts, !step);
 }
 
 void core::temp_animation_loop(Temp_Manager &t, Animation a, int prev_step, int cur_step, int target_step)
 {
-	using namespace std::chrono;
-	using namespace std::chrono_literals;
-
-	if (cur_step == target_step)
-		return;	
-	if (t.notified || !cfg.temp_auto || t.auto_sync.wake_up)
+	if (cur_step == target_step) {
+		printf("temp_animation_loop: target reached\n");
 		return;
+	}
+
+	if (!cfg.temp_auto) {
+		printf("temp_animation_loop: temp auto OFF\n");
+		return;
+	}
+
+	if (t.ch.data == t.NOTIFIED) {
+		printf("temp_animation_loop: interrupted\n");
+		return;
+	}
 
 	a.elapsed += a.slice;
 	cur_step = int(ease_in_out_quad(a.elapsed, a.start_step, a.diff, a.duration_s));
 	t.current_step = cur_step;
 
+	printf("temp_animation_loop: animation_time: %f/%f\n", a.elapsed, a.duration_s);
 	if (cur_step != prev_step) {
 		for (size_t i = 0; i < t.xorg->scr_count(); ++i) {
 			if (cfg.screens[i].temp_auto) {
@@ -193,8 +153,9 @@ void core::temp_animation_loop(Temp_Manager &t, Animation a, int prev_step, int 
 		}
 	}
 
-	std::this_thread::sleep_for(milliseconds(1000 / a.fps));
-	temp_animation_loop(t, a, cur_step, cur_step, target_step);
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000 / a.fps));
+
+	core::temp_animation_loop(t, a, cur_step, cur_step, target_step);
 }
 
 core::Brightness_Manager::Brightness_Manager(Xorg &xorg)
@@ -475,35 +436,16 @@ int core::calc_brt_target(int ss_brt, int min, int max, int offset)
 	return std::clamp(brt_steps_max - ss_step + offset_step, min, max);
 }
 
-core::Gamma_Refresh::Gamma_Refresh() : _quit(false)
+void core::refresh_gamma(Xorg &xorg, Channel &ch)
 {
-}
-
-void core::Gamma_Refresh::stop()
-{
-	_quit = true;
-	_cv.notify_one();
-}
-
-void core::Gamma_Refresh::loop(Xorg &xorg)
-{
-	using namespace std::chrono;
-	using namespace std::chrono_literals;
-
 	for (size_t i = 0; i < xorg.scr_count(); ++i) {
 		xorg.set_gamma(i,
 		               cfg.screens[i].brt_step,
 		               cfg.screens[i].temp_step);
 	}
-
-	std::mutex mtx;
-	std::unique_lock lk(mtx);
-	_cv.wait_until(lk, system_clock::now() + 10s, [this] {
-		return _quit;
-	});
-	if (_quit)
+	if (channel_recv_timeout(ch, 10000) == 0)
 		return;
-	loop(xorg);
+	core::refresh_gamma(xorg, ch);
 }
 
 std::unique_ptr<sdbus::IProxy> dbus_register_signal_handler(
