@@ -49,15 +49,21 @@ void core::temp_start(Temp_Manager &t)
 
 void core::temp_adjust_loop(Temp_Manager &t)
 {
-	printf("temp_adjust_loop\n");
-	channel_send(t.ch, t.WORKING);
-	core::temp_adjust(t, timestamps_update(
-	    cfg.temp_auto_sunrise,
-	    cfg.temp_auto_sunset,
-	    -(cfg.temp_auto_speed * 60)), false);
+	printf("temp_adjust_loop: temp_auto: %d\n", cfg.temp_auto);
 
-	printf("temp_time_check_loop: waiting until timeout\n");
-	if (t.ch.data != t.NOTIFIED) { // retry if interrupted in the animation loop
+	channel_send(t.ch, t.WORKING);
+
+	if (cfg.temp_auto) {
+		core::temp_adjust(t, timestamps_update(
+		    cfg.temp_auto_sunrise,
+		    cfg.temp_auto_sunset,
+		    -(cfg.temp_auto_speed * 60)), false);
+	}
+
+	printf("temp_adjust_loop: waiting until timeout\n");
+
+	// retry without waiting if interrupted
+	if (t.ch.data != t.NOTIFIED) {
 		if (channel_recv_timeout(t.ch, 60000) == t.EXIT)
 			return;
 	}
@@ -68,11 +74,6 @@ void core::temp_adjust_loop(Temp_Manager &t)
 void core::temp_adjust(Temp_Manager &t, Timestamps ts, bool step)
 {
 	printf("temp_adjust: step %d\n", step);
-
-	if (!cfg.temp_auto) {
-		printf("temp_adjust: temp auto OFF. Returning\n");
-		return;
-	}
 
 	ts.cur = std::time(nullptr);
 	const bool daytime = ts.cur >= ts.start && ts.cur < ts.end;
@@ -124,11 +125,6 @@ void core::temp_animation_loop(Temp_Manager &t, Animation a, int prev_step, int 
 {
 	if (cur_step == target_step) {
 		printf("temp_animation_loop: target reached\n");
-		return;
-	}
-
-	if (!cfg.temp_auto) {
-		printf("temp_animation_loop: temp auto OFF\n");
 		return;
 	}
 
