@@ -142,32 +142,53 @@ std::string timestamp_fmt(std::time_t ts)
 	return str;
 }
 
-int channel_recv(Channel &ch)
+
+int Channel::data()
 {
+	int out;
+
 	{
-		std::unique_lock lk(ch.mtx);
-		ch.cv.wait(lk);
+		std::lock_guard lk(mtx);
+		out = _data;
 	}
-	return ch.data;
+
+	return out;
 }
 
-int channel_recv_timeout(Channel &ch, int ms)
+int Channel::recv()
+{
+	int out;
+
+	{
+		std::unique_lock lk(mtx);
+		cv.wait(lk);
+		out = _data;
+	}
+
+	return out;
+}
+
+int Channel::recv_timeout(int ms)
 {
 	using namespace std::chrono;
 
+	int out;
+
 	{
-		std::unique_lock lk(ch.mtx);
-		ch.cv.wait_until(lk, system_clock::now() + milliseconds(ms));
+		std::unique_lock lk(mtx);
+		cv.wait_until(lk, system_clock::now() + milliseconds(ms));
+		out = _data;
 	}
 
-	return ch.data;
+	return out;
 }
 
-void channel_send(Channel &ch, int data)
+void Channel::send(int data)
 {
 	{
-		std::lock_guard lk(ch.mtx);
-		ch.data = data;
+		std::lock_guard lk(mtx);
+		_data = data;
 	}
-	ch.cv.notify_all();
+
+	cv.notify_all();
 }

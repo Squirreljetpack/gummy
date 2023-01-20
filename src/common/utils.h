@@ -63,14 +63,16 @@ Timestamps timestamps_update(const std::string &start, const std::string &end, i
 std::time_t timestamp_modify(std::time_t ts, int h, int m, int s);
 std::string timestamp_fmt(std::time_t ts);
 
-struct Channel
+class Channel
 {
     std::condition_variable cv;
 	std::mutex mtx;
-	int data;
+	int _data;
+public:
+	int data();
+	int recv();
+	int recv_timeout(int ms);
+	void send(int);
 };
-int channel_recv(Channel &ch);
-int channel_recv_timeout(Channel &cv, int ms);
-void channel_send(Channel &ch, int);
 
 #endif // UTILS_H
