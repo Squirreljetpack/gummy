@@ -32,12 +32,13 @@
 void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
 {
 	bool notify_temp = false;
+	bool notify_als = false;
 
 	// Non-screen specific options
 	{
 		if (opts.als_poll_rate_ms != -1) {
 			cfg.als_polling_rate = opts.als_poll_rate_ms;
-			brtctl.als_stop.cv.notify_one();
+			notify_als = true;
 		}
 
 		if (opts.temp_day_k != -1) {
@@ -91,7 +92,7 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 		}
 	}
 
-	bool notify_als = false;
+
 
 	for (size_t i = start; i <= end; ++i) {
 
@@ -176,7 +177,7 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 	}
 
 	if (notify_als) {
-		core::als_notify(brtctl.als_ev);
+		channel_send(brtctl.als_ch, 1);
 	}
 
 	if (notify_temp) {

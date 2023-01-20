@@ -70,13 +70,13 @@ void temp_animation_loop(Temp_Manager&, Animation, int prev_step, int cur_step, 
 
 struct Monitor
 {
-    Monitor(Xorg*, Sysfs::Backlight*, Sysfs::ALS*, Sync *als_ev, int id);
+    Monitor(Xorg*, Sysfs::Backlight*, Sysfs::ALS*, Channel *als_ch, int id);
 	Monitor(Monitor&&);
 	std::condition_variable cv;
 	Xorg                    *xorg;
 	Sysfs::Backlight        *backlight;
 	Sysfs::ALS              *als;
-	Sync                    *als_ev;
+	Channel                 *als_ch;
 	int id;
 	int ss_brt;
 	struct {
@@ -117,14 +117,10 @@ struct Brightness_Manager
 	std::vector<Sysfs::ALS>       als;
 	std::vector<std::thread>      threads;
 	std::vector<Monitor>          monitors;
-	Sync als_ev;
-	Sync als_stop;
+	Channel als_ch;
 };
 
-void als_capture_loop(Sysfs::ALS&, Sync&, Sync&);
-void als_capture_stop(Sync&);
-void als_notify(Sync&);
-int  als_await(Sysfs::ALS&, Sync&);
+void als_capture_loop(Sysfs::ALS &als, Channel &ch);
 
 void refresh_gamma(Xorg&, Channel&);
 }
