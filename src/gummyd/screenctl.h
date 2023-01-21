@@ -53,13 +53,12 @@ struct Temp_Manager
 	Channel ch;
 	std::unique_ptr<sdbus::IProxy> dbus_proxy;
 	Xorg *xorg;
-	int current_step;
+	int global_step;
 };
 
 void temp_start(Temp_Manager&);
 void temp_adjust(Temp_Manager&, Timestamps, bool catch_up);
 void temp_adjust_loop(Temp_Manager&);
-void temp_animation_loop(Temp_Manager&, Animation, int prev_step, int cur_step, int target_step);
 
 struct Monitor
 {

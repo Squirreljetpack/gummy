@@ -24,6 +24,7 @@
 #include <ctime>
 #include <string>
 #include <condition_variable>
+#include <functional>
 
 int set_lock();
 int calc_brightness(uint8_t *buf,
@@ -51,6 +52,7 @@ Animation animation_init(int start, int end, int fps, int duration_ms);
 
 double ease_out_expo(double t, double b , double c, double d);
 double ease_in_out_quad(double t, double b, double c, double d);
+int    ease_in_out_quad_loop(Animation a, int prev, int cur, int end, std::function<bool (int, int)> fn);
 
 struct Timestamps
 {
