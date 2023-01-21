@@ -107,6 +107,20 @@ int ease_in_out_quad_loop(Animation a, int prev, int cur, int end, std::function
 	    fn);
 }
 
+int ease_out_expo_loop(Animation a, int prev, int cur, int end, std::function<bool(int, int)> fn)
+{
+	if (!fn(cur, prev) || cur == end)
+		return cur;
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000 / a.fps));
+
+	return ease_out_expo_loop(a,
+	    cur,
+	    int(round(ease_out_expo(a.elapsed += a.slice, a.start_step, a.diff, a.duration_s))),
+	    end,
+	    fn);
+}
+
 int set_lock()
 {
 	int fd = open(lock_name, O_WRONLY | O_CREAT, 0666);
@@ -170,6 +184,17 @@ int Channel::data()
 	return out;
 }
 
+
+void Channel::send(int data)
+{
+	{
+		std::lock_guard lk(mtx);
+		_data = data;
+	}
+
+	cv.notify_all();
+}
+
 int Channel::recv()
 {
 	int out;
@@ -198,12 +223,3 @@ int Channel::recv_timeout(int ms)
 	return out;
 }
 
-void Channel::send(int data)
-{
-	{
-		std::lock_guard lk(mtx);
-		_data = data;
-	}
-
-	cv.notify_all();
-}

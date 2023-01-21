@@ -219,7 +219,7 @@ core::Monitor::Monitor(Monitor &&o)
 void core::monitor_init(Monitor &mon)
 {
 	std::thread thr([&] {
-		core::monitor_brt_adjust_loop(mon, brt_steps_max);
+		core::monitor_brt_adjust_loop(mon, brt_steps_max, true);
 	});
 	core::monitor_is_auto_loop(mon);
 
@@ -234,7 +234,7 @@ void core::monitor_is_auto_loop(Monitor &mon)
 
 	if (cfg.screens[mon.id].brt_mode != MANUAL) {
 		//printf("monitor_is_auto_loop: starting monitor_capture_loop\n");
-		core::monitor_capture_loop(mon, monitor_capture_state{0, 0, 0, 0}, 255);
+		core::monitor_capture_loop(mon, Monitor::capture_state{0, 0, 0, 0, 0, 0});
 	}
 
 	if (mon.ch.data() != 2) {
@@ -247,17 +247,14 @@ void core::monitor_is_auto_loop(Monitor &mon)
 	core::monitor_is_auto_loop(mon);
 }
 
-void core::monitor_capture_loop(Monitor &mon, monitor_capture_state state, int ss_delta)
+void core::monitor_capture_loop(Monitor &mon, Monitor::capture_state state)
 {
-	//printf("monitor_capture_loop\n");
 	const auto &scr = cfg.screens[mon.id];
 
 	const int ss_brt = [&] {
 
 		if (scr.brt_mode == ALS) {
-			//printf("monitor_capture_loop: awaiting ALS signal\n");
 			mon.als_ch->recv();
-			//printf("monitor_capture_loop: received ALS signal\n");
 			return mon.als->lux_step();
 		}
 
@@ -265,21 +262,29 @@ void core::monitor_capture_loop(Monitor &mon, monitor_capture_state state, int s
 	}();
 
 	if (mon.ch.data() == 2) {
-		//printf("monitor_capture_loop: interrupted\n");
 		return;
 	}
 
-	ss_delta += abs(state.ss_brt - ss_brt);
+	state.diff += abs(state.ss_brt - ss_brt);
 
-	if (ss_delta > scr.brt_auto_threshold || scr.brt_mode == ALS) {
-		ss_delta = 0;
-		mon.brt_ch.send(ss_brt);
+	if (state.diff > scr.brt_auto_threshold || scr.brt_mode == ALS) {
+		state.diff = 0;
+
+		const int target_step = [&] {
+			if (mon.als && scr.brt_mode == ALS)
+				return brt_target_als(ss_brt, scr.brt_auto_min, scr.brt_auto_max, scr.brt_auto_offset);
+			else
+				return brt_target(ss_brt, scr.brt_auto_min, scr.brt_auto_max, scr.brt_auto_offset);
+		}();
+
+		printf("monitor_capture_loop: sending %d...\n", target_step);
+		mon.brt_ch.send(target_step);
 	}
 
 	if (scr.brt_auto_min != state.cfg_min
 	    || scr.brt_auto_max != state.cfg_max
 	    || scr.brt_auto_offset != state.cfg_offset) {
-		ss_delta = 255;
+		state.diff = 255;
 	}
 
 	state.ss_brt     = ss_brt;
@@ -295,80 +300,64 @@ void core::monitor_capture_loop(Monitor &mon, monitor_capture_state state, int s
 		}
 	}
 
-	core::monitor_capture_loop(mon, state, ss_delta);
+	core::monitor_capture_loop(mon, state);
 }
 
-void core::monitor_brt_adjust_loop(Monitor &mon, int cur_step)
+void core::monitor_brt_adjust_loop(Monitor &mon, int cur_step, bool wait)
 {
-	//printf("monitor_brt_adjust_loop: awaiting\n");
-	const int ss_brt = mon.brt_ch.recv();
-	//printf("monitor_brt_adjust_loop: received %d\n", ss_brt);
+	printf("monitor_brt_adjust_loop: fetching (wait: %d)...\n", wait);
+	const int target_step = wait ? mon.brt_ch.recv() : mon.brt_ch.data();
+	printf("monitor_brt_adjust_loop: received %d.\n", target_step);
 
-	if (ss_brt == -1) {
-		//printf("monitor_brt_adjust_loop: quitting\n");
+	if (target_step == -1) {
 		return;
 	}
 
-	const auto &scr = cfg.screens[mon.id];
-
-	const int target_step = [&] {
-		if (mon.als && scr.brt_mode == ALS)
-			return calc_brt_target_als(ss_brt, scr.brt_auto_min, scr.brt_auto_max, scr.brt_auto_offset);
-		else
-			return calc_brt_target(ss_brt, scr.brt_auto_min, scr.brt_auto_max, scr.brt_auto_offset);
-	}();
-
-	if (scr.brt_mode == SCREENSHOT)
-		cur_step = scr.brt_step;
-
-	if (cur_step != target_step) {
-		if (mon.backlight) {
-			cur_step = target_step;
-			mon.backlight->set(cur_step * mon.backlight->max_brt() / brt_steps_max);
-		} else {
-			Animation a = animation_init(cur_step, target_step, cfg.brt_auto_fps, scr.brt_auto_speed);
-			cur_step = monitor_brt_animation_loop(mon, a, -1, cur_step, target_step, ss_brt);
-		}
-	}
-
-	core::monitor_brt_adjust_loop(mon, cur_step);
-}
-
-int core::monitor_brt_animation_loop(Monitor &mon, Animation a, int prev_step, int cur_step, int target_step, int ss_brt)
-{
-	if (mon.ch.data() == 2) {
-		//printf("monitor_brt_animation_loop: interrupted\n");
-		return cur_step;
-	}
-
-	a.elapsed += a.slice;
-	cur_step = int(round(ease_out_expo(a.elapsed, a.start_step, a.diff, a.duration_s)));
-
-	if (cur_step != prev_step) {
-		cfg.screens[mon.id].brt_step = cur_step;
-		mon.xorg->set_gamma(mon.id,
-		                    cur_step,
-		                    cfg.screens[mon.id].temp_step);
-	}
-
 	if (cur_step == target_step)
-		return cur_step;
+		return core::monitor_brt_adjust_loop(mon, cur_step, true);
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000 / a.fps));
-	return core::monitor_brt_animation_loop(mon, a, cur_step, cur_step, target_step, ss_brt);
+	Animation a = animation_init(
+	    cur_step,
+	    target_step,
+	    cfg.temp_auto_fps,
+	    cfg.screens[mon.id].brt_auto_speed);
+
+	ease_out_expo_loop(a, -1, cur_step, target_step,
+	[&] (int cur, int prev) {
+		if (cur != prev) {
+			for (size_t i = 0; i < mon.xorg->scr_count(); ++i) {
+				cur_step = cur;
+				if (mon.backlight) {
+					mon.backlight->set(cur_step * mon.backlight->max_brt() / brt_steps_max);
+				} else {
+					cfg.screens[i].brt_step = cur;
+					mon.xorg->set_gamma(i, cur, cfg.screens[i].temp_step);
+				}
+			}
+		}
+
+		if (target_step == mon.brt_ch.data()) {
+			return true;
+		} else {
+			wait = false;
+			return false;
+		}
+	});
+
+	core::monitor_brt_adjust_loop(mon, cur_step, wait);
 }
 
-int core::calc_brt_target_als(int als_brt, int min, int max, int offset)
-{
-	const int offset_step = offset * brt_steps_max / max;
-	return std::clamp(als_brt + offset_step, min, max);
-}
-
-int core::calc_brt_target(int ss_brt, int min, int max, int offset)
+int core::brt_target(int ss_brt, int min, int max, int offset)
 {
 	const int ss_step     = ss_brt * brt_steps_max / 255;
 	const int offset_step = offset * brt_steps_max / max;
 	return std::clamp(brt_steps_max - ss_step + offset_step, min, max);
+}
+
+int core::brt_target_als(int als_brt, int min, int max, int offset)
+{
+	const int offset_step = offset * brt_steps_max / max;
+	return std::clamp(als_brt + offset_step, min, max);
 }
 
 void core::refresh_gamma(Xorg &xorg, Channel &ch)

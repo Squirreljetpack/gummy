@@ -52,6 +52,7 @@ Animation animation_init(int start, int end, int fps, int duration_ms);
 
 double ease_out_expo(double t, double b , double c, double d);
 double ease_in_out_quad(double t, double b, double c, double d);
+int    ease_out_expo_loop(Animation a, int prev, int cur, int end, std::function<bool (int, int)> fn);
 int    ease_in_out_quad_loop(Animation a, int prev, int cur, int end, std::function<bool (int, int)> fn);
 
 struct Timestamps
