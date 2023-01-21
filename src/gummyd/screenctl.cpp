@@ -24,7 +24,7 @@
 
 core::Temp_Manager::Temp_Manager(Xorg *xorg)
     : xorg(xorg),
-      current_step(temp_steps_max)
+      global_step(temp_steps_max)
 {}
 
 void core::temp_start(Temp_Manager &t)
@@ -49,7 +49,7 @@ void core::temp_start(Temp_Manager &t)
 
 void core::temp_adjust_loop(Temp_Manager &t)
 {
-	//printf("temp_adjust_loop: temp_auto: %d\n", cfg.temp_auto);
+	printf("temp_adjust_loop: temp_auto: %d\n", cfg.temp_auto);
 
 	t.ch.send(t.WORKING);
 
@@ -60,7 +60,7 @@ void core::temp_adjust_loop(Temp_Manager &t)
 		    -(cfg.temp_auto_speed * 60)), false);
 	}
 
-	//printf("temp_adjust_loop: waiting until timeout\n");
+	printf("temp_adjust_loop: waiting until timeout\n");
 
 	// retry without waiting if interrupted
 	if (t.ch.data() != t.NOTIFIED) {
@@ -73,13 +73,14 @@ void core::temp_adjust_loop(Temp_Manager &t)
 
 void core::temp_adjust(Temp_Manager &t, Timestamps ts, bool step)
 {
-	//printf("temp_adjust: step %d\n", step);
+	printf("temp_adjust: step %d\n", step);
+	const bool   daytime = ts.cur >= ts.start && ts.cur < ts.end;
+	const double adaptation_time_s = double(cfg.temp_auto_speed) * 60;
 
-	ts.cur = std::time(nullptr);
-	const bool daytime = ts.cur >= ts.start && ts.cur < ts.end;
+	int          target_temp;
+	std::time_t  time_to_subtract;
+	double       animation_s = 2;
 
-	int target_temp;
-	std::time_t time_to_subtract;
 	if (daytime) {
 		target_temp = cfg.temp_auto_high;
 		time_to_subtract = ts.start;
@@ -88,12 +89,11 @@ void core::temp_adjust(Temp_Manager &t, Timestamps ts, bool step)
 		time_to_subtract = ts.end;
 	}
 
-	const double adaptation_time_s = double(cfg.temp_auto_speed) * 60;
 	int time_since_start_s = std::abs(ts.cur - time_to_subtract);
+
 	if (time_since_start_s > adaptation_time_s)
 		time_since_start_s = adaptation_time_s;
 
-	double animation_s = 2;
 	if (!step) {
 		if (daytime) {
 			target_temp = remap(time_since_start_s, 0, adaptation_time_s, cfg.temp_auto_low, cfg.temp_auto_high);
@@ -109,49 +109,26 @@ void core::temp_adjust(Temp_Manager &t, Timestamps ts, bool step)
 	const int target_step = int(remap(target_temp, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max));
 
 	Animation a = animation_init(
-	    t.current_step,
+	    t.global_step,
 	    target_step,
 	    cfg.temp_auto_fps,
 	    animation_s * 1000);
 
-	core::temp_animation_loop(t, a, -1, t.current_step, target_step);
+	t.global_step = ease_in_out_quad_loop(a, -1, t.global_step, target_step, [&] (int cur, int prev) {
 
-	//printf("temp_adjust: step %d done\n", step);
-	if (!step)
-		core::temp_adjust(t, ts, !step);
-}
-
-void core::temp_animation_loop(Temp_Manager &t, Animation a, int prev_step, int cur_step, int target_step)
-{
-	if (cur_step == target_step) {
-		printf("temp_animation_loop: target reached\n");
-		return;
-	}
-
-	if (t.ch.data() == t.NOTIFIED) {
-		printf("temp_animation_loop: interrupted\n");
-		return;
-	}
-
-	a.elapsed += a.slice;
-	cur_step = int(ease_in_out_quad(a.elapsed, a.start_step, a.diff, a.duration_s));
-	t.current_step = cur_step;
-
-	printf("temp_animation_loop: animation_time: %f/%f\n", a.elapsed, a.duration_s);
-	if (cur_step != prev_step) {
-		for (size_t i = 0; i < t.xorg->scr_count(); ++i) {
-			if (cfg.screens[i].temp_auto) {
-				cfg.screens[i].temp_step = cur_step;
-				t.xorg->set_gamma(i,
-				                  cfg.screens[i].brt_step,
-				                  cur_step);
+		if (cur != prev) {
+			for (size_t i = 0; i < t.xorg->scr_count(); ++i) {
+				cfg.screens[i].temp_step = cur;
+				t.xorg->set_gamma(i, cfg.screens[i].brt_step, cur);
 			}
 		}
-	}
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000 / a.fps));
+		return t.ch.data() != t.NOTIFIED;
+	});
 
-	core::temp_animation_loop(t, a, cur_step, cur_step, target_step);
+	printf("temp_adjust: step %d done\n", step);
+	if (!step)
+		core::temp_adjust(t, ts, !step);
 }
 
 core::Brightness_Manager::Brightness_Manager(Xorg &xorg)
@@ -202,12 +179,12 @@ void core::als_capture_loop(Sysfs::ALS &als, Channel &ch)
 	als.update();
 
 	if (prev_step != als.lux_step() || ch.data() == 2) {
-		printf("als_capture_loop: sending signal\n");
+		//printf("als_capture_loop: sending signal\n");
 		ch.send(1);
 	}
 
 	if (ch.recv_timeout(cfg.als_polling_rate) == 0) {
-		printf("als_capture_loop: exit\n");
+		//printf("als_capture_loop: exit\n");
 		return;
 	}
 
@@ -252,16 +229,16 @@ void core::monitor_init(Monitor &mon)
 
 void core::monitor_is_auto_loop(Monitor &mon)
 {
-	printf("brt_mode: %d\n", cfg.screens[mon.id].brt_mode);
+	//printf("brt_mode: %d\n", cfg.screens[mon.id].brt_mode);
 	mon.ch.send(1);
 
 	if (cfg.screens[mon.id].brt_mode != MANUAL) {
-		printf("monitor_is_auto_loop: starting monitor_capture_loop\n");
+		//printf("monitor_is_auto_loop: starting monitor_capture_loop\n");
 		core::monitor_capture_loop(mon, monitor_capture_state{0, 0, 0, 0}, 255);
 	}
 
 	if (mon.ch.data() != 2) {
-		printf("monitor_is_auto_loop: awaiting\n");
+		//printf("monitor_is_auto_loop: awaiting\n");
 		if (mon.ch.recv() == 0) {
 			return;
 		}
@@ -272,15 +249,15 @@ void core::monitor_is_auto_loop(Monitor &mon)
 
 void core::monitor_capture_loop(Monitor &mon, monitor_capture_state state, int ss_delta)
 {
-	printf("monitor_capture_loop\n");
+	//printf("monitor_capture_loop\n");
 	const auto &scr = cfg.screens[mon.id];
 
 	const int ss_brt = [&] {
 
 		if (scr.brt_mode == ALS) {
-			printf("monitor_capture_loop: awaiting ALS signal\n");
+			//printf("monitor_capture_loop: awaiting ALS signal\n");
 			mon.als_ch->recv();
-			printf("monitor_capture_loop: received ALS signal\n");
+			//printf("monitor_capture_loop: received ALS signal\n");
 			return mon.als->lux_step();
 		}
 
@@ -288,7 +265,7 @@ void core::monitor_capture_loop(Monitor &mon, monitor_capture_state state, int s
 	}();
 
 	if (mon.ch.data() == 2) {
-		printf("monitor_capture_loop: interrupted\n");
+		//printf("monitor_capture_loop: interrupted\n");
 		return;
 	}
 
@@ -323,12 +300,12 @@ void core::monitor_capture_loop(Monitor &mon, monitor_capture_state state, int s
 
 void core::monitor_brt_adjust_loop(Monitor &mon, int cur_step)
 {
-	printf("monitor_brt_adjust_loop: awaiting\n");
+	//printf("monitor_brt_adjust_loop: awaiting\n");
 	const int ss_brt = mon.brt_ch.recv();
-	printf("monitor_brt_adjust_loop: received %d\n", ss_brt);
+	//printf("monitor_brt_adjust_loop: received %d\n", ss_brt);
 
 	if (ss_brt == -1) {
-		printf("monitor_brt_adjust_loop: quitting\n");
+		//printf("monitor_brt_adjust_loop: quitting\n");
 		return;
 	}
 
@@ -360,7 +337,7 @@ void core::monitor_brt_adjust_loop(Monitor &mon, int cur_step)
 int core::monitor_brt_animation_loop(Monitor &mon, Animation a, int prev_step, int cur_step, int target_step, int ss_brt)
 {
 	if (mon.ch.data() == 2) {
-		printf("monitor_brt_animation_loop: interrupted\n");
+		//printf("monitor_brt_animation_loop: interrupted\n");
 		return cur_step;
 	}
 

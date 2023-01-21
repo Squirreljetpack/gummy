@@ -24,6 +24,7 @@
 #include <ctime>
 #include <string>
 #include <chrono>
+#include <thread>
 
 int calc_brightness(uint8_t *buf, uint64_t buf_sz, int bytes_per_pixel, int stride)
 {
@@ -90,6 +91,20 @@ double ease_in_out_quad(double t, double b, double c, double d)
 		return c / 2 * t * t + b;
 	else
 		return -c / 2 * ((t - 1) * (t - 3) - 1) + b;
+}
+
+int ease_in_out_quad_loop(Animation a, int prev, int cur, int end, std::function<bool(int, int)> fn)
+{
+	if (!fn(cur, prev) || cur == end)
+		return cur;
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000 / a.fps));
+
+	return ease_in_out_quad_loop(a,
+	    cur,
+	    int(ease_in_out_quad(a.elapsed += a.slice, a.start_step, a.diff, a.duration_s)),
+	    end,
+	    fn);
 }
 
 int set_lock()

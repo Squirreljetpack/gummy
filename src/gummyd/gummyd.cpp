@@ -163,7 +163,7 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 		} else if (opts.temp_auto != -1) {
 			cfg.screens[i].temp_auto = bool(opts.temp_auto);
 			if (opts.temp_auto == 1) {
-				cfg.screens[i].temp_step = tempctl.current_step;
+				cfg.screens[i].temp_step = tempctl.global_step;
 			}
 		}
 
