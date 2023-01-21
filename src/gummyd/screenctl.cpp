@@ -49,7 +49,7 @@ void core::temp_start(Temp_Manager &t)
 
 void core::temp_adjust_loop(Temp_Manager &t)
 {
-	printf("temp_adjust_loop: temp_auto: %d\n", cfg.temp_auto);
+	//printf("temp_adjust_loop: temp_auto: %d\n", cfg.temp_auto);
 
 	t.ch.send(t.WORKING);
 
@@ -60,7 +60,7 @@ void core::temp_adjust_loop(Temp_Manager &t)
 		    -(cfg.temp_auto_speed * 60)), false);
 	}
 
-	printf("temp_adjust_loop: waiting until timeout\n");
+	//printf("temp_adjust_loop: waiting until timeout\n");
 
 	// retry without waiting if interrupted
 	if (t.ch.data() != t.NOTIFIED) {
@@ -73,7 +73,7 @@ void core::temp_adjust_loop(Temp_Manager &t)
 
 void core::temp_adjust(Temp_Manager &t, Timestamps ts, bool step)
 {
-	printf("temp_adjust: step %d\n", step);
+	//printf("temp_adjust: step %d\n", step);
 	const bool   daytime = ts.cur >= ts.start && ts.cur < ts.end;
 	const double adaptation_time_s = double(cfg.temp_auto_speed) * 60;
 
@@ -126,7 +126,7 @@ void core::temp_adjust(Temp_Manager &t, Timestamps ts, bool step)
 		return t.ch.data() != t.NOTIFIED;
 	});
 
-	printf("temp_adjust: step %d done\n", step);
+	//printf("temp_adjust: step %d done\n", step);
 	if (!step)
 		core::temp_adjust(t, ts, !step);
 }
@@ -167,7 +167,7 @@ void core::Brightness_Manager::stop()
 	als_ch.send(0);
 
 	for (auto &m : monitors)
-		m.ch.send(0);
+		m.ch.send(-1);
 
 	for (auto &t : threads)
 		t.join();
@@ -202,6 +202,8 @@ core::Monitor::Monitor(Xorg *xorg,
       als_ch(als_ch),
       id(id)
 {
+	ch.send(cfg.screens[id].brt_mode);
+
 	if (!backlight) {
 		xorg->set_gamma(id,
 		                brt_steps_max,
@@ -218,33 +220,35 @@ core::Monitor::Monitor(Monitor &&o)
 
 void core::monitor_init(Monitor &mon)
 {
-	std::thread thr([&] {
-		core::monitor_brt_adjust_loop(mon, brt_steps_max, true);
-	});
-	core::monitor_is_auto_loop(mon);
-
-	mon.brt_ch.send(-1);
-	thr.join();
+	core::monitor_check_brt_mode_loop(mon);
 }
 
-void core::monitor_is_auto_loop(Monitor &mon)
+void core::monitor_check_brt_mode_loop(Monitor &mon)
 {
-	//printf("brt_mode: %d\n", cfg.screens[mon.id].brt_mode);
-	mon.ch.send(1);
+	const int brt_mode = mon.ch.data();
+	printf("brt_mode: %d\n", brt_mode);
 
-	if (cfg.screens[mon.id].brt_mode != MANUAL) {
-		//printf("monitor_is_auto_loop: starting monitor_capture_loop\n");
+	if (brt_mode < 0) {
+		return;
+	}
+
+	if (brt_mode == MANUAL) {
+		mon.ch.recv();
+		return core::monitor_check_brt_mode_loop(mon);
+	}
+
+	if (brt_mode != MANUAL) {
+		std::thread thr([&] {
+			core::monitor_brt_adjust_loop(mon, brt_steps_max, true);
+		});
+
 		core::monitor_capture_loop(mon, Monitor::capture_state{0, 0, 0, 0, 0, 0});
+
+		mon.brt_ch.send(-1);
+		thr.join();
 	}
 
-	if (mon.ch.data() != 2) {
-		//printf("monitor_is_auto_loop: awaiting\n");
-		if (mon.ch.recv() == 0) {
-			return;
-		}
-	}
-
-	core::monitor_is_auto_loop(mon);
+	core::monitor_check_brt_mode_loop(mon);
 }
 
 void core::monitor_capture_loop(Monitor &mon, Monitor::capture_state state)
@@ -261,9 +265,8 @@ void core::monitor_capture_loop(Monitor &mon, Monitor::capture_state state)
 		return mon.xorg->get_screen_brightness(mon.id);
 	}();
 
-	if (mon.ch.data() == 2) {
+	if (mon.ch.data() <= MANUAL)
 		return;
-	}
 
 	state.diff += abs(state.ss_brt - ss_brt);
 
@@ -306,12 +309,13 @@ void core::monitor_capture_loop(Monitor &mon, Monitor::capture_state state)
 void core::monitor_brt_adjust_loop(Monitor &mon, int cur_step, bool wait)
 {
 	printf("monitor_brt_adjust_loop: fetching (wait: %d)...\n", wait);
+
 	const int target_step = wait ? mon.brt_ch.recv() : mon.brt_ch.data();
+
 	printf("monitor_brt_adjust_loop: received %d.\n", target_step);
 
-	if (target_step == -1) {
+	if (target_step < 0)
 		return;
-	}
 
 	if (cur_step == target_step)
 		return core::monitor_brt_adjust_loop(mon, cur_step, true);
@@ -368,7 +372,7 @@ void core::refresh_gamma(Xorg &xorg, Channel &ch)
 		               cfg.screens[i].temp_step);
 	}
 
-	if (ch.recv_timeout(10000) == 0)
+	if (ch.recv_timeout(10000) < 0)
 		return;
 
 	core::refresh_gamma(xorg, ch);

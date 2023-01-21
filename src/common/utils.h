@@ -70,7 +70,7 @@ class Channel
 {
     std::condition_variable cv;
 	std::mutex mtx;
-	int _data;
+	int _data{0};
 public:
 	int data();
 	int recv();

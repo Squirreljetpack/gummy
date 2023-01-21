@@ -98,14 +98,15 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 
 		if (opts.brt_mode != -1) {
 			cfg.screens[i].brt_mode = Brt_mode(opts.brt_mode);
-			if (!brtctl.als.empty())
+			if (!brtctl.als.empty()) {
 				brtctl.als_ch.send(2);
-			    brtctl.monitors[i].ch.send(2);
+			}
+			brtctl.monitors[i].ch.send(Brt_mode(opts.brt_mode));
 		}
 
 		if (opts.brt_perc != -1) {
 			cfg.screens[i].brt_mode = MANUAL;
-			brtctl.monitors[i].ch.send(2);
+			brtctl.monitors[i].ch.send(MANUAL);
 
 			const int val = int(remap(opts.brt_perc, 0, 100, 0, brt_steps_max));
 
@@ -235,21 +236,22 @@ int main(int argc, char **argv)
 	// Init fifo
 	init_fifo();
 
-	Channel run;
-	run.send(1);
 
 	core::Brightness_Manager b(xorg);
 	core::Temp_Manager t(&xorg);
 
 	std::vector<std::thread> threads;
 	threads.reserve(3);
-	threads.emplace_back([&] { core::refresh_gamma(xorg, run); });
+
+	Channel ch;
+	threads.emplace_back([&] { core::refresh_gamma(xorg, ch); });
+
 	threads.emplace_back([&] { b.start(); });
 	threads.emplace_back([&] { core::temp_start(t); });
 
 	message_loop(xorg, b, t);
 
-	run.send(0);
+	ch.send(-1);
 	t.ch.send(t.EXIT);
 
 	b.stop();

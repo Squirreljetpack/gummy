@@ -84,7 +84,7 @@ struct Monitor
 
 void monitor_init(Monitor&);
 
-void monitor_is_auto_loop(Monitor&);
+void monitor_check_brt_mode_loop(Monitor&);
 void monitor_capture_loop(Monitor&, Monitor::capture_state);
 void monitor_brt_adjust_loop(Monitor&, int cur_step, bool wait);
 
