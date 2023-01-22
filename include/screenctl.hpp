@@ -25,7 +25,7 @@
 #include "defs.hpp"
 #include "utils.hpp"
 #include "xorg.hpp"
-#include "sysfs.hpp"
+#include "sysfs_devices.hpp"
 #include "channel.hpp"
 
 std::unique_ptr<sdbus::IProxy> dbus_register_signal_handler(

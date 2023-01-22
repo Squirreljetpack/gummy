@@ -1,8 +1,14 @@
 project(gummyd LANGUAGES CXX)
 
-file(GLOB SOURCES *.cpp)
+set(SOURCES
+	gummyd.cpp
+	xorg.cpp
+	cfg.cpp
+	sysfs_devices.cpp
+	screenctl.cpp
+)
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${COMMON})
+add_executable(${PROJECT_NAME} ${SOURCES})
 
 find_package(X11 REQUIRED)
 find_package(Threads REQUIRED)

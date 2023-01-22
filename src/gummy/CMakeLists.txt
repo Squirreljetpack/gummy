@@ -1,7 +1,7 @@
 project(gummy LANGUAGES CXX)
 
-file(GLOB SOURCES *.cpp)
-add_executable(${PROJECT_NAME} ${SOURCES} ${COMMON})
+set(SOURCES gummy.cpp)
+add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include/third-party)
