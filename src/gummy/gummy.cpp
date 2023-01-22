@@ -22,7 +22,6 @@
 
 #include "CLI11.hpp"
 #include "json.hpp"
-#include "defs.hpp"
 #include "utils.hpp"
 
 using std::cout;

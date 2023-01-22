@@ -20,7 +20,17 @@
 #define CFG_H
 
 #include "json.hpp"
-#include "defs.hpp"
+
+constexpr const char* config_name = "gummyconf";
+constexpr const char* fifo_name   = "/tmp/gummy.fifo";
+constexpr const char* lock_name   = "/tmp/gummy.lock";
+
+constexpr int brt_steps_min  = 100;
+constexpr int brt_steps_max  = 500;
+constexpr int temp_steps_min = 0;
+constexpr int temp_steps_max = 500;
+constexpr int temp_k_min     = 1000;
+constexpr int temp_k_max     = 6500;
 
 using json = nlohmann::json;
 enum Brt_mode { MANUAL, SCREENSHOT, ALS };

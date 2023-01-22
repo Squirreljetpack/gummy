@@ -20,9 +20,8 @@
 #include <iostream>
 #include <syslog.h>
 
-#include "defs.hpp"
-#include "utils.hpp"
 #include "cfg.hpp"
+#include "utils.hpp"
 
 Config cfg;
 

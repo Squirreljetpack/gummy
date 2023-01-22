@@ -22,7 +22,6 @@
 #include <fcntl.h>
 #include <fstream>
 
-#include "defs.hpp"
 #include "utils.hpp"
 #include "cfg.hpp"
 #include "xorg.hpp"

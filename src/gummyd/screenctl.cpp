@@ -19,7 +19,6 @@
 #include <syslog.h>
 
 #include "screenctl.hpp"
-#include "defs.hpp"
 #include "xorg.hpp"
 #include "cfg.hpp"
 #include "utils.hpp"
