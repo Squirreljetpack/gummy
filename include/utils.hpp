@@ -23,7 +23,6 @@
 #include <chrono>
 #include <thread>
 #include <functional>
-#include <condition_variable>
 
 #include <cstddef>
 #include <cstdint>
@@ -48,18 +47,6 @@ struct Timestamps
     std::time_t cur;
 	std::time_t start;
 	std::time_t end;
-};
-
-class Channel
-{
-    std::condition_variable cv;
-	std::mutex mtx;
-	int _data{0};
-public:
-	int data();
-	int recv();
-	int recv_timeout(int ms);
-	void send(int);
 };
 
 inline int calc_brightness(uint8_t *buf, uint64_t buf_sz, int bytes_per_pixel = 4, int stride = 1024)
@@ -205,58 +192,6 @@ inline std::string timestamp_fmt(std::time_t ts)
 	std::string str(std::asctime(std::localtime(&ts)));
 	str.pop_back();
 	return str;
-}
-
-
-inline int Channel::data()
-{
-	int out;
-
-	{
-		std::lock_guard lk(mtx);
-		out = _data;
-	}
-
-	return out;
-}
-
-
-inline void Channel::send(int data)
-{
-	{
-		std::lock_guard lk(mtx);
-		_data = data;
-	}
-
-	cv.notify_all();
-}
-
-inline int Channel::recv()
-{
-	int out;
-
-	{
-		std::unique_lock lk(mtx);
-		cv.wait(lk);
-		out = _data;
-	}
-
-	return out;
-}
-
-inline int Channel::recv_timeout(int ms)
-{
-	using namespace std::chrono;
-
-	int out;
-
-	{
-		std::unique_lock lk(mtx);
-		cv.wait_until(lk, system_clock::now() + milliseconds(ms));
-		out = _data;
-	}
-
-	return out;
 }
 
 #endif // UTILS_H
