@@ -186,7 +186,7 @@ void init_fifo()
 {
 	if (mkfifo(fifo_name, S_IFIFO|0640) == 1) {
 		syslog(LOG_ERR, "mkfifo err %d, aborting\n", errno);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -202,8 +202,9 @@ int message_loop(Xorg &xorg, core::Brightness_Manager &brtctl, core::Temp_Manage
 	ss << fs.rdbuf();
 
 	const std::string s(ss.str());
+
 	if (s == "stop")
-		return 0;
+		return EXIT_SUCCESS;
 
 	apply_options(Message(s), xorg, brtctl, tempctl);
 	cfg.write();
@@ -213,20 +214,8 @@ int message_loop(Xorg &xorg, core::Brightness_Manager &brtctl, core::Temp_Manage
 	return message_loop(xorg, brtctl, tempctl);
 }
 
-int main(int argc, char **argv)
+int init()
 {
-	if (argc > 1 && strcmp(argv[1], "-v") == 0) {
-		puts(VERSION);
-		exit(0);
-	}
-
-	openlog("gummyd", LOG_PID, LOG_DAEMON);
-
-	if (int err = set_lock() > 0) {
-		syslog(LOG_ERR, "lockfile err %d", err);
-		exit(1);
-	}
-
 	// Init X API
 	Xorg xorg;
 
@@ -257,4 +246,23 @@ int main(int argc, char **argv)
 
 	for (auto &t : threads)
 		t.join();
+
+	return EXIT_SUCCESS;
+}
+
+int main(int argc, char **argv)
+{
+	if (argc > 1 && strcmp(argv[1], "-v") == 0) {
+		puts(VERSION);
+		exit(EXIT_SUCCESS);
+	}
+
+	openlog("gummyd", LOG_PID, LOG_DAEMON);
+
+	if (int err = set_lock() > 0) {
+		syslog(LOG_ERR, "lockfile err %d", err);
+		exit(EXIT_FAILURE);
+	}
+
+	return init();
 }
