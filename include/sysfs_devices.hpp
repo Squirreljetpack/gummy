@@ -19,9 +19,7 @@
 #ifndef SYSFS_DEVICES_H
 #define SYSFS_DEVICES_H
 
-#include <array>
 #include <vector>
-
 #include "sysfs.hpp"
 
 namespace Sysfs {
@@ -48,13 +46,11 @@ public:
 	ALS(udev*, std::string path);
 	int lux_step() const;
 	void update();
-	void setLux_step(int newLux_step);
 };
 
+int calc_lux_step(double lux);
 std::vector<Backlight> get_bl();
 std::vector<ALS>       get_als();
-
-int calc_lux_step(double lux);
 }
 
 #endif
