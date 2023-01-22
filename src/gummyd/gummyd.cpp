@@ -236,7 +236,6 @@ int main(int argc, char **argv)
 	// Init fifo
 	init_fifo();
 
-
 	core::Brightness_Manager b(xorg);
 	core::Temp_Manager t(&xorg);
 
