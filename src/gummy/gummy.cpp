@@ -16,15 +16,14 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "../common/defs.h"
-#include "../common/utils.h"
-
-#include <CLI11.hpp>
-#include <json.hpp>
-
 #include <fstream>
 #include <regex>
 #include <unistd.h>
+
+#include "CLI11.hpp"
+#include "json.hpp"
+#include "defs.hpp"
+#include "utils.hpp"
 
 using std::cout;
 
@@ -194,7 +193,7 @@ int main(int argc, const char **argv)
 	// show help with no args
 	if (argc == 1) {
 		++argc;
-		argv[1] = "-h";
+		argv[1] = "-hpp";
 	}
 
 	CLI11_PARSE(app, argc, argv);

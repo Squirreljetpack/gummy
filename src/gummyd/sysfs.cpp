@@ -1,4 +1,4 @@
-﻿    /**
+﻿/**
 * gummy
 * Copyright (C) 2022  Francesco Fusco
 *
@@ -16,15 +16,15 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "sysfs.h"
-#include "../common/defs.h"
-
 #include <filesystem>
 #include <algorithm>
+#include <cmath>
 #include <syslog.h>
 #include <libudev.h>
-#include <cmath>
-#include "../common/utils.h"
+
+#include "sysfs.hpp"
+#include "defs.hpp"
+#include "utils.hpp"
 
 std::vector<Sysfs::Backlight> Sysfs::get_bl()
 {

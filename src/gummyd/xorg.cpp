@@ -16,14 +16,14 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "xorg.h"
-#include "cfg.h"
-#include "../common/defs.h"
-#include "../common/utils.h"
-
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <syslog.h>
+
+#include "xorg.hpp"
+#include "cfg.hpp"
+#include "defs.hpp"
+#include "utils.hpp"
 
 XLib::XLib()
 {

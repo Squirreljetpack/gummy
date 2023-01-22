@@ -16,18 +16,18 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "../common/defs.h"
-#include "../common/utils.h"
-#include "cfg.h"
-#include "xorg.h"
-#include "screenctl.h"
-#include "sysfs.h"
-
 #include <syslog.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <fstream>
+
+#include "defs.hpp"
+#include "utils.hpp"
+#include "cfg.hpp"
+#include "xorg.hpp"
+#include "sysfs.hpp"
+#include "screenctl.hpp"
 
 void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
 {
