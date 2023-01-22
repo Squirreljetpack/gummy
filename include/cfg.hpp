@@ -20,15 +20,15 @@
 #define CFG_H
 
 #include "json.hpp"
-#include "../common/defs.h"
+#include "defs.hpp"
 
 using json = nlohmann::json;
 enum Brt_mode { MANUAL, SCREENSHOT, ALS };
 struct Config
 {
-	struct Screen
+    struct Screen
 	{
-		Screen();
+	    Screen();
 		Screen(
 		    Brt_mode brt_mode,
 		    int brt_auto_min,
@@ -81,7 +81,7 @@ extern Config cfg;
 
 struct Message
 {
-	Message(const std::string &json);
+    Message(const std::string &json);
 	int scr_no               = -1;
 	int brt_perc             = -1;
 	int brt_mode             = -1;

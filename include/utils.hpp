@@ -16,17 +16,53 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "utils.h"
-#include "defs.h"
+#ifndef UTILS_H
+#define UTILS_H
 
-#include <fcntl.h>
-#include <cmath>
-#include <ctime>
 #include <string>
 #include <chrono>
 #include <thread>
+#include <functional>
+#include <condition_variable>
 
-int calc_brightness(uint8_t *buf, uint64_t buf_sz, int bytes_per_pixel, int stride)
+#include <cstddef>
+#include <cstdint>
+#include <ctime>
+#include <cmath>
+#include <fcntl.h>
+
+#include "defs.hpp"
+
+struct Animation
+{
+	double elapsed;
+	double slice;
+	double duration_s;
+	int fps;
+	int start_step;
+	int diff;
+};
+
+struct Timestamps
+{
+    std::time_t cur;
+	std::time_t start;
+	std::time_t end;
+};
+
+class Channel
+{
+    std::condition_variable cv;
+	std::mutex mtx;
+	int _data{0};
+public:
+	int data();
+	int recv();
+	int recv_timeout(int ms);
+	void send(int);
+};
+
+inline int calc_brightness(uint8_t *buf, uint64_t buf_sz, int bytes_per_pixel = 4, int stride = 1024)
 {
 	uint64_t rgb[3] {};
 	for (uint64_t i = 0, inc = stride * bytes_per_pixel; i < buf_sz; i += inc) {
@@ -38,17 +74,17 @@ int calc_brightness(uint8_t *buf, uint64_t buf_sz, int bytes_per_pixel, int stri
 	return (rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722) * stride / (buf_sz / bytes_per_pixel);
 }
 
-double lerp(double x, double a, double b)
+inline double lerp(double x, double a, double b)
 {
 	return ((1 - x) * a) + (x * b);
 }
 
-double invlerp(double x, double a, double b)
+inline double invlerp(double x, double a, double b)
 {
 	return (x - a) / (b - a);
 }
 
-double remap(double x, double a, double b, double ay, double by)
+inline double remap(double x, double a, double b, double ay, double by)
 {
 	return lerp(invlerp(x, a, b), ay, by);
 }
@@ -57,18 +93,18 @@ double remap(double x, double a, double b, double ay, double by)
    The integral part of the return value is the index itself,
    while the fractional part is the interpolation factor
    between the index and the next one. */
-double remap_to_idx(int val, int val_min, int val_max, size_t arr_sz)
+inline double remap_to_idx(int val, int val_min, int val_max, size_t arr_sz)
 {
 	return remap(val, val_min, val_max, 0, arr_sz - 1);
 }
 
 // Get the fractional part of a floating point number.
-double mant(double x)
+inline double mant(double x)
 {
 	return x - std::floor(x);
 }
 
-Animation animation_init(int start, int end, int fps, int duration_ms)
+inline Animation animation_init(int start, int end, int fps, int duration_ms)
 {
 	Animation a;
 	a.start_step = start;
@@ -80,12 +116,12 @@ Animation animation_init(int start, int end, int fps, int duration_ms)
 	return a;
 }
 
-double ease_out_expo(double t, double b , double c, double d)
+inline double ease_out_expo(double t, double b , double c, double d)
 {
 	return (t == d) ? b + c : c * (-pow(2, -10 * t / d) + 1) + b;
 }
 
-double ease_in_out_quad(double t, double b, double c, double d)
+inline double ease_in_out_quad(double t, double b, double c, double d)
 {
 	if ((t /= d / 2) < 1)
 		return c / 2 * t * t + b;
@@ -93,7 +129,7 @@ double ease_in_out_quad(double t, double b, double c, double d)
 		return -c / 2 * ((t - 1) * (t - 3) - 1) + b;
 }
 
-int ease_in_out_quad_loop(Animation a, int prev, int cur, int end, std::function<bool(int, int)> fn)
+inline int ease_in_out_quad_loop(Animation a, int prev, int cur, int end, std::function<bool(int, int)> fn)
 {
 	if (!fn(cur, prev) || cur == end)
 		return cur;
@@ -107,7 +143,7 @@ int ease_in_out_quad_loop(Animation a, int prev, int cur, int end, std::function
 	    fn);
 }
 
-int ease_out_expo_loop(Animation a, int prev, int cur, int end, std::function<bool(int, int)> fn)
+inline int ease_out_expo_loop(Animation a, int prev, int cur, int end, std::function<bool(int, int)> fn)
 {
 	if (!fn(cur, prev) || cur == end)
 		return cur;
@@ -121,7 +157,7 @@ int ease_out_expo_loop(Animation a, int prev, int cur, int end, std::function<bo
 	    fn);
 }
 
-int set_lock()
+inline int set_lock()
 {
 	int fd = open(lock_name, O_WRONLY | O_CREAT, 0666);
 	if (fd == -1)
@@ -139,7 +175,7 @@ int set_lock()
 	return 0;
 }
 
-time_t timestamp_modify(std::time_t ts, int h, int m, int s)
+inline time_t timestamp_modify(std::time_t ts, int h, int m, int s)
 {
 	std::tm tm = *std::localtime(&ts);
 	tm.tm_hour = h;
@@ -149,7 +185,7 @@ time_t timestamp_modify(std::time_t ts, int h, int m, int s)
 	return std::mktime(&tm);
 }
 
-Timestamps timestamps_update(const std::string &start, const std::string &end, int seconds)
+inline Timestamps timestamps_update(const std::string &start, const std::string &end, int seconds)
 {
 	Timestamps ts;
 	ts.cur = std::time(nullptr);
@@ -164,7 +200,7 @@ Timestamps timestamps_update(const std::string &start, const std::string &end, i
 	return ts;
 }
 
-std::string timestamp_fmt(std::time_t ts)
+inline std::string timestamp_fmt(std::time_t ts)
 {
 	std::string str(std::asctime(std::localtime(&ts)));
 	str.pop_back();
@@ -172,7 +208,7 @@ std::string timestamp_fmt(std::time_t ts)
 }
 
 
-int Channel::data()
+inline int Channel::data()
 {
 	int out;
 
@@ -185,7 +221,7 @@ int Channel::data()
 }
 
 
-void Channel::send(int data)
+inline void Channel::send(int data)
 {
 	{
 		std::lock_guard lk(mtx);
@@ -195,7 +231,7 @@ void Channel::send(int data)
 	cv.notify_all();
 }
 
-int Channel::recv()
+inline int Channel::recv()
 {
 	int out;
 
@@ -208,7 +244,7 @@ int Channel::recv()
 	return out;
 }
 
-int Channel::recv_timeout(int ms)
+inline int Channel::recv_timeout(int ms)
 {
 	using namespace std::chrono;
 
@@ -223,3 +259,4 @@ int Channel::recv_timeout(int ms)
 	return out;
 }
 
+#endif // UTILS_H

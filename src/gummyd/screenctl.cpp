@@ -16,11 +16,13 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "screenctl.h"
-#include "cfg.h"
-#include "../common/utils.h"
-
 #include <syslog.h>
+
+#include "defs.hpp"
+#include "xorg.hpp"
+#include "screenctl.hpp"
+#include "cfg.hpp"
+#include "utils.hpp"
 
 core::Temp_Manager::Temp_Manager(Xorg *xorg)
     : xorg(xorg),

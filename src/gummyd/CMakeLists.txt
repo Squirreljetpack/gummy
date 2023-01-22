@@ -1,6 +1,5 @@
 project(gummyd LANGUAGES CXX)
 
-file(GLOB COMMON ../common/*.cpp)
 file(GLOB SOURCES *.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${COMMON})
@@ -23,10 +22,11 @@ target_link_libraries(
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include/third-party)
 
 if(NOT UDEV_DIR)
 	set(UDEV_DIR /usr/lib/udev/rules.d)
 endif()
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_LIBEXECDIR}")
-install(FILES ${CMAKE_SOURCE_DIR}/99-gummy.rules DESTINATION "${UDEV_DIR}")
+install(FILES ${CMAKE_SOURCE_DIR}/config/udev/99-gummy.rules DESTINATION "${UDEV_DIR}")

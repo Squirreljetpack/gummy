@@ -19,13 +19,13 @@
 #ifndef SCREENCTL_H
 #define SCREENCTL_H
 
-#include "xorg.h"
-#include "sysfs.h"
-#include "../common/defs.h"
-#include "../common/utils.h"
-
 #include <sdbus-c++/IProxy.h>
 #include <thread>
+
+#include "defs.hpp"
+#include "utils.hpp"
+#include "xorg.hpp"
+#include "sysfs.hpp"
 
 std::unique_ptr<sdbus::IProxy> dbus_register_signal_handler(
     const std::string &service,
