@@ -1,5 +1,5 @@
 /**
-* gummy
+* Device: libudev wrapper
 * Copyright (C) 2022  Francesco Fusco
 *
 * This program is free software: you can redistribute it and/or modify
@@ -19,55 +19,55 @@
 #ifndef SYSFS_H
 #define SYSFS_H
 
-#include <vector>
-#include <filesystem>
+#include <string>
 #include <libudev.h>
 
 namespace Sysfs
 {
-	class Device
-	{
-	public:
-		Device(udev*, const std::string &path);
-		Device(Device&&);
-		~Device();
-		std::string get(const std::string &attr) const;
-		void        set(const std::string &attr, const std::string &val);
-		std::string path() const;
-	private:
-		udev_device *_dev;
-	};
 
-	class Backlight
-	{
-	public:
-		Backlight(udev*, const std::string &path);
-		int max_brt() const;
-		int step() const;
-		void set(int);
-	private:
-		Device _dev;
-		int _max_brt;
-		int _cur;
-	};
+class Device
+{
+public:
+    Device(udev*, std::string path);
+	Device(Device&&);
+	~Device();
+	std::string get(std::string attr) const;
+	void        set(std::string attr, std::string val);
+	std::string path() const;
+private:
+	udev_device *_addr;
+};
 
-	class ALS
-	{
-	public:
-		ALS(udev*, const std::string &path);
-		void update();
-		int lux_step() const;
-	private:
-		Device _dev;
-		std::string _lux_name;
-		double _lux_scale;
-		int _lux_step;
-	};
+inline Sysfs::Device::Device(udev *udev, std::string path)
+{
+	_addr = udev_device_new_from_syspath(udev, path.c_str());
+}
 
-	int calc_lux_step(double lux);
+inline Sysfs::Device::Device(Device &&d) : _addr(d._addr)
+{
+}
 
-	std::vector<Backlight> get_bl();
-	std::vector<ALS> get_als();
+inline std::string Sysfs::Device::path() const
+{
+	return udev_device_get_syspath(_addr);
+}
+
+inline Sysfs::Device::~Device()
+{
+	udev_device_unref(_addr);
+}
+
+inline std::string Sysfs::Device::get(std::string attr) const
+{
+	const char *s = udev_device_get_sysattr_value(_addr, attr.c_str());
+	return s ? s : "";
+}
+
+inline void Sysfs::Device::set(std::string attr, std::string val)
+{
+	udev_device_set_sysattr_value(_addr, attr.c_str(), val.c_str());
+}
+
 };
 
 #endif // SYSFS_H

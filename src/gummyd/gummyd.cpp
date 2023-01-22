@@ -26,7 +26,7 @@
 #include "utils.hpp"
 #include "cfg.hpp"
 #include "xorg.hpp"
-#include "sysfs.hpp"
+#include "sysfs_devices.hpp"
 #include "screenctl.hpp"
 
 void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
