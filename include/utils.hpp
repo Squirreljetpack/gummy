@@ -30,8 +30,6 @@
 #include <cmath>
 #include <fcntl.h>
 
-#include "cfg.hpp" // todo: remove
-
 struct Animation
 {
 	double elapsed;
@@ -144,9 +142,9 @@ inline int ease_out_expo_loop(Animation a, int prev, int cur, int end, std::func
 	    fn);
 }
 
-inline int set_lock()
+inline int set_lock(std::string name)
 {
-	int fd = open(lock_name, O_WRONLY | O_CREAT, 0666);
+	int fd = open(name.c_str(), O_WRONLY | O_CREAT, 0666);
 	if (fd == -1)
 		return 1;
 
