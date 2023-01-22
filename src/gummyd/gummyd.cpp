@@ -258,7 +258,7 @@ int main(int argc, char **argv)
 
 	openlog("gummyd", LOG_PID, LOG_DAEMON);
 
-	if (int err = set_lock() > 0) {
+	if (int err = set_lock(lock_name) > 0) {
 		syslog(LOG_ERR, "lockfile err %d", err);
 		exit(EXIT_FAILURE);
 	}

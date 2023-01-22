@@ -22,6 +22,7 @@
 
 #include "CLI11.hpp"
 #include "json.hpp"
+#include "cfg.hpp"
 #include "utils.hpp"
 
 using std::cout;
@@ -45,7 +46,7 @@ void send(const std::string &s)
 
 void start()
 {
-	if (set_lock() > 0) {
+	if (set_lock(lock_name) > 0) {
 		cout << "already started\n";
 		std::exit(0);
 	}
@@ -70,7 +71,7 @@ void start()
 
 void stop()
 {
-	if (set_lock() == 0) {
+	if (set_lock(lock_name) == 0) {
 		cout << "already stopped\n";
 		std::exit(0);
 	}
@@ -83,7 +84,7 @@ void stop()
 
 void status()
 {
-	cout << (set_lock() == 0 ? "not running" : "running") << "\n";
+	cout << (set_lock(lock_name) == 0 ? "not running" : "running") << "\n";
 	std::exit(0);
 }
 
@@ -197,7 +198,7 @@ int main(int argc, const char **argv)
 
 	CLI11_PARSE(app, argc, argv);
 
-	if (set_lock() == 0) {
+	if (set_lock(lock_name) == 0) {
 		cout << "gummy is not running.\nType: `gummy start`\n";
 		std::exit(1);
 	}
