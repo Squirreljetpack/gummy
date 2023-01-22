@@ -30,7 +30,7 @@
 #include <cmath>
 #include <fcntl.h>
 
-#include "defs.hpp"
+#include "cfg.hpp" // todo: remove
 
 struct Animation
 {

@@ -23,7 +23,7 @@
 #include <libudev.h>
 
 #include "sysfs_devices.hpp"
-#include "defs.hpp"
+#include "cfg.hpp"
 #include "utils.hpp"
 
 const struct {
