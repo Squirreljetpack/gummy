@@ -20,13 +20,30 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/XShm.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <syslog.h>
 
 struct XLib
 {
-    XLib();
-	~XLib();
+    class shared_image
+	{
+	    XImage *img;
+		XShmSegmentInfo info;
+	public:
+		shared_image(XLib &xlib, unsigned int width, unsigned int height);
+		~shared_image();
+		void update(XLib &xlib);
+
+		char* data();
+		size_t length();
+	};
+
 	Display *dsp;
+	XLib();
+	~XLib();
 };
+
 
 inline XLib::XLib()
 {
@@ -43,3 +60,51 @@ inline XLib::~XLib()
 {
 	XCloseDisplay(dsp);
 }
+
+inline XLib::shared_image::shared_image(XLib &xlib, unsigned int width, unsigned int height)
+{
+	info.shmid    = shmget(IPC_PRIVATE, width * height * 4, IPC_CREAT | 0600);
+	info.shmaddr  = reinterpret_cast<char*>(shmat(info.shmid, nullptr, 0));
+	info.readOnly = False;
+	XShmAttach(xlib.dsp, &info);
+
+	img = XShmCreateImage(
+	       xlib.dsp,
+	       DefaultVisual(xlib.dsp, DefaultScreen(xlib.dsp)),
+	       DefaultDepth(xlib.dsp, DefaultScreen(xlib.dsp)),
+	       ZPixmap,
+	       info.shmaddr,
+	       &info,
+	       width,
+	       height);
+}
+
+inline void XLib::shared_image::update(XLib &xlib)
+{
+	XShmGetImage(
+	    xlib.dsp,
+	    DefaultRootWindow(xlib.dsp),
+	    img,
+	    0,
+	    0,
+	    AllPlanes);
+}
+
+inline char* XLib::shared_image::data()
+{
+	return img->data;
+}
+
+inline size_t XLib::shared_image::length()
+{
+	return img->bytes_per_line * img->height;
+}
+
+inline XLib::shared_image::~shared_image()
+{
+	shmdt(info.shmaddr);
+	shmctl(info.shmid, IPC_RMID, 0);
+	XDestroyImage(img);
+}
+
+

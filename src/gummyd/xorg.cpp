@@ -85,64 +85,54 @@ constexpr std::array<std::array<double, 3>, 56> ingo_thies_table {{
 	{1.00000000, 1.00000000, 1.00000000},
 }};
 
+Xorg::Output::Output(XLib &xlib,
+    unsigned int width,
+    unsigned int height,
+    xcb_randr_crtc_t crtc,
+    size_t ramp_size) :
+    crtc(crtc),
+    image(xlib, width, height)
+{
+	ramps.resize(ramp_size);
+}
+
 Xorg::Xorg()
 {
 	const std::tuple crtcs = xcb.crtcs();
 
 	for (size_t i = 0; i < std::get<1>(crtcs); ++i) {
-		Output o;
-		o.crtc = std::get<0>(crtcs)[i];
-		o.info = xcb.crtc_data(o.crtc);
 
-		if (o.info->num_outputs > 0)
-			outputs.push_back(o);
-	}
+		auto crtc = std::get<0>(crtcs)[i];
+		auto info = xcb.crtc_data(crtc);
 
-	for (auto &o : outputs) {
+		if (info->num_outputs < 1)
+			continue;
 
-		o.ramps.resize(xcb.gamma_ramp_size(o.crtc) * 3);
-
-		o.image = XShmCreateImage(
-		   xlib.dsp,
-		   DefaultVisual(xlib.dsp, DefaultScreen(xlib.dsp)),
-		   DefaultDepth(xlib.dsp, DefaultScreen(xlib.dsp)),
-		   ZPixmap,
-		   nullptr,
-		   &o.shminfo,
-		   o.info->width,
-		   o.info->height
-		);
-
-		o.image_len     = o.info->width * o.info->height * 4;
-		o.shminfo.shmid = shmget(IPC_PRIVATE, o.image_len, IPC_CREAT | 0600);
-		void *shm       = shmat(o.shminfo.shmid, nullptr, SHM_RDONLY);
-
-		if (shm == reinterpret_cast<void*>(-1)) {
-			syslog(LOG_ERR, "shmat failed");
-			exit(1);
-		}
-
-		o.shminfo.shmaddr  = o.image->data = reinterpret_cast<char*>(shm);
-		o.shminfo.readOnly = False;
-
-		XShmAttach(xlib.dsp, &o.shminfo);
+		outputs.emplace_back(
+		    xlib,
+		    info->width,
+		    info->height,
+		    crtc,
+		    xcb.gamma_ramp_size(crtc) * 3);
 	}
 }
 
 int Xorg::screen_brightness(int scr_idx)
 {
 	Output *o = &outputs[scr_idx];
-	XShmGetImage(xlib.dsp, DefaultRootWindow(xlib.dsp), o->image, o->info->x, o->info->y, AllPlanes);
+
+	o->image.update(xlib);
+
 	return calc_brightness(
-	    reinterpret_cast<uint8_t*>(o->image->data),
-	    o->image_len);
+	    reinterpret_cast<uint8_t*>(o->image.data()),
+	    o->image.length());
 }
 
 void Xorg::set_gamma(int scr_idx, int brt_step, int temp_step)
 {
 	fill_ramp(outputs[scr_idx],
-	                 std::clamp(brt_step, brt_steps_min, brt_steps_max),
-	                 temp_step);
+	          std::clamp(brt_step, brt_steps_min, brt_steps_max),
+	          temp_step);
 }
 
 /**
