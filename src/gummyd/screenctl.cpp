@@ -263,7 +263,7 @@ void core::monitor_capture_loop(Monitor &mon, Monitor::capture_state state)
 			return mon.als->lux_step();
 		}
 
-		return mon.xorg->get_screen_brightness(mon.id);
+		return mon.xorg->screen_brightness(mon.id);
 	}();
 
 	if (mon.ch.data() <= MANUAL)
