@@ -1,6 +1,6 @@
 /**
 * gummy
-* Copyright (C) 2022  Francesco Fusco
+* Copyright (C) 2023  Francesco Fusco
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -16,38 +16,30 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef XCB_H
-#define XCB_H
-
-#include <vector>
+#include <stdexcept>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/XShm.h>
 
-#include "xlib.hpp"
-#include "xcb.hpp"
-
-class Xorg
+struct XLib
 {
-    struct Output
-	{
-	    std::vector<uint16_t> ramps;
-		xcb_randr_get_crtc_info_reply_t *info;
-		xcb_randr_crtc_t crtc;
-		XShmSegmentInfo shminfo;
-		XImage *image;
-		uint64_t image_len;
-	};
-	std::vector<Output> outputs;
-	XLib xlib;
-	XCB  xcb;
-	void fill_ramp(Output &, int brt_step, int temp_step);
-
-public:
-    Xorg();
-	int    screen_brightness(int scr_idx);
-	void   set_gamma(int scr_idx, int brt, int temp);
-	size_t scr_count() const;
+    XLib();
+	~XLib();
+	Display *dsp;
 };
 
-#endif // XCB_H
+inline XLib::XLib()
+{
+	if (XInitThreads() == 0) {
+		throw std::runtime_error("XInitThreads fail");
+	}
+
+	if (!(dsp = XOpenDisplay(nullptr))) {
+		throw std::runtime_error("XOpenDisplay fail");
+	}
+};
+
+inline XLib::~XLib()
+{
+	XCloseDisplay(dsp);
+}
