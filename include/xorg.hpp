@@ -32,12 +32,15 @@ class Xorg
     struct Output
 	{
 	    std::vector<uint16_t> ramps;
-		xcb_randr_get_crtc_info_reply_t *info;
 		xcb_randr_crtc_t crtc;
-		XShmSegmentInfo shminfo;
-		XImage *image;
-		uint64_t image_len;
+
+		xcb_randr_get_crtc_info_reply_t *info;
+		XLib::shared_image image;
+
+	public:
+		Output(XLib &xlib, unsigned int width, unsigned int height, xcb_randr_crtc_t crtc, size_t ramp_sz);
 	};
+
 	std::vector<Output> outputs;
 	XLib xlib;
 	XCB  xcb;

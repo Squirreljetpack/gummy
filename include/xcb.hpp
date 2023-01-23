@@ -42,7 +42,7 @@ inline XCB::XCB() : conn(xcb_connect(nullptr, &pref_screen))
 {
 	int err = xcb_connection_has_error(conn);
 	if (err > 0)
-		throw std::runtime_error("XCB connection error: " + std::to_string(err));
+		throw std::runtime_error("XCB connection: error " + std::to_string(err));
 
 	xcb_screen_iterator_t iter = xcb_setup_roots_iterator(xcb_get_setup(conn));
 
@@ -67,7 +67,7 @@ inline std::tuple<xcb_randr_crtc_t*, size_t> XCB::crtcs()
 	auto reply  = xcb_randr_get_screen_resources_reply(conn, cookie, &e);
 
 	if (e)
-		throw std::runtime_error("xcb_randr_get_screen_resources_reply error " + std::to_string(e->error_code));
+		throw std::runtime_error("xcb_randr_get_screen_resources_reply: error " + std::to_string(e->error_code));
 
 	// "get_crtc_info_reply_t" doesn't work if an std::vector is used for this.
 	std::tuple ret = std::make_tuple(xcb_randr_get_screen_resources_crtcs(reply), reply->num_crtcs);
@@ -84,7 +84,7 @@ inline xcb_randr_get_crtc_info_reply_t *XCB::crtc_data(xcb_randr_crtc_t crtc)
 	auto reply  = xcb_randr_get_crtc_info_reply(conn, cookie, &e);
 
 	if (e)
-		throw std::runtime_error("xcb_randr_get_crtc_info_reply error " + std::to_string(e->error_code));
+		throw std::runtime_error("xcb_randr_get_crtc_info_reply: error " + std::to_string(e->error_code));
 
 	// needs to be freed
 	return reply;
@@ -97,7 +97,7 @@ inline int XCB::gamma_ramp_size(xcb_randr_crtc_t crtc)
 	auto reply  = xcb_randr_get_crtc_gamma_reply(conn, cookie, &e);
 
 	if (e)
-		throw std::runtime_error("xcb_randr_get_crtc_gamma_reply error: %d\n" + std::to_string(e->error_code));
+		throw std::runtime_error("xcb_randr_get_crtc_gamma_reply: error " + std::to_string(e->error_code));
 
 	const int ret = reply->size;
 
@@ -117,6 +117,6 @@ inline void XCB::set_gamma(xcb_randr_crtc_t crtc, const std::vector<uint16_t> &r
 
 	xcb_generic_error_t *e = xcb_request_check(conn, req);
 	if (e) {
-		throw std::runtime_error("xcb_randr_set_crtc_gamma_checked error: %d\n" + std::to_string(e->error_code));
+		throw std::runtime_error("xcb_randr_set_crtc_gamma_checked: error " + std::to_string(e->error_code));
 	}
 }
