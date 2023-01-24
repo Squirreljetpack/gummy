@@ -113,10 +113,9 @@ void core::set_gamma(Xorg *xorg, int brt_step, int temp_step, int screen_index)
 {
 	std::vector<uint16_t> ramps(xorg->ramp_size(screen_index));
 
-	const size_t sz = ramps.size() / 3;
-	const double b_mult = brt_mult(brt_step, sz);
-
-	std::tuple rgb = temp_step_to_rgb(temp_step);
+	const size_t sz      = ramps.size() / 3;
+	const double b_mult  = brt_mult(brt_step, sz);
+	const std::tuple rgb = temp_step_to_rgb(temp_step);
 
 	uint16_t *r = &ramps[0 * sz];
 	uint16_t *g = &ramps[1 * sz];
