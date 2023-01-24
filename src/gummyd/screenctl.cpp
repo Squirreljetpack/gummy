@@ -226,6 +226,8 @@ void core::monitor_init(Monitor &mon)
 
 void core::monitor_check_brt_mode_loop(Monitor &mon)
 {
+	using mode = Config::Screen::Brt_mode;
+
 	const int brt_mode = mon.ch.data();
 	printf("brt_mode: %d\n", brt_mode);
 
@@ -233,12 +235,12 @@ void core::monitor_check_brt_mode_loop(Monitor &mon)
 		return;
 	}
 
-	if (brt_mode == MANUAL) {
+	if (brt_mode == mode::MANUAL) {
 		mon.ch.recv();
 		return core::monitor_check_brt_mode_loop(mon);
 	}
 
-	if (brt_mode != MANUAL) {
+	if (brt_mode != mode::MANUAL) {
 		std::thread thr([&] {
 			core::monitor_brt_adjust_loop(mon, brt_steps_max, true);
 		});
@@ -254,11 +256,12 @@ void core::monitor_check_brt_mode_loop(Monitor &mon)
 
 void core::monitor_capture_loop(Monitor &mon, Monitor::capture_state state)
 {
+	using mode = Config::Screen::Brt_mode;
 	const auto &scr = cfg.screens[mon.id];
 
 	const int ss_brt = [&] {
 
-		if (scr.brt_mode == ALS) {
+		if (scr.brt_mode == mode::ALS) {
 			mon.als_ch->recv();
 			return mon.als->lux_step();
 		}
@@ -266,16 +269,16 @@ void core::monitor_capture_loop(Monitor &mon, Monitor::capture_state state)
 		return mon.xorg->screen_brightness(mon.id);
 	}();
 
-	if (mon.ch.data() <= MANUAL)
+	if (mon.ch.data() <= mode::MANUAL)
 		return;
 
 	state.diff += abs(state.ss_brt - ss_brt);
 
-	if (state.diff > scr.brt_auto_threshold || scr.brt_mode == ALS) {
+	if (state.diff > scr.brt_auto_threshold || scr.brt_mode == mode::ALS) {
 		state.diff = 0;
 
 		const int target_step = [&] {
-			if (mon.als && scr.brt_mode == ALS)
+			if (mon.als && scr.brt_mode == mode::ALS)
 				return brt_target_als(ss_brt, scr.brt_auto_min, scr.brt_auto_max, scr.brt_auto_offset);
 			else
 				return brt_target(ss_brt, scr.brt_auto_min, scr.brt_auto_max, scr.brt_auto_offset);
@@ -296,7 +299,7 @@ void core::monitor_capture_loop(Monitor &mon, Monitor::capture_state state)
 	state.cfg_max    = scr.brt_auto_max;
 	state.cfg_offset = scr.brt_auto_offset;
 
-	if (scr.brt_mode == SCREENSHOT) {
+	if (scr.brt_mode == mode::SCREENSHOT) {
 		if (mon.backlight) {
 			mon.als_ch->recv_timeout(scr.brt_auto_polling_rate);
 		} else {

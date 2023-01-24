@@ -30,6 +30,7 @@
 
 void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
 {
+	using Brt_mode = Config::Screen::Brt_mode;
 	bool notify_temp = false;
 	bool notify_als = false;
 
@@ -104,8 +105,8 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 		}
 
 		if (opts.brt_perc != -1) {
-			cfg.screens[i].brt_mode = MANUAL;
-			brtctl.monitors[i].ch.send(MANUAL);
+			cfg.screens[i].brt_mode = Brt_mode::MANUAL;
+			brtctl.monitors[i].ch.send(Brt_mode::MANUAL);
 
 			const int val = int(remap(opts.brt_perc, 0, 100, 0, brt_steps_max));
 
