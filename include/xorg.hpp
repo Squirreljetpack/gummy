@@ -44,13 +44,15 @@ class Xorg
 	std::vector<Output> outputs;
 	XLib xlib;
 	XCB  xcb;
+	void set_ramp(Output &o);
 	void fill_ramp(Output &, int brt_step, int temp_step);
 
 public:
     Xorg();
-	int    screen_brightness(int scr_idx);
-	void   set_gamma(int scr_idx, int brt, int temp);
-	size_t scr_count() const;
+	std::tuple<uint8_t*, size_t> screen_data(int scr_idx);
+	void    set_gamma_ramp(int scr_idx, const std::vector<uint16_t> &ramps);
+	size_t  ramp_size(int scr_idx);
+	size_t  scr_count() const;
 };
 
 #endif // XCB_H
