@@ -16,10 +16,14 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef XLIB_H
+#define XLIB_H
+
 #include <stdexcept>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/XShm.h>
+
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
@@ -105,5 +109,7 @@ inline XLib::shared_image::~shared_image()
 	shmctl(info.shmid, IPC_RMID, 0);
 	XDestroyImage(img);
 }
+
+#endif
 
 

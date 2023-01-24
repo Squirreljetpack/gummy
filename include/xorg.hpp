@@ -16,15 +16,10 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef XCB_H
-#define XCB_H
+#ifndef XORG_H
+#define XORG_H
 
 #include <vector>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/extensions/XShm.h>
-
-#include "xlib.hpp"
 #include "xcb.hpp"
 
 class Xorg
@@ -34,17 +29,12 @@ class Xorg
 	    xcb_randr_crtc_t crtc;
 		size_t ramp_size;
 		XCB::shared_image image;
-		//XLib::shared_image image;
 		Output(xcb_randr_crtc_t crtc, size_t ramp_size,
 		XCB &xcb, unsigned int width, unsigned int height);
 	};
 
+	XCB xcb;
 	std::vector<Output> outputs;
-	XLib xlib;
-	XCB  xcb;
-	void set_ramp(Output &o);
-	void fill_ramp(Output &, int brt_step, int temp_step);
-
 public:
     Xorg();
 	std::tuple<uint8_t*, size_t> screen_data(int scr_idx);
@@ -53,4 +43,4 @@ public:
 	size_t  scr_count() const;
 };
 
-#endif // XCB_H
+#endif

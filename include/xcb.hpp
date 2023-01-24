@@ -16,6 +16,9 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef XCB_H
+#define XCB_H
+
 #include <stdexcept>
 #include <vector>
 #include <tuple>
@@ -181,3 +184,5 @@ inline uint32_t XCB::shared_image::size()
 {
 	return image->size;
 }
+
+#endif
