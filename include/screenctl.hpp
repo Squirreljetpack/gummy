@@ -42,23 +42,31 @@ namespace core {
  * - time is checked sometime after the start time
  * - the system wakes up
  * - temperature settings change */
-struct Temp_Manager
+class Temp_Manager
 {
-	Temp_Manager(Xorg*);
+    std::unique_ptr<sdbus::IProxy> _dbus_proxy;
 	enum ch_code {
-		EXIT,
-		WORKING,
+		EXIT = -1,
+		MANUAL,
+		AUTO,
 		NOTIFIED
 	};
-	Channel ch;
-	std::unique_ptr<sdbus::IProxy> dbus_proxy;
+	Channel _ch;
 	Xorg *xorg;
-	int global_step;
+
+	int  _global_step;
+	void adjust(Timestamps, bool catch_up);
+	void check_mode_loop();
+
+public:
+	Temp_Manager(Xorg*);
+	int  global_step();
+
+	void start();
+	void notify();
+	void stop();
 };
 
-void temp_start(Temp_Manager&);
-void temp_adjust(Temp_Manager&, Timestamps, bool catch_up);
-void temp_adjust_loop(Temp_Manager&);
 
 struct Monitor
 {
