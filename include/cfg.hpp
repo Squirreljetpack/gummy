@@ -82,22 +82,22 @@ struct Config
 struct Message
 {
     Message(const std::string &json);
-	int scr_no               = -1;
-	int brt_perc             = -1;
-	int brt_mode             = -1;
-	int brt_auto_min         = -1;
-	int brt_auto_max         = -1;
-	int brt_auto_offset      = -1;
-	int brt_auto_speed       = -1;
-	int screenshot_rate_ms   = -1;
-	int als_poll_rate_ms     = -1;
-	int temp_auto            = -1;
-	int temp_k               = -1;
-	int temp_day_k           = -1;
-	int temp_night_k         = -1;
-	int temp_adaptation_time = -1;
-	int add                  = -1;
-	int sub                  = -1;
+	int scr_no;
+	int brt_perc;
+	int brt_mode;
+	int brt_auto_min;
+	int brt_auto_max;
+	int brt_auto_offset;
+	int brt_auto_speed;
+	int screenshot_rate_ms;
+	int als_poll_rate_ms;
+	int temp_auto;
+	int temp_k;
+	int temp_day_k;
+	int temp_night_k;
+	int temp_adaptation_time;
+	int add;
+	int sub;
 	std::string sunrise_time;
 	std::string sunset_time;
 };
