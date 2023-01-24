@@ -19,10 +19,10 @@
 #include "xorg.hpp"
 
 Xorg::Output::Output(xcb_randr_crtc_t c, size_t sz,
-XLib &xlib, unsigned int width, unsigned int height) // todo: construct image in ctor call (shared_image needs a move ctor)
+XCB &xcb, unsigned int width, unsigned int height) // todo: construct image in ctor call (shared_image needs a move ctor)
     : crtc(c),
     ramp_size(sz),
-    image(xlib, width, height)
+    image(xcb, width, height)
 {
 }
 
@@ -40,17 +40,17 @@ Xorg::Xorg()
 
 		outputs.emplace_back(crtc,
 		    xcb.gamma_ramp_size(crtc) * 3,
-		    xlib, info->width, info->height);
+		    xcb, info->width, info->height);
 	}
 }
 
 std::tuple<uint8_t*, size_t> Xorg::screen_data(int scr_idx)
 {
-	outputs[scr_idx].image.update(xlib);
+	outputs[scr_idx].image.update(xcb);
 	// The cast to uint8_t is important
 	return std::make_tuple(
 	    reinterpret_cast<uint8_t*>(outputs[scr_idx].image.data()),
-	    outputs[scr_idx].image.length());
+	    outputs[scr_idx].image.size());
 }
 
 void Xorg::set_gamma_ramp(int scr_idx, const std::vector<uint16_t> &ramps)

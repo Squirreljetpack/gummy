@@ -15,7 +15,9 @@ find_package(X11 REQUIRED)
 find_package(Threads REQUIRED)
 find_package(sdbus-c++ REQUIRED)
 find_library(XCB_LIB "xcb" REQUIRED)
+find_library(XCB_IMAGE_LIB "xcb-image" REQUIRED)
 find_library(XCB_RANDR_LIB "xcb-randr" REQUIRED)
+find_library(XCB_SHM_LIB "xcb-shm" REQUIRED)
 find_library(UDEV_LIB "udev" REQUIRED)
 
 target_link_libraries(
@@ -25,6 +27,8 @@ target_link_libraries(
 	SDBusCpp::sdbus-c++
 	${XCB_LIB}
 	${XCB_RANDR_LIB}
+	${XCB_SHM_LIB}
+	${XCB_IMAGE_LIB}
 	${UDEV_LIB}
 )
 
