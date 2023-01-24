@@ -1,4 +1,4 @@
-﻿/**
+/**
 * gummy
 * Copyright (C) 2022  Francesco Fusco
 *
@@ -18,15 +18,12 @@
 
 #include "xorg.hpp"
 
-Xorg::Output::Output(XLib &xlib,
-    unsigned int width,
-    unsigned int height,
-    xcb_randr_crtc_t crtc,
-    size_t ramp_size) :
-    crtc(crtc),
+Xorg::Output::Output(xcb_randr_crtc_t c, size_t sz,
+XLib &xlib, unsigned int width, unsigned int height) // todo: construct image in ctor call (shared_image needs a move ctor)
+    : crtc(c),
+    ramp_size(sz),
     image(xlib, width, height)
 {
-	ramps.resize(ramp_size);
 }
 
 Xorg::Xorg()
@@ -41,12 +38,9 @@ Xorg::Xorg()
 		if (info->num_outputs < 1)
 			continue;
 
-		outputs.emplace_back(
-		    xlib,
-		    info->width,
-		    info->height,
-		    crtc,
-		    xcb.gamma_ramp_size(crtc) * 3);
+		outputs.emplace_back(crtc,
+		    xcb.gamma_ramp_size(crtc) * 3,
+		    xlib, info->width, info->height);
 	}
 }
 
@@ -66,7 +60,7 @@ void Xorg::set_gamma_ramp(int scr_idx, const std::vector<uint16_t> &ramps)
 
 size_t Xorg::ramp_size(int scr_idx)
 {
-	return outputs[scr_idx].ramps.size();
+	return outputs[scr_idx].ramp_size;
 }
 
 size_t Xorg::scr_count() const
