@@ -11,7 +11,7 @@ set(SOURCES
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-find_package(X11 REQUIRED)
+#find_package(X11 REQUIRED)
 find_package(Threads REQUIRED)
 find_package(sdbus-c++ REQUIRED)
 find_library(XCB_LIB "xcb" REQUIRED)
@@ -22,7 +22,7 @@ find_library(UDEV_LIB "udev" REQUIRED)
 
 target_link_libraries(
 	${PROJECT_NAME} PRIVATE
-	${X11_LIBRARIES}
+	#${X11_LIBRARIES}
 	Threads::Threads
 	SDBusCpp::sdbus-c++
 	${XCB_LIB}
