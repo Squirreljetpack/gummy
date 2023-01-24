@@ -22,8 +22,11 @@
 
 #include <xcb/xcb.h>
 #include <xcb/randr.h>
-//#include <xcb/shm.h>
-//#include <xcb/xcb_image.h>
+#include <xcb/shm.h>
+#include <xcb/xcb_image.h>
+
+#include <sys/ipc.h>
+#include <sys/shm.h>
 
 class XCB
 {
@@ -31,11 +34,25 @@ class XCB
 	xcb_screen_t *screen;
 	int pref_screen;
 public:
-	XCB(); ~XCB();
+
+	XCB();
+	~XCB();
 	auto crtcs()                                -> std::tuple<xcb_randr_crtc_t*, size_t>;
 	auto crtc_data(xcb_randr_crtc_t crtc)       -> xcb_randr_get_crtc_info_reply_t*;
 	auto gamma_ramp_size(xcb_randr_crtc_t crtc) -> int;
 	auto set_gamma(xcb_randr_crtc_t crtc, const std::vector<uint16_t> &ramps) -> void;
+
+	class shared_image
+	{
+	    xcb_image_t *image;
+		xcb_shm_segment_info_t shminfo;
+	public:
+		shared_image(XCB &xcb, unsigned int width, unsigned int height);
+		~shared_image();
+		void update(XCB &xcb);
+		uint8_t *data();
+		uint32_t size();
+	};
 };
 
 inline XCB::XCB() : conn(xcb_connect(nullptr, &pref_screen))
@@ -119,4 +136,48 @@ inline void XCB::set_gamma(xcb_randr_crtc_t crtc, const std::vector<uint16_t> &r
 	if (e) {
 		throw std::runtime_error("xcb_randr_set_crtc_gamma_checked: error " + std::to_string(e->error_code));
 	}
+}
+
+inline XCB::shared_image::shared_image(XCB &xcb, unsigned int width, unsigned int height)
+{
+	shminfo.shmid   = shmget(IPC_PRIVATE, width * height * 4, IPC_CREAT | 0600);
+	shminfo.shmaddr = reinterpret_cast<unsigned char*>(shmat(shminfo.shmid, nullptr, 0));
+	shminfo.shmseg  = xcb_generate_id(xcb.conn);
+
+	xcb_shm_attach(xcb.conn, shminfo.shmseg, shminfo.shmid, false);
+
+	image = xcb_image_create_native(xcb.conn, width, height, XCB_IMAGE_FORMAT_Z_PIXMAP,
+	                                xcb.screen->root_depth, shminfo.shmaddr, width * height * 4, nullptr);
+}
+
+inline XCB::shared_image::~shared_image()
+{
+	shmdt(shminfo.shmaddr);
+	shmctl(shminfo.shmseg, IPC_RMID, 0);
+	//xcb_image_destroy(image);
+}
+
+inline void XCB::shared_image::update(XCB &xcb)
+{
+	xcb_shm_get_image_reply(xcb.conn, xcb_shm_get_image_unchecked(
+	    xcb.conn,
+	    xcb.screen->root,
+	    0,
+	    0,
+	    image->width,
+	    image->height,
+	    ~0,
+	    XCB_IMAGE_FORMAT_Z_PIXMAP,
+	    shminfo.shmseg,
+	    0), nullptr);
+}
+
+inline uint8_t *XCB::shared_image::data()
+{
+	return image->data;
+}
+
+inline uint32_t XCB::shared_image::size()
+{
+	return image->size;
 }

@@ -22,7 +22,6 @@
 #include <X11/extensions/XShm.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include <syslog.h>
 
 struct XLib
 {

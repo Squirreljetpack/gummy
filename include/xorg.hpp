@@ -33,9 +33,10 @@ class Xorg
 	{
 	    xcb_randr_crtc_t crtc;
 		size_t ramp_size;
-		XLib::shared_image image;
+		XCB::shared_image image;
+		//XLib::shared_image image;
 		Output(xcb_randr_crtc_t crtc, size_t ramp_size,
-		XLib &xlib, unsigned int width, unsigned int height);
+		XCB &xcb, unsigned int width, unsigned int height);
 	};
 
 	std::vector<Output> outputs;
