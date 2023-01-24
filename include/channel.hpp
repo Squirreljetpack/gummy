@@ -17,6 +17,9 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef CHANNEL_H
+#define CHANNEL_H
+
 #include <condition_variable>
 
 class Channel
@@ -42,7 +45,6 @@ inline int Channel::data()
 
 	return out;
 }
-
 
 inline void Channel::send(int data)
 {
@@ -81,3 +83,5 @@ inline int Channel::recv_timeout(int ms)
 
 	return out;
 }
+
+#endif

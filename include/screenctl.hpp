@@ -67,7 +67,6 @@ public:
 	void stop();
 };
 
-
 struct Monitor
 {
     Monitor(Xorg*, Sysfs::Backlight*, Sysfs::ALS*, Channel *als_ch, int id);
@@ -113,7 +112,6 @@ struct Brightness_Manager
 
 void als_capture_loop(Sysfs::ALS &als, Channel &ch);
 
-void refresh_gamma(Xorg&, Channel&);
 }
 
 #endif // SCREENCTL_H

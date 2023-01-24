@@ -4,6 +4,7 @@ set(SOURCES
 	gummyd.cpp
 	xorg.cpp
 	cfg.cpp
+	gamma.cpp
 	sysfs_devices.cpp
 	screenctl.cpp
 )

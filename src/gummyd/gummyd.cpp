@@ -27,6 +27,7 @@
 #include "xorg.hpp"
 #include "sysfs_devices.hpp"
 #include "screenctl.hpp"
+#include "gamma.hpp"
 
 void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
 {
@@ -169,9 +170,8 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 			}
 		}
 
-		xorg.set_gamma(i,
-		               cfg.screens[i].brt_step,
-		               cfg.screens[i].temp_step);
+		// todo: remove this from here
+		core::set_gamma(&xorg, cfg.screens[i].brt_step, cfg.screens[i].temp_step, i);
 	}
 
 	if (notify_als) {
@@ -228,7 +228,7 @@ int init()
 	threads.reserve(3);
 
 	Channel ch;
-	threads.emplace_back([&] { core::refresh_gamma(xorg, ch); });
+	threads.emplace_back([&] { core::refresh_gamma(&xorg, ch); });
 
 	threads.emplace_back([&] { b.start(); });
 	threads.emplace_back([&] { t.start(); });

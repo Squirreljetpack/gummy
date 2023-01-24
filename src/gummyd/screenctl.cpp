@@ -19,7 +19,7 @@
 #include <syslog.h>
 
 #include "screenctl.hpp"
-#include "xorg.hpp"
+#include "gamma.hpp"
 #include "cfg.hpp"
 #include "utils.hpp"
 
@@ -83,6 +83,7 @@ void core::Temp_Manager::check_mode_loop()
 
 	// if notified, retry without waiting
 	if (mode == NOTIFIED) {
+		_ch.send(MANUAL);
 		printf("temp notified\n");
 		return check_mode_loop();
 	}
@@ -142,7 +143,7 @@ void core::Temp_Manager::adjust(Timestamps ts, bool step)
 		if (cur != prev) {
 			for (size_t i = 0; i < xorg->scr_count(); ++i) {
 				cfg.screens[i].temp_step = cur;
-				xorg->set_gamma(i, cfg.screens[i].brt_step, cur);
+				core::set_gamma(xorg, cfg.screens[i].brt_step, cur, i);
 			}
 		}
 
@@ -228,9 +229,7 @@ core::Monitor::Monitor(Xorg *xorg,
 	ch.send(cfg.screens[id].brt_mode);
 
 	if (!backlight) {
-		xorg->set_gamma(id,
-		                brt_steps_max,
-		                cfg.screens[id].temp_step);
+		core::set_gamma(xorg, brt_steps_max, cfg.screens[id].temp_step, id);
 	}
 }
 
@@ -288,7 +287,7 @@ void core::monitor_capture_loop(Monitor &mon, Monitor::capture_state state)
 			return mon.als->lux_step();
 		}
 
-		return mon.xorg->screen_brightness(mon.id);
+		return core::image_brightness(mon.xorg->screen_data(mon.id));
 	}();
 
 	if (mon.ch.data() <= mode::MANUAL)
@@ -361,7 +360,7 @@ void core::monitor_brt_adjust_loop(Monitor &mon, int cur_step, bool wait)
 					mon.backlight->set(cur_step * mon.backlight->max_brt() / brt_steps_max);
 				} else {
 					cfg.screens[i].brt_step = cur;
-					mon.xorg->set_gamma(i, cur, cfg.screens[i].temp_step);
+					core::set_gamma(mon.xorg, cur, cfg.screens[i].temp_step, mon.id);
 				}
 			}
 		}
@@ -388,20 +387,6 @@ int core::brt_target_als(int als_brt, int min, int max, int offset)
 {
 	const int offset_step = offset * brt_steps_max / max;
 	return std::clamp(als_brt + offset_step, min, max);
-}
-
-void core::refresh_gamma(Xorg &xorg, Channel &ch)
-{
-	for (size_t i = 0; i < xorg.scr_count(); ++i) {
-		xorg.set_gamma(i,
-		               cfg.screens[i].brt_step,
-		               cfg.screens[i].temp_step);
-	}
-
-	if (ch.recv_timeout(10000) < 0)
-		return;
-
-	core::refresh_gamma(xorg, ch);
 }
 
 std::unique_ptr<sdbus::IProxy> dbus_register_signal_handler(
