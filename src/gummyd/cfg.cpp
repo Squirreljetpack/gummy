@@ -35,32 +35,30 @@ constexpr int temp_k_min     = 1000;
 constexpr int temp_k_max     = 6500;
 
 Config::Config()
-    : _path(path()),
-      brt_auto_fps(60),
-      als_polling_rate(5000),
-      temp_auto(false),
-      temp_auto_fps(45),
-      temp_auto_speed(60),
-      temp_auto_high(temp_k_max),
-      temp_auto_low(3400),
-      temp_auto_sunrise("06:00"),
-      temp_auto_sunset("16:00")
-{
-}
+: _path             (path()),
+  brt_auto_fps      (60),
+  als_polling_rate  (5000),
+  temp_auto         (false),
+  temp_auto_fps     (45),
+  temp_auto_speed   (60),
+  temp_auto_high    (temp_k_max),
+  temp_auto_low     (3400),
+  temp_auto_sunrise ("06:00"),
+  temp_auto_sunset  ("16:00")
+{}
 
 Config::Screen::Screen()
-    : brt_mode(MANUAL),
-      brt_auto_min(brt_steps_max / 4),
-      brt_auto_max(brt_steps_max),
-      brt_auto_offset(0),
-      brt_auto_speed(1000),
-      brt_auto_threshold(8),
-      brt_auto_polling_rate(1000),
-      brt_step(brt_steps_max),
-      temp_auto(false),
-      temp_step(temp_steps_max)
-{
-}
+: brt_mode              (MANUAL),
+  brt_auto_min          (brt_steps_max / 4),
+  brt_auto_max          (brt_steps_max),
+  brt_auto_offset       (0),
+  brt_auto_speed        (1000),
+  brt_auto_threshold    (8),
+  brt_auto_polling_rate (1000),
+  brt_step              (brt_steps_max),
+  temp_auto             (false),
+  temp_step             (temp_steps_max)
+{}
 
 void Config::init(size_t detected_screens)
 {
