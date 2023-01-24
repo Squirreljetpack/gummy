@@ -21,24 +21,30 @@
 
 #include "json.hpp"
 
-constexpr const char* config_name = "gummyconf";
-constexpr const char* fifo_name   = "/tmp/gummy.fifo";
-constexpr const char* lock_name   = "/tmp/gummy.lock";
-
-constexpr int brt_steps_min  = 100;
-constexpr int brt_steps_max  = 500;
-constexpr int temp_steps_min = 0;
-constexpr int temp_steps_max = 500;
-constexpr int temp_k_min     = 1000;
-constexpr int temp_k_max     = 6500;
-
 using json = nlohmann::json;
-enum Brt_mode { MANUAL, SCREENSHOT, ALS };
+
 struct Config
 {
-    struct Screen
+	Config();
+	const std::string _path;
+	int brt_auto_fps;
+	int als_polling_rate; // ms
+	bool temp_auto;
+	int temp_auto_fps;
+	int temp_auto_speed;
+	int temp_auto_high;
+	int temp_auto_low;
+	std::string temp_auto_sunrise;
+	std::string temp_auto_sunset;
+
+	struct Screen
 	{
-	    Screen();
+	    enum Brt_mode {
+			MANUAL,
+			SCREENSHOT,
+			ALS
+		};
+		Screen();
 		Screen(
 		    Brt_mode brt_mode,
 		    int brt_auto_min,
@@ -63,17 +69,6 @@ struct Config
 		int temp_step;
 	};
 
-	Config();
-	const std::string _path;
-	int brt_auto_fps;
-	int als_polling_rate; // ms
-	bool temp_auto;
-	int temp_auto_fps;
-	int temp_auto_speed;
-	int temp_auto_high;
-	int temp_auto_low;
-	std::string temp_auto_sunrise;
-	std::string temp_auto_sunset;
 	std::vector<Screen> screens;
 
 	std::string path();
@@ -83,11 +78,6 @@ struct Config
 	void write();
 	json to_json();
 };
-
-json json_sanitize(const json&);
-json screen_to_json(const Config::Screen &s);
-
-extern Config cfg;
 
 struct Message
 {
@@ -111,5 +101,21 @@ struct Message
 	std::string sunrise_time;
 	std::string sunset_time;
 };
+
+extern Config cfg;
+
+extern const char* config_name;
+extern const char* fifo_name;
+extern const char* lock_name;
+
+extern const int brt_steps_min;
+extern const int brt_steps_max;
+extern const int temp_steps_min;
+extern const int temp_steps_max;
+extern const int temp_k_min;
+extern const int temp_k_max;
+
+json json_sanitize(const json&);
+json screen_to_json(const Config::Screen &s);
 
 #endif // CFG_H
