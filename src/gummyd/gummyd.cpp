@@ -163,8 +163,9 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 
 		} else if (opts.temp_auto != -1) {
 			cfg.screens[i].temp_auto = bool(opts.temp_auto);
+
 			if (opts.temp_auto == 1) {
-				cfg.screens[i].temp_step = tempctl.global_step;
+				cfg.screens[i].temp_step = tempctl.global_step();
 			}
 		}
 
@@ -178,7 +179,7 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 	}
 
 	if (notify_temp) {
-		tempctl.ch.send(tempctl.NOTIFIED);
+		tempctl.notify();
 	}
 }
 
@@ -216,13 +217,8 @@ int message_loop(Xorg &xorg, core::Brightness_Manager &brtctl, core::Temp_Manage
 
 int init()
 {
-	// Init X API
 	Xorg xorg;
-
-	// Init cfg
 	cfg.init(xorg.scr_count());
-
-	// Init fifo
 	init_fifo();
 
 	core::Brightness_Manager b(xorg);
@@ -235,13 +231,12 @@ int init()
 	threads.emplace_back([&] { core::refresh_gamma(xorg, ch); });
 
 	threads.emplace_back([&] { b.start(); });
-	threads.emplace_back([&] { core::temp_start(t); });
+	threads.emplace_back([&] { t.start(); });
 
 	message_loop(xorg, b, t);
 
 	ch.send(-1);
-	t.ch.send(t.EXIT);
-
+	t.stop();
 	b.stop();
 
 	for (auto &t : threads)

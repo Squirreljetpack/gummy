@@ -25,54 +25,76 @@
 
 core::Temp_Manager::Temp_Manager(Xorg *xorg)
     : xorg(xorg),
-      global_step(temp_steps_max)
+      _global_step(temp_steps_max)
 {}
 
-void core::temp_start(Temp_Manager &t)
+void core::Temp_Manager::start()
 {
 	const auto notify_on_sys_resume = [&] (sdbus::Signal &sig) {
 		bool suspended;
 		sig >> suspended;
 		if (!suspended)
-			t.ch.send(t.NOTIFIED);
+			_ch.send(NOTIFIED);
 	};
 
-	t.dbus_proxy = dbus_register_signal_handler(
+	_dbus_proxy = dbus_register_signal_handler(
 	    "org.freedesktop.login1",
 	    "/org/freedesktop/login1",
 	    "org.freedesktop.login1.Manager",
 	    "PrepareForSleep",
 	    notify_on_sys_resume);
 
-	t.ch.send(t.WORKING);
-	core::temp_adjust_loop(t);
+	_ch.send(MANUAL);
+	check_mode_loop();
 }
 
-void core::temp_adjust_loop(Temp_Manager &t)
+void core::Temp_Manager::notify()
 {
-	//printf("temp_adjust_loop: temp_auto: %d\n", cfg.temp_auto);
+	_ch.send(NOTIFIED);
+}
 
-	t.ch.send(t.WORKING);
+void core::Temp_Manager::stop()
+{
+	_ch.send(EXIT);
+}
 
+int core::Temp_Manager::global_step()
+{
+	return _global_step;
+}
+
+void core::Temp_Manager::check_mode_loop()
+{
+	const int mode = _ch.data();
+	printf("temp mode: %d\n", mode);
+
+	if (mode == EXIT)
+		return;
+
+	// todo: replace with channel data
 	if (cfg.temp_auto) {
-		core::temp_adjust(t, timestamps_update(
+		printf("temp adjusting\n");
+		_ch.send(AUTO);
+		adjust(timestamps_update(
 		    cfg.temp_auto_sunrise,
 		    cfg.temp_auto_sunset,
 		    -(cfg.temp_auto_speed * 60)), false);
 	}
 
-	//printf("temp_adjust_loop: waiting until timeout\n");
-
-	// retry without waiting if interrupted
-	if (t.ch.data() != t.NOTIFIED) {
-		if (t.ch.recv_timeout(60000) == t.EXIT)
-			return;
+	// if notified, retry without waiting
+	if (mode == NOTIFIED) {
+		printf("temp notified\n");
+		return check_mode_loop();
 	}
 
-	core::temp_adjust_loop(t);
+	printf("temp waiting\n");
+	if (_ch.recv_timeout(60000) == EXIT)
+		return;
+
+	check_mode_loop();
 }
 
-void core::temp_adjust(Temp_Manager &t, Timestamps ts, bool step)
+void core::Temp_Manager::adjust(Timestamps ts, bool step)
 {
 	//printf("temp_adjust: step %d\n", step);
 	const bool   daytime = ts.cur >= ts.start && ts.cur < ts.end;
@@ -110,26 +132,26 @@ void core::temp_adjust(Temp_Manager &t, Timestamps ts, bool step)
 	const int target_step = int(remap(target_temp, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max));
 
 	Animation a = animation_init(
-	    t.global_step,
+	    _global_step,
 	    target_step,
 	    cfg.temp_auto_fps,
 	    animation_s * 1000);
 
-	t.global_step = ease_in_out_quad_loop(a, -1, t.global_step, target_step, [&] (int cur, int prev) {
+	_global_step = ease_in_out_quad_loop(a, -1, _global_step, target_step, [&] (int cur, int prev) {
 
 		if (cur != prev) {
-			for (size_t i = 0; i < t.xorg->scr_count(); ++i) {
+			for (size_t i = 0; i < xorg->scr_count(); ++i) {
 				cfg.screens[i].temp_step = cur;
-				t.xorg->set_gamma(i, cfg.screens[i].brt_step, cur);
+				xorg->set_gamma(i, cfg.screens[i].brt_step, cur);
 			}
 		}
 
-		return t.ch.data() != t.NOTIFIED;
+		return _ch.data() == AUTO;
 	});
 
 	//printf("temp_adjust: step %d done\n", step);
 	if (!step)
-		core::temp_adjust(t, ts, !step);
+		adjust(ts, !step);
 }
 
 core::Brightness_Manager::Brightness_Manager(Xorg &xorg)
