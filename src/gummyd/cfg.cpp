@@ -136,7 +136,7 @@ void Config::from_json(const json &in)
 	temp_auto_speed   = in["temp_auto_speed"];
 	temp_auto_sunrise = in["temp_auto_sunrise"];
 	temp_auto_sunset  = in["temp_auto_sunset"];
-	temp_auto_high    = in["temp_auto_highpp"];
+	temp_auto_high    = in["temp_auto_high"];
 	temp_auto_low     = in["temp_auto_low"];
 	screens.clear();
 	for (size_t i = 0; i < in["screens"].size(); ++i) {
