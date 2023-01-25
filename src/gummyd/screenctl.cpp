@@ -22,6 +22,7 @@
 #include "gamma.hpp"
 #include "cfg.hpp"
 #include "utils.hpp"
+#include "easing.hpp"
 
 core::Temp_Manager::Temp_Manager(Xorg *xorg)
     : xorg(xorg),
@@ -79,6 +80,7 @@ void core::Temp_Manager::check_mode_loop()
 		    cfg.temp_auto_sunrise,
 		    cfg.temp_auto_sunset,
 		    -(cfg.temp_auto_speed * 60)), false);
+		printf("temp finished\n");
 	}
 
 	// if notified, retry without waiting
@@ -98,47 +100,43 @@ void core::Temp_Manager::check_mode_loop()
 void core::Temp_Manager::adjust(Timestamps ts, bool step)
 {
 	//printf("temp_adjust: step %d\n", step);
-	const bool   daytime = ts.cur >= ts.start && ts.cur < ts.end;
-	const double adaptation_time_s = double(cfg.temp_auto_speed) * 60;
+	const bool daytime = ts.cur >= ts.start && ts.cur < ts.end;
 
-	int          target_temp;
-	std::time_t  time_to_subtract;
-	double       animation_s = 2;
+	const std::time_t max_speed_s = cfg.temp_auto_speed * 60;
 
-	if (daytime) {
-		target_temp = cfg.temp_auto_high;
-		time_to_subtract = ts.start;
-	} else {
-		target_temp = cfg.temp_auto_low;
-		time_to_subtract = ts.end;
-	}
+	// Time passed since the start/end date.
+	const std::time_t delta_s = [ts, daytime, max_speed_s] {
+		return std::clamp(
+		        std::abs(ts.cur - (daytime ? ts.start : ts.end)),
+		        0l, max_speed_s);
+	}();
 
-	int time_since_start_s = std::abs(ts.cur - time_to_subtract);
-
-	if (time_since_start_s > adaptation_time_s)
-		time_since_start_s = adaptation_time_s;
-
-	if (!step) {
-		if (daytime) {
-			target_temp = remap(time_since_start_s, 0, adaptation_time_s, cfg.temp_auto_low, cfg.temp_auto_high);
+	const int target_temp = [step, daytime, delta_s, max_speed_s] {
+		if (!step) {
+			if (daytime) {
+				return int(remap(delta_s, 0, max_speed_s, cfg.temp_auto_low, cfg.temp_auto_high));
+			} else {
+				return int(remap(delta_s, 0, max_speed_s, cfg.temp_auto_high, cfg.temp_auto_low));
+			}
 		} else {
-			target_temp = remap(time_since_start_s, 0, adaptation_time_s, cfg.temp_auto_high, cfg.temp_auto_low);
+			return daytime ? cfg.temp_auto_high : cfg.temp_auto_low;
 		}
-	} else {
-		animation_s = adaptation_time_s - time_since_start_s;
-		if (animation_s < 2)
-			animation_s = 2;
-	}
+	}();
+
+	const double animation_ms = [step, max_speed_s, delta_s] {
+		double ret = (!step) ? 2000. : (max_speed_s - delta_s) * 1000.;
+		if (ret < 2000.)
+			ret = 2000.;
+		return ret;
+	}();
 
 	const int target_step = int(remap(target_temp, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max));
 
-	Animation a = animation_init(
+	_global_step = ease_in_out_quad_loop(Animation(
 	    _global_step,
 	    target_step,
 	    cfg.temp_auto_fps,
-	    animation_s * 1000);
-
-	_global_step = ease_in_out_quad_loop(a, -1, _global_step, target_step, [&] (int cur, int prev) {
+	    animation_ms), -1, _global_step, target_step, [&] (int cur, int prev) {
 
 		if (cur != prev) {
 			for (size_t i = 0; i < xorg->scr_count(); ++i) {
@@ -345,13 +343,11 @@ void core::monitor_brt_adjust_loop(Monitor &mon, int cur_step, bool wait)
 	if (cur_step == target_step)
 		return core::monitor_brt_adjust_loop(mon, cur_step, true);
 
-	Animation a = animation_init(
+	ease_out_expo_loop(Animation(
 	    cur_step,
 	    target_step,
 	    cfg.temp_auto_fps,
-	    cfg.screens[mon.id].brt_auto_speed);
-
-	ease_out_expo_loop(a, -1, cur_step, target_step,
+	    cfg.screens[mon.id].brt_auto_speed), -1, cur_step, target_step,
 	[&] (int cur, int prev) {
 		if (cur != prev) {
 			for (size_t i = 0; i < mon.xorg->scr_count(); ++i) {
