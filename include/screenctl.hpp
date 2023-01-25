@@ -55,7 +55,7 @@ class Temp_Manager
 	Xorg *xorg;
 
 	int  _global_step;
-	void adjust(Timestamps, bool catch_up);
+	void adjust(time_window tw, bool catch_up);
 	void check_mode_loop();
 
 public:

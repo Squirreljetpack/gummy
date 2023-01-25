@@ -74,12 +74,13 @@ void core::Temp_Manager::check_mode_loop()
 
 	// todo: replace with channel data
 	if (cfg.temp_auto) {
+
 		printf("temp adjusting\n");
 		_ch.send(AUTO);
-		adjust(timestamps_update(
-		    cfg.temp_auto_sunrise,
-		    cfg.temp_auto_sunset,
-		    -(cfg.temp_auto_speed * 60)), false);
+
+		adjust(time_window(std::time(nullptr),
+		cfg.temp_auto_sunrise, cfg.temp_auto_sunset, -(cfg.temp_auto_speed * 60)), false);
+
 		printf("temp finished\n");
 	}
 
@@ -97,19 +98,12 @@ void core::Temp_Manager::check_mode_loop()
 	check_mode_loop();
 }
 
-void core::Temp_Manager::adjust(Timestamps ts, bool step)
+void core::Temp_Manager::adjust(time_window tw, bool step)
 {
-	//printf("temp_adjust: step %d\n", step);
-	const bool daytime = ts.cur >= ts.start && ts.cur < ts.end;
-
+	printf("\ntemp_adjust: step %d\n", step);
+	const bool daytime = tw.in_range();
 	const std::time_t max_speed_s = cfg.temp_auto_speed * 60;
-
-	// Time passed since the start/end date.
-	const std::time_t delta_s = [ts, daytime, max_speed_s] {
-		return std::clamp(
-		        std::abs(ts.cur - (daytime ? ts.start : ts.end)),
-		        0l, max_speed_s);
-	}();
+	const std::time_t delta_s = std::clamp(tw.delta(), 0l, max_speed_s);
 
 	const int target_temp = [step, daytime, delta_s, max_speed_s] {
 		if (!step) {
@@ -123,12 +117,17 @@ void core::Temp_Manager::adjust(Timestamps ts, bool step)
 		}
 	}();
 
+
 	const double animation_ms = [step, max_speed_s, delta_s] {
 		double ret = (!step) ? 2000. : (max_speed_s - delta_s) * 1000.;
 		if (ret < 2000.)
 			ret = 2000.;
 		return ret;
 	}();
+
+	printf("daytime: %d\n", daytime);
+	printf("target_temp: %d\n", target_temp);
+	printf("animation_ms: %f\n", animation_ms);
 
 	const int target_step = int(remap(target_temp, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max));
 
@@ -150,7 +149,7 @@ void core::Temp_Manager::adjust(Timestamps ts, bool step)
 
 	//printf("temp_adjust: step %d done\n", step);
 	if (!step)
-		adjust(ts, !step);
+		adjust(tw, !step);
 }
 
 core::Brightness_Manager::Brightness_Manager(Xorg &xorg)
