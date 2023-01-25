@@ -202,7 +202,7 @@ json Config::to_json()
 	    {"temp_auto_speed", temp_auto_speed},
 	    {"temp_auto_sunrise", temp_auto_sunrise},
 	    {"temp_auto_sunset", temp_auto_sunset},
-	    {"temp_auto_highpp", temp_auto_high},
+	    {"temp_auto_high", temp_auto_high},
 	    {"temp_auto_low", temp_auto_low},
 	    {"screens", json::array()}
 	});
