@@ -20,25 +20,11 @@
 #define UTILS_H
 
 #include <string>
-#include <chrono>
-#include <thread>
-#include <functional>
-
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
 #include <cmath>
 #include <fcntl.h>
-
-struct Animation
-{
-	double elapsed;
-	double slice;
-	double duration_s;
-	int fps;
-	int start_step;
-	int diff;
-};
 
 struct Timestamps
 {
@@ -75,59 +61,6 @@ inline double remap_to_idx(int val, int val_min, int val_max, size_t arr_sz)
 inline double mant(double x)
 {
 	return x - std::floor(x);
-}
-
-inline Animation animation_init(int start, int end, int fps, int duration_ms)
-{
-	Animation a;
-	a.start_step = start;
-	a.diff       = end - start;
-	a.fps        = fps;
-	a.duration_s = duration_ms / 1000.;
-	a.slice      = 1. / a.fps;
-	a.elapsed    = 0.;
-	return a;
-}
-
-inline double ease_out_expo(double t, double b , double c, double d)
-{
-	return (t == d) ? b + c : c * (-pow(2, -10 * t / d) + 1) + b;
-}
-
-inline double ease_in_out_quad(double t, double b, double c, double d)
-{
-	if ((t /= d / 2) < 1)
-		return c / 2 * t * t + b;
-	else
-		return -c / 2 * ((t - 1) * (t - 3) - 1) + b;
-}
-
-inline int ease_in_out_quad_loop(Animation a, int prev, int cur, int end, std::function<bool(int, int)> fn)
-{
-	if (!fn(cur, prev) || cur == end)
-		return cur;
-
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000 / a.fps));
-
-	return ease_in_out_quad_loop(a,
-	    cur,
-	    int(ease_in_out_quad(a.elapsed += a.slice, a.start_step, a.diff, a.duration_s)),
-	    end,
-	    fn);
-}
-
-inline int ease_out_expo_loop(Animation a, int prev, int cur, int end, std::function<bool(int, int)> fn)
-{
-	if (!fn(cur, prev) || cur == end)
-		return cur;
-
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000 / a.fps));
-
-	return ease_out_expo_loop(a,
-	    cur,
-	    int(round(ease_out_expo(a.elapsed += a.slice, a.start_step, a.diff, a.duration_s))),
-	    end,
-	    fn);
 }
 
 inline int set_lock(std::string name)

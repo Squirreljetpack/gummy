@@ -40,7 +40,7 @@ Config::Config()
   als_polling_rate  (5000),
   temp_auto         (false),
   temp_auto_fps     (45),
-  temp_auto_speed   (60),
+  temp_auto_speed   (60), // minutes
   temp_auto_high    (temp_k_max),
   temp_auto_low     (3400),
   temp_auto_sunrise ("06:00"),
