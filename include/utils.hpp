@@ -20,13 +20,8 @@
 #define UTILS_H
 
 #include <string>
-#include <cstddef>
-#include <cstdint>
-#include <ctime>
 #include <cmath>
 #include <fcntl.h>
-
-
 
 inline double lerp(double x, double a, double b)
 {
@@ -75,65 +70,5 @@ inline int set_lock(std::string name)
 
 	return 0;
 }
-
-inline time_t timestamp_modify(std::time_t ts, int h, int m, int s)
-{
-	std::tm tm = *std::localtime(&ts);
-	tm.tm_hour = h;
-	tm.tm_min  = m;
-	tm.tm_sec  = 0;
-	tm.tm_sec += s;
-	return std::mktime(&tm);
-}
-
-inline std::string timestamp_fmt(std::time_t ts)
-{
-	std::string str(std::asctime(std::localtime(&ts)));
-	str.pop_back();
-	return str;
-}
-
-class time_window
-{
-    std::time_t _cur;
-	std::time_t _start;
-	std::time_t _end;
-public:
-	time_window(std::time_t cur, std::string start, std::string end, int seconds);
-	bool in_range();
-	std::time_t delta();
-};
-
-inline time_window::time_window(std::time_t cur, std::string start, std::string end, int seconds)
-{
-	_cur = cur;
-
-	_start = timestamp_modify(_cur,
-	    std::stoi(start.substr(0, 2)),
-	    std::stoi(start.substr(3, 2)),
-	    seconds);
-
-	_end = timestamp_modify(_cur,
-	    std::stoi(end.substr(0, 2)),
-	    std::stoi(end.substr(3, 2)),
-	    seconds);
-
-	printf("cur: %s\n", timestamp_fmt(_cur).c_str());
-	printf("srt: %s\n", timestamp_fmt(_start).c_str());
-	printf("end: %s\n", timestamp_fmt(_end).c_str());
-}
-
-// Time passed since the start/end timestamp.
-inline std::time_t time_window::delta()
-{
-	return std::abs(_cur - (in_range() ? _start : _end));
-}
-
-inline bool time_window::in_range()
-{
-	return _cur >= _start && _cur < _end;
-}
-
-
 
 #endif // UTILS_H
