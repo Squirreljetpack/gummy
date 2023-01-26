@@ -26,6 +26,7 @@
 #include "channel.hpp"
 #include "sysfs_devices.hpp"
 #include "utils.hpp"
+#include "time.hpp"
 
 std::unique_ptr<sdbus::IProxy> dbus_register_signal_handler(
     const std::string &service,

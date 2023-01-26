@@ -29,7 +29,9 @@ class time_window
 public:
 	time_window(std::time_t cur, std::string start, std::string end, int seconds);
 	bool in_range() const;
-	std::time_t delta() const;
+	std::time_t time_to_start() const;
+	std::time_t time_to_end() const;
+	std::time_t time_since_last() const;
 	std::time_t reference() const;
 	std::time_t start() const;
 	std::time_t end() const;
@@ -54,15 +56,26 @@ inline time_window::time_window(std::time_t reference, std::string start, std::s
 	//printf("end: %s\n", timestamp_fmt(_end).c_str());
 }
 
-// Time passed since the start/end timestamp.
-inline std::time_t time_window::delta() const
-{
-	return _reference - (in_range() ? _start : _end);
-}
-
 inline bool time_window::in_range() const
 {
 	return _reference >= _start && _reference < _end;
+}
+
+// If negative, it's the time since the start
+inline std::time_t time_window::time_to_start() const
+{
+	return _start - _reference;
+}
+
+// If negative, it's the time since the end
+inline std::time_t time_window::time_to_end() const
+{
+	return _end - _reference;
+}
+
+inline std::time_t time_window::time_since_last() const
+{
+	return in_range() ? time_to_start() : time_to_end();
 }
 
 inline std::time_t time_window::reference() const {

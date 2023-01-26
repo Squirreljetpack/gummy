@@ -24,6 +24,7 @@
 #include "utils.hpp"
 #include "easing.hpp"
 
+
 core::Temp_Manager::Temp_Manager(Xorg *xorg)
     : xorg(xorg),
       _global_step(temp_steps_max)
@@ -103,7 +104,7 @@ void core::Temp_Manager::adjust(time_window tw, bool step)
 	printf("\ntemp_adjust: step %d\n", step);
 	const bool daytime = tw.in_range();
 	const std::time_t max_speed_s = cfg.temp_auto_speed * 60;
-	const std::time_t delta_s = std::clamp(tw.delta(), 0l, max_speed_s);
+	const std::time_t delta_s = std::clamp(std::abs(tw.time_since_last()), 0l, max_speed_s);
 
 	const int target_temp = [step, daytime, delta_s, max_speed_s] {
 		if (!step) {
