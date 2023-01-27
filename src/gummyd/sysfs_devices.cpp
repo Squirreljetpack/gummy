@@ -48,8 +48,10 @@ std::vector<Sysfs::Backlight> Sysfs::get_bl()
 	using namespace std::filesystem;
 	std::vector<Sysfs::Backlight> vec;
 
-	for (const auto &s : directory_iterator(config.backlight.path))
-		vec.emplace_back(udev_new(), s.path());
+	if (exists(config.backlight.path)) {
+		for (const auto &s : directory_iterator(config.backlight.path))
+			vec.emplace_back(udev_new(), s.path());
+	}
 
 	return vec;
 }
@@ -59,10 +61,12 @@ std::vector<Sysfs::ALS> Sysfs::get_als()
 	using namespace std::filesystem;
 	std::vector<Sysfs::ALS> vec;
 
-	for (const auto &s : directory_iterator(config.als.path)) {
-		const auto str = s.path().stem().string();
-		if (str.find(config.als.name) != std::string::npos)
-			vec.emplace_back(udev_new(), s.path());
+	if (exists(config.als.path)) {
+		for (const auto &s : directory_iterator(config.als.path)) {
+			const auto str = s.path().stem().string();
+			if (str.find(config.als.name) != std::string::npos)
+				vec.emplace_back(udev_new(), s.path());
+		}
 	}
 
 	return vec;
