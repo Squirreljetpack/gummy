@@ -105,11 +105,7 @@ inline std::tuple<xcb_randr_crtc_t*, size_t> XCB::crtcs()
 		throw std::runtime_error("xcb_randr_get_screen_resources_reply: error " + std::to_string(e->error_code));
 
 	// "get_crtc_info_reply_t" doesn't work if an std::vector is used for this.
-	std::tuple ret = std::make_tuple(xcb_randr_get_screen_resources_crtcs(reply), reply->num_crtcs);
-
-	free(reply);
-
-	return ret;
+	return std::make_tuple(xcb_randr_get_screen_resources_crtcs(reply), reply->num_crtcs);
 }
 
 inline xcb_randr_get_crtc_info_reply_t *XCB::crtc_data(xcb_randr_crtc_t crtc)
