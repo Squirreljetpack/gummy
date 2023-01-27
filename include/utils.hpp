@@ -23,34 +23,36 @@
 #include <cmath>
 #include <fcntl.h>
 
-inline double lerp(double x, double a, double b)
+// scale value in a [0, 1] range
+inline double invlerp(double val, double min, double max)
 {
-	return ((1 - x) * a) + (x * b);
+	return (val - min) / (max - min);
 }
 
-inline double invlerp(double x, double a, double b)
+// interpolate betweeen a and b. t = [0, 1]
+inline double lerp(double a, double b, double t)
 {
-	return (x - a) / (b - a);
+	return ((1 - t) * a) + (t * b);
 }
 
-inline double remap(double x, double a, double b, double ay, double by)
+inline double remap(double val, double min, double max, double new_min, double new_max)
 {
-	return lerp(invlerp(x, a, b), ay, by);
-}
-
-/* Interpolate val to an array index.
-   The integral part of the return value is the index itself,
-   while the fractional part is the interpolation factor
-   between the index and the next one. */
-inline double remap_to_idx(int val, int val_min, int val_max, size_t arr_sz)
-{
-	return remap(val, val_min, val_max, 0, arr_sz - 1);
+	return lerp(new_min, new_max, invlerp(val, min, max));
 }
 
 // Get the fractional part of a floating point number.
 inline double mant(double x)
 {
 	return x - std::floor(x);
+}
+
+/* Interpolate val to an array index.
+   The integral part of the return value is the index itself,
+   while the fractional part is the interpolation factor
+   between the index and the next one. */
+inline double remap_to_idx(int val, int min, int max, size_t arr_sz)
+{
+	return remap(val, min, max, 0, arr_sz - 1);
 }
 
 inline int set_lock(std::string name)

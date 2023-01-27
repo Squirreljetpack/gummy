@@ -88,10 +88,10 @@ std::tuple<double, double, double> temp_step_to_rgb(int step)
 	}};
 
 	const double idx_lerp = remap_to_idx(step, temp_steps_min, temp_steps_max, ingo_thies_table.size());
-	const int    idx      = std::floor(idx_lerp);
-	const double r = lerp(mant(idx_lerp), ingo_thies_table[idx][0], ingo_thies_table[idx + 1][0]);
-	const double g = lerp(mant(idx_lerp), ingo_thies_table[idx][1], ingo_thies_table[idx + 1][1]);
-	const double b = lerp(mant(idx_lerp), ingo_thies_table[idx][2], ingo_thies_table[idx + 1][2]);
+	const size_t idx = std::floor(idx_lerp);
+	const double r = lerp(ingo_thies_table[idx][0], ingo_thies_table[idx + 1][0], mant(idx_lerp));
+	const double g = lerp(ingo_thies_table[idx][1], ingo_thies_table[idx + 1][1], mant(idx_lerp));
+	const double b = lerp(ingo_thies_table[idx][2], ingo_thies_table[idx + 1][2], mant(idx_lerp));
 	return std::make_tuple(r, g, b);
 }
 

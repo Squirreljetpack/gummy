@@ -24,7 +24,6 @@
 #include "utils.hpp"
 #include "easing.hpp"
 
-
 core::Temp_Manager::Temp_Manager(Xorg *xorg)
     : xorg(xorg),
       _global_step(temp_steps_max)
