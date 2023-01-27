@@ -75,23 +75,23 @@ void core::Temp_Manager::check_mode_loop()
 	// todo: replace with channel data
 	if (cfg.temp_auto) {
 
-		printf("temp adjusting\n");
+		//printf("temp adjusting\n");
 		_ch.send(AUTO);
 
 		adjust(time_window(std::time(nullptr),
 		cfg.temp_auto_sunrise, cfg.temp_auto_sunset, -(cfg.temp_auto_speed * 60)), false);
 
-		printf("temp finished\n");
+		//printf("temp finished\n");
 	}
 
 	// if notified, retry without waiting
 	if (mode == NOTIFIED) {
 		_ch.send(MANUAL);
-		printf("temp notified\n");
+		//printf("temp notified\n");
 		return check_mode_loop();
 	}
 
-	printf("temp waiting\n");
+	//printf("temp waiting\n");
 	if (_ch.recv_timeout(60000) == EXIT)
 		return;
 
@@ -100,7 +100,6 @@ void core::Temp_Manager::check_mode_loop()
 
 void core::Temp_Manager::adjust(time_window tw, bool step)
 {
-	printf("\ntemp_adjust: step %d\n", step);
 	const bool daytime = tw.in_range();
 	const std::time_t max_speed_s = cfg.temp_auto_speed * 60;
 	const std::time_t delta_s = std::clamp(std::abs(tw.time_since_last()), 0l, max_speed_s);
@@ -117,37 +116,32 @@ void core::Temp_Manager::adjust(time_window tw, bool step)
 		}
 	}();
 
-
-	const double animation_ms = [step, max_speed_s, delta_s] {
-		double ret = (!step) ? 2000. : (max_speed_s - delta_s) * 1000.;
-		if (ret < 2000.)
-			ret = 2000.;
+	const int duration_ms = [step, max_speed_s, delta_s] {
+		const int min = 2000;
+		int ret = (!step) ? min : (max_speed_s - delta_s) * 1000;
+		if (ret < min)
+			ret = min;
 		return ret;
 	}();
 
-	printf("daytime: %d\n", daytime);
-	printf("target_temp: %d\n", target_temp);
-	printf("animation_ms: %f\n", animation_ms);
+	//printf("daytime: %d\n", daytime);
+	//printf("target_temp: %d\n", target_temp);
+	//printf("duration_ms: %d\n", duration_ms);
 
 	const int target_step = int(remap(target_temp, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max));
 
-	_global_step = ease_in_out_quad_loop(Animation(
-	    _global_step,
-	    target_step,
-	    cfg.temp_auto_fps,
-	    animation_ms), -1, _global_step, target_step, [&] (int cur, int prev) {
-
-		if (cur != prev) {
-			for (size_t i = 0; i < xorg->scr_count(); ++i) {
-				cfg.screens[i].temp_step = cur;
-				core::set_gamma(xorg, cfg.screens[i].brt_step, cur, i);
-			}
+	const auto fn = [&] (int step) {
+		_global_step = step;
+		for (size_t i = 0; i < xorg->scr_count(); ++i) {
+			cfg.screens[i].temp_step = step;
+			core::set_gamma(xorg, cfg.screens[i].brt_step, cfg.screens[i].temp_step, i);
 		}
+	};
 
-		return _ch.data() == AUTO;
-	});
+	const auto interrupt = [&] { return _ch.data() != AUTO; };
 
-	//printf("temp_adjust: step %d done\n", step);
+	easing::animate(easing::ease_in_out_quad, _global_step, target_step, duration_ms, 0, _global_step, _global_step, fn, interrupt);
+
 	if (!step)
 		adjust(tw, !step);
 }
@@ -342,31 +336,25 @@ void core::monitor_brt_adjust_loop(Monitor &mon, int cur_step, bool wait)
 	if (cur_step == target_step)
 		return core::monitor_brt_adjust_loop(mon, cur_step, true);
 
-	ease_out_expo_loop(Animation(
-	    cur_step,
-	    target_step,
-	    cfg.temp_auto_fps,
-	    cfg.screens[mon.id].brt_auto_speed), -1, cur_step, target_step,
-	[&] (int cur, int prev) {
-		if (cur != prev) {
-			for (size_t i = 0; i < mon.xorg->scr_count(); ++i) {
-				cur_step = cur;
-				if (mon.backlight) {
-					mon.backlight->set(cur_step * mon.backlight->max_brt() / brt_steps_max);
-				} else {
-					cfg.screens[i].brt_step = cur;
-					core::set_gamma(mon.xorg, cur, cfg.screens[i].temp_step, mon.id);
-				}
-			}
-		}
-
-		if (target_step == mon.brt_ch.data()) {
-			return true;
+	const auto fn = [&] (int step) {
+		cur_step = step;
+		if (mon.backlight) {
+			mon.backlight->set(cur_step * mon.backlight->max_brt() / brt_steps_max);
 		} else {
-			wait = false;
-			return false;
+			cfg.screens[mon.id].brt_step = cur_step;
+			core::set_gamma(mon.xorg, cfg.screens[mon.id].brt_step, cfg.screens[mon.id].temp_step, mon.id);
 		}
-	});
+	};
+
+	const auto interrupt = [&] {
+		if (target_step != mon.brt_ch.data()) {
+			wait = false;
+			return true;
+		}
+		return false;
+	};
+
+	easing::animate(easing::ease_out_expo, cur_step, target_step, cfg.screens[mon.id].brt_auto_speed, 0, cur_step, cur_step, fn, interrupt);
 
 	core::monitor_brt_adjust_loop(mon, cur_step, wait);
 }
