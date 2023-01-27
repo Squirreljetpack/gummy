@@ -28,19 +28,20 @@ XCB &xcb, unsigned int width, unsigned int height) // todo: construct image in c
 
 Xorg::Xorg()
 {
-	const std::tuple crtcs = xcb.crtcs();
+	auto [data, size] = xcb.crtcs();
 
-	for (size_t i = 0; i < std::get<1>(crtcs); ++i) {
+	for (size_t i = 0; i < size; ++i) {
 
-		auto crtc = std::get<0>(crtcs)[i];
+		auto crtc = data[i];
 		auto info = xcb.crtc_data(crtc);
 
-		if (info->num_outputs < 1)
-			continue;
+		if (info->num_outputs > 0) {
+			outputs.emplace_back(crtc,
+			                     xcb.gamma_ramp_size(crtc) * 3,
+			                     xcb, info->width, info->height);
+		}
 
-		outputs.emplace_back(crtc,
-		    xcb.gamma_ramp_size(crtc) * 3,
-		    xcb, info->width, info->height);
+		free(info);
 	}
 }
 
