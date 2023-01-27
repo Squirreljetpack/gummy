@@ -95,7 +95,7 @@ std::tuple<double, double, double> temp_step_to_rgb(int step)
 	return std::make_tuple(r, g, b);
 }
 
-int calc_brt_mult(int step, size_t ramp_sz)
+double calc_brt_mult(int step, size_t ramp_sz)
 {
 	const int ramp_step = (UINT16_MAX + 1) / ramp_sz;
 	return (double(step) / brt_steps_max) * ramp_step;
@@ -113,8 +113,8 @@ void core::set_gamma(Xorg *xorg, int brt_step, int temp_step, int screen_index)
 {
 	std::vector<uint16_t> ramps(xorg->ramp_size(screen_index));
 
-	const size_t sz     = ramps.size() / 3;
-	const int  brt_mult = calc_brt_mult(brt_step, sz);
+	const size_t sz = ramps.size() / 3;
+	const double brt_mult = calc_brt_mult(brt_step, sz);
 	const auto [r_mult, g_mult, b_mult] = temp_step_to_rgb(temp_step);
 
 	uint16_t *r = &ramps[0 * sz];
