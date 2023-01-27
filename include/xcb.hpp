@@ -36,6 +36,7 @@ class XCB
     xcb_connection_t *conn;
 	xcb_screen_t *screen;
 	int pref_screen;
+	auto query_extension(std::string) -> void;
 public:
 
 	XCB();
@@ -61,6 +62,7 @@ public:
 inline XCB::XCB() : conn(xcb_connect(nullptr, &pref_screen))
 {
 	int err = xcb_connection_has_error(conn);
+
 	if (err > 0)
 		throw std::runtime_error("XCB connection: error " + std::to_string(err));
 
@@ -73,6 +75,19 @@ inline XCB::XCB() : conn(xcb_connect(nullptr, &pref_screen))
 		}
 		xcb_screen_next(&iter);
 	}
+
+	query_extension("RANDR");
+	query_extension("MIT-SHM");
+}
+
+inline void XCB::query_extension(std::string name)
+{
+	auto reply = xcb_query_extension_reply(conn, xcb_query_extension(conn, name.size(), name.c_str()), nullptr);
+	const bool present = reply && reply->present;
+	free(reply);
+
+	if (!present)
+		throw std::runtime_error(name + std::string(" not found"));
 }
 
 inline XCB::~XCB()
