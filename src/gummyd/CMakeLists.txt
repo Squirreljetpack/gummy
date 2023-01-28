@@ -7,6 +7,7 @@ set(SOURCES
 	gamma.cpp
 	sysfs_devices.cpp
 	screenctl.cpp
+	server.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})

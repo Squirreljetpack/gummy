@@ -29,7 +29,7 @@
 #include "screenctl.hpp"
 #include "gamma.hpp"
 
-void apply_options(const Message &opts, core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
+/*void apply_options(const Message &opts, core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
 {
 	using Brt_mode = Config::Screen::Brt_mode;
 	bool notify_temp = false;
@@ -112,6 +112,7 @@ void apply_options(const Message &opts, core::Brightness_Manager &brtctl, core::
 			const int val = int(remap(opts.brt_perc, 0, 100, 0, brt_steps_max));
 
 			int tmp = backlight_present ? brtctl.backlights[i].step() : cfg.screens[i].brt_step;
+
 			if (opts.add == 0 && opts.sub == 0)
 				tmp = val;
 			else
@@ -147,15 +148,17 @@ void apply_options(const Message &opts, core::Brightness_Manager &brtctl, core::
 		}
 
 		if (opts.temp_k != -1) {
+
 			cfg.screens[i].temp_auto = false;
 			int tmp = cfg.screens[i].temp_step;
 
 			if (opts.add == 0 && opts.sub == 0) {
 				tmp = int(remap(opts.temp_k, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max));
 			} else {
-				// convert in kelvins and add/subtract
-				const int cur_temp_k = remap(tmp, temp_steps_min, temp_steps_max, temp_k_min, temp_k_max)
-				+ (opts.add > 0 ? opts.temp_k : -opts.temp_k);
+
+				// convert in kelvins and add
+				const int cur_temp_k = remap(tmp, temp_steps_min, temp_steps_max, temp_k_min, temp_k_max) + (opts.add > 0 ? opts.temp_k : -opts.temp_k);
+
 				// convert again in step
 				tmp = remap(cur_temp_k, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max);
 			}
@@ -181,7 +184,7 @@ void apply_options(const Message &opts, core::Brightness_Manager &brtctl, core::
 	if (notify_temp) {
 		tempctl.notify();
 	}
-}
+}*/
 
 void init_fifo()
 {
@@ -207,7 +210,7 @@ int message_loop(core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
 	if (s == "stop")
 		return EXIT_SUCCESS;
 
-	apply_options(Message(s), brtctl, tempctl);
+	//apply_options(Message(s), brtctl, tempctl);
 	cfg.write();
 
 	// need to close explicity for tail recursion

@@ -141,29 +141,3 @@ void core::refresh_gamma(Xorg *xorg, Channel &ch)
 
 	core::refresh_gamma(xorg, ch);
 }
-
-int core::image_brightness(std::tuple<uint8_t*, size_t> buf, int bytes_per_pixel, int stride)
-{
-	uint64_t rgb[3] {};
-	uint8_t  *arr = std::get<0>(buf);
-	uint64_t sz   = std::get<1>(buf);
-
-	for (uint64_t i = 0, inc = stride * bytes_per_pixel; i < sz; i += inc) {
-		rgb[0] += arr[i + 2];
-		rgb[1] += arr[i + 1];
-		rgb[2] += arr[i];
-	}
-	return (rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722) * stride / (sz / bytes_per_pixel);
-}
-
-// Deprecated
-int core::image_brightness(uint8_t *buf, uint64_t buf_sz, int bytes_per_pixel, int stride)
-{
-	uint64_t rgb[3] {};
-	for (uint64_t i = 0, inc = stride * bytes_per_pixel; i < buf_sz; i += inc) {
-		rgb[0] += buf[i + 2];
-		rgb[1] += buf[i + 1];
-		rgb[2] += buf[i];
-	}
-	return (rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722) * stride / (buf_sz / bytes_per_pixel);
-}

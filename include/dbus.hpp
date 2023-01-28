@@ -16,16 +16,23 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef GAMMA_H
-#define GAMMA_H
+#include <sdbus-c++/IProxy.h>
 
-#include <tuple>
-#include "xorg.hpp"
-#include "channel.hpp"
+#ifndef DBUS_HPP
+#define DBUS_HPP
 
-namespace core {
-void set_gamma(Xorg *xorg, int brt_step, int temp_step, int screen_index);
-void refresh_gamma(Xorg*, Channel&);
+inline std::unique_ptr<sdbus::IProxy> dbus_register_signal_handler(
+    std::string service,
+    std::string obj_path,
+    std::string interface,
+    std::string signal_name,
+    std::function<void(sdbus::Signal &signal)> handler)
+{
+	auto proxy = sdbus::createProxy(service, obj_path);
+	proxy->registerSignalHandler(interface, signal_name, handler);
+	proxy->finishRegistration();
+	return proxy;
 }
 
-#endif
+
+#endif // DBUS_HPP
