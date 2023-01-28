@@ -29,7 +29,7 @@
 #include "screenctl.hpp"
 #include "gamma.hpp"
 
-void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
+void apply_options(const Message &opts, core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
 {
 	using Brt_mode = Config::Screen::Brt_mode;
 	bool notify_temp = false;
@@ -69,7 +69,7 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 	}
 
 	size_t start = 0;
-	size_t end = xorg.scr_count() - 1;
+	size_t end = brtctl.monitors.size() - 1;
 
 	if (opts.scr_no != -1) {
 		if (size_t(opts.scr_no) > end) {
@@ -171,7 +171,7 @@ void apply_options(const Message &opts, Xorg &xorg, core::Brightness_Manager &br
 		}
 
 		// todo: remove this from here
-		core::set_gamma(&xorg, cfg.screens[i].brt_step, cfg.screens[i].temp_step, i);
+		core::set_gamma(brtctl.monitors[i].xorg, cfg.screens[i].brt_step, cfg.screens[i].temp_step, i);
 	}
 
 	if (notify_als) {
@@ -191,7 +191,7 @@ void init_fifo()
 	}
 }
 
-int message_loop(Xorg &xorg, core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
+int message_loop(core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
 {
 	std::ifstream fs(fifo_name);
 	if (fs.fail()) {
@@ -207,12 +207,12 @@ int message_loop(Xorg &xorg, core::Brightness_Manager &brtctl, core::Temp_Manage
 	if (s == "stop")
 		return EXIT_SUCCESS;
 
-	apply_options(Message(s), xorg, brtctl, tempctl);
+	apply_options(Message(s), brtctl, tempctl);
 	cfg.write();
 
 	// need to close explicity for tail recursion
 	fs.close();
-	return message_loop(xorg, brtctl, tempctl);
+	return message_loop(brtctl, tempctl);
 }
 
 int init()
@@ -233,7 +233,7 @@ int init()
 	threads.emplace_back([&] { b.start(); });
 	threads.emplace_back([&] { t.start(); });
 
-	message_loop(xorg, b, t);
+	message_loop(b, t);
 
 	ch.send(-1);
 	t.stop();
