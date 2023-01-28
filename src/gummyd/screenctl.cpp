@@ -23,6 +23,7 @@
 #include "cfg.hpp"
 #include "utils.hpp"
 #include "easing.hpp"
+#include "server.hpp"
 
 core::Temp_Manager::Temp_Manager(Xorg *xorg)
     : xorg(xorg),
@@ -167,43 +168,24 @@ core::Brightness_Manager::Brightness_Manager(Xorg &xorg)
 void core::Brightness_Manager::start()
 {
 	if (als.size() > 0) {
-		als_ch.send(1);
 		threads.emplace_back([&] {
-			core::als_capture_loop(als[0], als_ch);
+			als_server(als[0], als_ch, sig, cfg.als_polling_rate, 0, 0);
 		});
 	}
 
 	for (auto &m : monitors)
-		threads.emplace_back([&] { core::monitor_init(m); });
+		threads.emplace_back([&m] { m.start(); });
 }
 
 void core::Brightness_Manager::stop()
 {
-	als_ch.send(0);
+	sig.send(-1);
 
 	for (auto &m : monitors)
-		m.ch.send(-1);
+		m.stop();
 
 	for (auto &t : threads)
 		t.join();
-}
-
-void core::als_capture_loop(Sysfs::ALS &als, Channel &ch)
-{
-	const int prev_step = als.lux_step();
-	als.update();
-
-	if (prev_step != als.lux_step() || ch.data() == 2) {
-		//printf("als_capture_loop: sending signal\n");
-		ch.send(1);
-	}
-
-	if (ch.recv_timeout(cfg.als_polling_rate) == 0) {
-		//printf("als_capture_loop: exit\n");
-		return;
-	}
-
-	core::als_capture_loop(als, ch);
 }
 
 core::Monitor::Monitor(Xorg *xorg,
@@ -212,179 +194,116 @@ core::Monitor::Monitor(Xorg *xorg,
         Channel *als_ch,
 		int id)
    :  xorg(xorg),
+      id(id),
       backlight(bl),
       als(als),
-      als_ch(als_ch),
-      id(id)
+      als_ch(als_ch)
 {
-	ch.send(cfg.screens[id].brt_mode);
+	sig.send(cfg.screens[id].brt_mode);
 
-	if (!backlight) {
-		core::set_gamma(xorg, brt_steps_max, cfg.screens[id].temp_step, id);
-	}
+	core::set_gamma(xorg, brt_steps_max, cfg.screens[id].temp_step, id);
 }
 
 core::Monitor::Monitor(Monitor &&o)
     :  xorg(o.xorg),
-       backlight(o.backlight),
-       id(o.id)
+       id(o.id),
+       backlight(o.backlight)
 {
 }
 
-void core::monitor_init(Monitor &mon)
-{
-	core::monitor_check_brt_mode_loop(mon);
-}
-
-void core::monitor_check_brt_mode_loop(Monitor &mon)
+void core::Monitor::start()
 {
 	using mode = Config::Screen::Brt_mode;
+	while (true) {
+		const int brt_mode = sig.data();
+		printf("brt_mode: %d\n", brt_mode);
 
-	const int brt_mode = mon.ch.data();
-	printf("brt_mode: %d\n", brt_mode);
+		if (brt_mode < 0) {
+			return;
+		}
 
-	if (brt_mode < 0) {
-		return;
+		if (brt_mode == mode::MANUAL) {
+			sig.recv();
+			return start();
+		}
+
+		if (brt_mode == mode::SCREENSHOT) {
+
+			std::thread thr([&] {
+				brightness_client(brt_steps_max, true);
+			});
+
+			brightness_server(*xorg, id, brt_ch, sig, cfg.screens[id].brt_auto_polling_rate, 0, 0);
+
+			thr.join();
+		}
+
+		// there is one ALS server (started above) sending the same value to N clients
+		/*if (brt_mode == mode::ALS) {
+
+			std::thread thr([&] {
+				brightness_client(brt_steps_max, true);
+			});
+
+
+			thr.join();
+		}*/
 	}
-
-	if (brt_mode == mode::MANUAL) {
-		mon.ch.recv();
-		return core::monitor_check_brt_mode_loop(mon);
-	}
-
-	if (brt_mode != mode::MANUAL) {
-		std::thread thr([&] {
-			core::monitor_brt_adjust_loop(mon, brt_steps_max, true);
-		});
-
-		core::monitor_capture_loop(mon, Monitor::capture_state{0, 0, 0, 0, 0, 0});
-
-		mon.brt_ch.send(-1);
-		thr.join();
-	}
-
-	core::monitor_check_brt_mode_loop(mon);
 }
 
-void core::monitor_capture_loop(Monitor &mon, Monitor::capture_state state)
+void core::Monitor::stop()
 {
-	using mode = Config::Screen::Brt_mode;
-	const auto &scr = cfg.screens[mon.id];
-
-	const int ss_brt = [&] {
-
-		if (scr.brt_mode == mode::ALS) {
-			mon.als_ch->recv();
-			return mon.als->lux_step();
-		}
-
-		return core::image_brightness(mon.xorg->screen_data(mon.id));
-	}();
-
-	if (mon.ch.data() <= mode::MANUAL)
-		return;
-
-	state.diff += abs(state.ss_brt - ss_brt);
-
-	if (state.diff > scr.brt_auto_threshold || scr.brt_mode == mode::ALS) {
-		state.diff = 0;
-
-		const int target_step = [&] {
-			if (mon.als && scr.brt_mode == mode::ALS)
-				return brt_target_als(ss_brt, scr.brt_auto_min, scr.brt_auto_max, scr.brt_auto_offset);
-			else
-				return brt_target(ss_brt, scr.brt_auto_min, scr.brt_auto_max, scr.brt_auto_offset);
-		}();
-
-		printf("monitor_capture_loop: sending %d...\n", target_step);
-		mon.brt_ch.send(target_step);
-	}
-
-	if (scr.brt_auto_min != state.cfg_min
-	    || scr.brt_auto_max != state.cfg_max
-	    || scr.brt_auto_offset != state.cfg_offset) {
-		state.diff = 255;
-	}
-
-	state.ss_brt     = ss_brt;
-	state.cfg_min    = scr.brt_auto_min;
-	state.cfg_max    = scr.brt_auto_max;
-	state.cfg_offset = scr.brt_auto_offset;
-
-	if (scr.brt_mode == mode::SCREENSHOT) {
-		if (mon.backlight) {
-			mon.als_ch->recv_timeout(scr.brt_auto_polling_rate);
-		} else {
-			std::this_thread::sleep_for(std::chrono::milliseconds(scr.brt_auto_polling_rate));
-		}
-	}
-
-	core::monitor_capture_loop(mon, state);
+	sig.send(-1);
 }
 
-void core::monitor_brt_adjust_loop(Monitor &mon, int cur_step, bool wait)
+void core::Monitor::brightness_client(int cur_step, bool wait)
 {
-	printf("monitor_brt_adjust_loop: fetching (wait: %d)...\n", wait);
+	while (true) {
 
-	const int target_step = wait ? mon.brt_ch.recv() : mon.brt_ch.data();
+		printf("monitor_brt_adjust_loop: fetching (wait: %d)...\n", wait);
 
-	printf("monitor_brt_adjust_loop: received %d.\n", target_step);
+		const int brightness = wait ? brt_ch.recv() : brt_ch.data();
 
-	if (target_step < 0)
-		return;
+		printf("monitor_brt_adjust_loop: received %d.\n", brightness);
 
-	if (cur_step == target_step)
-		return core::monitor_brt_adjust_loop(mon, cur_step, true);
-
-	const auto fn = [&] (int step) {
-		cur_step = step;
-		if (mon.backlight) {
-			mon.backlight->set(cur_step * mon.backlight->max_brt() / brt_steps_max);
-		} else {
-			cfg.screens[mon.id].brt_step = cur_step;
-			core::set_gamma(mon.xorg, cfg.screens[mon.id].brt_step, cfg.screens[mon.id].temp_step, mon.id);
+		if (brightness < 0) {
+			return;
 		}
-	};
 
-	const auto interrupt = [&] {
-		if (target_step != mon.brt_ch.data()) {
-			wait = false;
-			return true;
+		const int target_step = brt_target(brightness, cfg.screens[id].brt_auto_min, cfg.screens[id].brt_auto_max, cfg.screens[id].brt_auto_offset);
+
+		if (cur_step == target_step) {
+			wait = true;
+			continue;
 		}
-		return false;
-	};
 
-	easing::animate(easing::ease_out_expo, cur_step, target_step, cfg.screens[mon.id].brt_auto_speed, 0, cur_step, cur_step, fn, interrupt);
+		const auto fn = [&] (int new_step) {
+			cur_step = new_step;
+			cfg.screens[id].brt_step = cur_step;
+			core::set_gamma(xorg, cfg.screens[id].brt_step, cfg.screens[id].temp_step, id);
+		};
 
-	core::monitor_brt_adjust_loop(mon, cur_step, wait);
+		const auto interrupt = [&] {
+			if (brightness != brt_ch.data()) {
+				wait = false;
+				return true;
+			}
+			return false;
+		};
+
+		printf("Easing from %d to %d...\n", cur_step, target_step);
+		easing::animate(easing::ease_out_expo, cur_step, target_step, cfg.screens[id].brt_auto_speed, 0, cur_step, cur_step, fn, interrupt);
+	}
 }
 
 int core::brt_target(int ss_brt, int min, int max, int offset)
 {
-	const int ss_step     = ss_brt * brt_steps_max / 255;
 	const int offset_step = offset * brt_steps_max / max;
-	return std::clamp(brt_steps_max - ss_step + offset_step, min, max);
+	return std::clamp(brt_steps_max - ss_brt + offset_step, min, max);
 }
 
 int core::brt_target_als(int als_brt, int min, int max, int offset)
 {
 	const int offset_step = offset * brt_steps_max / max;
 	return std::clamp(als_brt + offset_step, min, max);
-}
-
-std::unique_ptr<sdbus::IProxy> dbus_register_signal_handler(
-    const std::string &service,
-    const std::string &obj_path,
-    const std::string &interface,
-    const std::string &signal_name,
-    std::function<void(sdbus::Signal &signal)> handler)
-{
-	auto proxy = sdbus::createProxy(service, obj_path);
-	try {
-		proxy->registerSignalHandler(interface, signal_name, handler);
-		proxy->finishRegistration();
-	} catch (sdbus::Error &e) {
-		syslog(LOG_ERR, "sdbus error: %s", e.what());
-	}
-	return proxy;
 }

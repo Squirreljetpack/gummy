@@ -19,7 +19,6 @@
 #ifndef SCREENCTL_H
 #define SCREENCTL_H
 
-#include <sdbus-c++/IProxy.h>
 #include <thread>
 
 #include "xorg.hpp"
@@ -27,13 +26,7 @@
 #include "sysfs_devices.hpp"
 #include "utils.hpp"
 #include "time.hpp"
-
-std::unique_ptr<sdbus::IProxy> dbus_register_signal_handler(
-    const std::string &service,
-    const std::string &obj_path,
-    const std::string &interface,
-    const std::string &signal_name,
-    std::function<void(sdbus::Signal &signal)> handler);
+#include "dbus.hpp"
 
 namespace core {
 
@@ -45,7 +38,7 @@ namespace core {
  * - temperature settings change */
 class Temp_Manager
 {
-    std::unique_ptr<sdbus::IProxy> _dbus_proxy;
+	std::unique_ptr<sdbus::IProxy> _dbus_proxy;
 	enum ch_code {
 		EXIT = -1,
 		MANUAL,
@@ -68,50 +61,45 @@ public:
 	void stop();
 };
 
-struct Monitor
+class Monitor
 {
-    Monitor(Xorg*, Sysfs::Backlight*, Sysfs::ALS*, Channel *als_ch, int id);
-	Monitor(Monitor&&);
 	Xorg *xorg;
+	size_t id;
+
 	Sysfs::Backlight *backlight;
 	Sysfs::ALS *als;
-	Channel ch;
+
+	Channel sig;
 	Channel brt_ch;
 	Channel *als_ch;
-	int id;
-	struct capture_state
-	{
-	    int ss_brt;
-		int cfg_min;
-		int cfg_max;
-		int cfg_offset;
-		int target;
-		int diff;
-	};
+
+	void brightness_client(int cur_step, bool wait);
+
+public:
+	Monitor(Xorg*, Sysfs::Backlight*, Sysfs::ALS*, Channel *als_ch, int id);
+	Monitor(Monitor&&);
+
+	void start();
+	void stop();
 };
 
-void monitor_init(Monitor&);
+int brt_target(int ss_brt, int min, int max, int offset);
+int brt_target_als(int als_brt, int min, int max, int offset);
 
-void monitor_check_brt_mode_loop(Monitor&);
-void monitor_capture_loop(Monitor&, Monitor::capture_state);
-void monitor_brt_adjust_loop(Monitor&, int cur_step, bool wait);
-
-int  brt_target(int ss_brt, int min, int max, int offset);
-int  brt_target_als(int als_brt, int min, int max, int offset);
-
-struct Brightness_Manager
+class Brightness_Manager
 {
+	Channel als_ch;
+	Channel sig;
+
+	std::vector<Sysfs::Backlight> backlights;
+	std::vector<Sysfs::ALS>       als;
+	std::vector<Monitor>          monitors;
+	std::vector<std::thread>      threads;
+public:
 	Brightness_Manager(Xorg&);
 	void start();
 	void stop();
-	Channel als_ch;
-	std::vector<Sysfs::Backlight> backlights;
-	std::vector<Sysfs::ALS>       als;
-	std::vector<std::thread>      threads;
-	std::vector<Monitor>          monitors;
 };
-
-void als_capture_loop(Sysfs::ALS &als, Channel &ch);
 
 }
 

@@ -16,16 +16,15 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef GAMMA_H
-#define GAMMA_H
-
-#include <tuple>
+#include <thread>
 #include "xorg.hpp"
 #include "channel.hpp"
+#include "sysfs_devices.hpp"
 
-namespace core {
-void set_gamma(Xorg *xorg, int brt_step, int temp_step, int screen_index);
-void refresh_gamma(Xorg*, Channel&);
-}
+#ifndef SERVER_HPP
+#define SERVER_HPP
 
-#endif
+void brightness_server(Xorg &xorg, size_t screen_idx, Channel &brt_ch, Channel &sig, int sleep_ms, int prev, int cur);
+void als_server(Sysfs::ALS &als, Channel &ch, Channel &sig, int sleep_ms, int prev, int cur);
+
+#endif // SERVER_HPP
