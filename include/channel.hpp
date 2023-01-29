@@ -84,4 +84,50 @@ inline int Channel::recv_timeout(int ms)
 	return out;
 }
 
+template <typename T>
+class Channel2
+{
+	std::condition_variable cv;
+	std::mutex mtx;
+	T _data;
+public:
+	T data() {
+		return _data;
+	}
+	T recv() {
+		T out;
+
+		{
+			std::unique_lock lk(mtx);
+			cv.wait(lk);
+			out = _data;
+		}
+
+		return out;
+	}
+
+	T recv_timeout(int ms) {
+		using namespace std::chrono;
+
+		T out;
+
+		{
+			std::unique_lock lk(mtx);
+			cv.wait_until(lk, system_clock::now() + milliseconds(ms));
+			out = _data;
+		}
+
+		return out;
+	};
+
+	void send(T data) {
+		{
+			std::lock_guard lk(mtx);
+			_data = data;
+		}
+
+		cv.notify_all();
+	}
+};
+
 #endif

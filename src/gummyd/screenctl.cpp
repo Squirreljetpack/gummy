@@ -28,15 +28,12 @@
 core::Temp_Manager::Temp_Manager(Xorg *xorg)
     : xorg(xorg),
       _global_step(temp_steps_max)
-{}
-
-void core::Temp_Manager::start()
 {
 	const auto notify_on_sys_resume = [&] (sdbus::Signal &sig) {
 		bool suspended;
 		sig >> suspended;
 		if (!suspended)
-			_ch.send(NOTIFIED);
+			_sig.send(NOTIFIED);
 	};
 
 	_dbus_proxy = dbus_register_signal_handler(
@@ -46,66 +43,46 @@ void core::Temp_Manager::start()
 	    "PrepareForSleep",
 	    notify_on_sys_resume);
 
-	_ch.send(MANUAL);
-	check_mode_loop();
+	_sig.send(cfg.temp_auto);
 }
 
-void core::Temp_Manager::notify()
+void core::Temp_Manager::start()
 {
-	_ch.send(NOTIFIED);
-}
-
-void core::Temp_Manager::stop()
-{
-	_ch.send(EXIT);
-}
-
-int core::Temp_Manager::global_step()
-{
-	return _global_step;
-}
-
-void core::Temp_Manager::check_mode_loop()
-{
-	const int mode = _ch.data();
+	const int mode = _sig.data();
 	printf("temp mode: %d\n", mode);
 
 	if (mode == EXIT)
 		return;
 
-	// todo: replace with channel data
-	if (cfg.temp_auto) {
+	if (mode == AUTO) {
+		std::thread thr ([&] {
+			while (true) {
+				const std::tuple<int, int> data = _ch.recv();
 
-		//printf("temp adjusting\n");
-		_ch.send(AUTO);
+				const int daytime = std::get<0>(data);
 
-		adjust(time_window(std::time(nullptr),
-		cfg.temp_auto_sunrise, cfg.temp_auto_sunset, -(cfg.temp_auto_speed * 60)), false);
+				if (daytime < 0)
+					return;
 
-		//printf("temp finished\n");
+				adjust(false, daytime, std::get<1>(data));
+				adjust(true, daytime, std::get<1>(data));
+			}
+		});
+
+		// todo: fix race condition
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+		time_server(time_window(std::time(nullptr), cfg.temp_auto_sunrise, cfg.temp_auto_sunset, -(cfg.temp_auto_speed * 60)), _ch, _sig);
+		thr.join();
 	}
-
-	// if notified, retry without waiting
-	if (mode == NOTIFIED) {
-		_ch.send(MANUAL);
-		//printf("temp notified\n");
-		return check_mode_loop();
-	}
-
-	//printf("temp waiting\n");
-	if (_ch.recv_timeout(60000) == EXIT)
-		return;
-
-	check_mode_loop();
 }
 
-void core::Temp_Manager::adjust(time_window tw, bool step)
+void core::Temp_Manager::adjust(bool step, bool daytime, std::time_t time_since_last)
 {
-	const bool daytime = tw.in_range();
+	printf("%d\n", step);
 	const std::time_t max_speed_s = cfg.temp_auto_speed * 60;
-	const std::time_t delta_s = std::clamp(std::abs(tw.time_since_last()), 0l, max_speed_s);
+	const std::time_t delta_s     = std::clamp(std::abs(time_since_last), 0l, max_speed_s);
 
-	const int target_temp = [step, daytime, delta_s, max_speed_s] {
+	const int target_temp = [&] {
 		if (!step) {
 			if (daytime) {
 				return int(remap(delta_s, 0, max_speed_s, cfg.temp_auto_low, cfg.temp_auto_high));
@@ -125,26 +102,41 @@ void core::Temp_Manager::adjust(time_window tw, bool step)
 		return ret;
 	}();
 
-	//printf("daytime: %d\n", daytime);
-	//printf("target_temp: %d\n", target_temp);
-	//printf("duration_ms: %d\n", duration_ms);
+	printf("daytime: %d\n", daytime);
+	printf("target_temp: %d\n", target_temp);
+	printf("duration_s: %d\n", duration_ms / 1000);
 
 	const int target_step = int(remap(target_temp, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max));
 
 	const auto fn = [&] (int step) {
 		_global_step = step;
 		for (size_t i = 0; i < xorg->scr_count(); ++i) {
-			cfg.screens[i].temp_step = step;
-			core::set_gamma(xorg, cfg.screens[i].brt_step, cfg.screens[i].temp_step, i);
+			if (cfg.screens[i].temp_auto) {
+				cfg.screens[i].temp_step = step;
+				core::set_gamma(xorg, cfg.screens[i].brt_step, cfg.screens[i].temp_step, i);
+			}
 		}
 	};
 
-	const auto interrupt = [&] { return _ch.data() != AUTO; };
+	const auto interrupt = [&] { return _sig.data() != AUTO; };
 
+	printf("easing from %d to %d...\n", _global_step, target_step);
 	easing::animate(easing::ease_in_out_quad, _global_step, target_step, duration_ms, 0, _global_step, _global_step, fn, interrupt);
+}
 
-	if (!step)
-		adjust(tw, !step);
+void core::Temp_Manager::notify()
+{
+	_sig.send(-1);
+}
+
+void core::Temp_Manager::stop()
+{
+	_sig.send(-1);
+}
+
+int core::Temp_Manager::global_step()
+{
+	return _global_step;
 }
 
 core::Brightness_Manager::Brightness_Manager(Xorg &xorg)

@@ -23,6 +23,7 @@
 #include "server.hpp"
 #include "cfg.hpp"
 #include "utils.hpp"
+#include "time.hpp"
 
 // [0, 255]
 int image_brightness(std::tuple<uint8_t*, size_t> buf, int bytes_per_pixel = 4, int stride = 1024)
@@ -71,6 +72,32 @@ void als_server(Sysfs::ALS &als, Channel &ch, Channel &sig, int sleep_ms, int pr
 		if (sig.recv_timeout(sleep_ms) < 0) {
 			ch.send(-1);
 			printf("als_server: exit\n");
+			return;
+		}
+	}
+}
+
+void time_server(time_window tw, Channel2<std::tuple<int, int>> &ch, Channel &sig)
+{
+	while (true) {
+
+		tw.reference(std::time(nullptr));
+
+		const int in_range = tw.in_range();
+
+		printf("time_server: sending signal: %d\n", in_range);
+
+		ch.send(std::make_tuple(in_range, tw.time_since_last()));
+
+		if (!in_range && tw.reference() > tw.start())
+			    tw.shift_dates();
+
+		const int time_to_next_ms = std::abs(tw.time_to_next()) * 1000;
+		//printf("time to next event: %d s\n", time_to_next_ms / 1000);
+
+		if (sig.recv_timeout(time_to_next_ms) < 0) {
+			ch.send(std::make_tuple(-1, -1));
+			printf("time_server: exit\n");
 			return;
 		}
 	}

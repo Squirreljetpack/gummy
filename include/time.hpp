@@ -14,6 +14,13 @@ inline time_t timestamp_modify(std::time_t ts, int h, int m, int s)
 	return std::mktime(&tm);
 }
 
+inline time_t add_day(std::time_t ts)
+{
+	std::tm tm = *std::localtime(&ts);
+	tm.tm_hour += 24;
+	return std::mktime(&tm);
+}
+
 inline std::string timestamp_fmt(std::time_t ts)
 {
 	std::string str(std::asctime(std::localtime(&ts)));
@@ -31,10 +38,14 @@ public:
 	bool in_range() const;
 	std::time_t time_to_start() const;
 	std::time_t time_to_end() const;
+	std::time_t time_to_next() const;
 	std::time_t time_since_last() const;
 	std::time_t reference() const;
 	std::time_t start() const;
 	std::time_t end() const;
+
+	void reference(std::time_t t);
+	void shift_dates();
 };
 
 inline time_window::time_window(std::time_t reference, std::string start, std::string end, int seconds)
@@ -51,9 +62,18 @@ inline time_window::time_window(std::time_t reference, std::string start, std::s
 	    std::stoi(end.substr(3, 2)),
 	    seconds);
 
-	//printf("ref: %s\n", timestamp_fmt(_reference).c_str());
-	//printf("srt: %s\n", timestamp_fmt(_start).c_str());
-	//printf("end: %s\n", timestamp_fmt(_end).c_str());
+	printf("ref: %s\n", timestamp_fmt(_reference).c_str());
+	printf("srt: %s\n", timestamp_fmt(_start).c_str());
+	printf("end: %s\n", timestamp_fmt(_end).c_str());
+}
+
+inline void time_window::shift_dates()
+{
+	_start = add_day(_start);
+	_end   = add_day(_end);
+
+	printf("new srt: %s\n", timestamp_fmt(_start).c_str());
+	printf("new end: %s\n", timestamp_fmt(_end).c_str());
 }
 
 inline bool time_window::in_range() const
@@ -73,9 +93,18 @@ inline std::time_t time_window::time_to_end() const
 	return _end - _reference;
 }
 
+inline std::time_t time_window::time_to_next() const
+{
+	return in_range() ? time_to_end() : time_to_start();
+}
+
 inline std::time_t time_window::time_since_last() const
 {
 	return in_range() ? time_to_start() : time_to_end();
+}
+
+inline void time_window::reference(std::time_t t) {
+	_reference = t;
 }
 
 inline std::time_t time_window::reference() const {

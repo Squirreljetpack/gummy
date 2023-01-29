@@ -49,7 +49,7 @@ void animate(std::function<double(double t)> easing, int start, int end, int dur
 
 		prev_step = cur_step;
 		cur_step = lerp(start, end, easing(double(progress_ms) / duration_ms));
-		//printf("cur step %d, progress %d/%d\n", cur_step, progress_ms, duration_ms);
+		printf("cur step %d, progress %d/%d\n", cur_step, progress_ms, duration_ms);
 
 		if (prev_step != cur_step)
 			fn(cur_step);
