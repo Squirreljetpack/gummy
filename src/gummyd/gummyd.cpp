@@ -205,10 +205,12 @@ int message_loop(core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
 	std::ostringstream ss;
 	ss << fs.rdbuf();
 
-	const std::string s(ss.str());
+	const std::string data(ss.str());
 
-	if (s == "stop")
+	if (data == "stop")
 		return EXIT_SUCCESS;
+
+	const auto j = json::parse(data);
 
 	//apply_options(Message(s), brtctl, tempctl);
 	cfg.write();
