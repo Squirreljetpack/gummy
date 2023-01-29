@@ -78,7 +78,6 @@ void core::Temp_Manager::start()
 
 void core::Temp_Manager::adjust(bool step, bool daytime, std::time_t time_since_last)
 {
-	printf("%d\n", step);
 	const std::time_t max_speed_s = cfg.temp_auto_speed * 60;
 	const std::time_t delta_s     = std::clamp(std::abs(time_since_last), 0l, max_speed_s);
 
@@ -181,10 +180,10 @@ void core::Brightness_Manager::stop()
 }
 
 core::Monitor::Monitor(Xorg *xorg,
-		Sysfs::Backlight *bl,
+        Sysfs::Backlight *bl,
         Sysfs::ALS *als,
-        Channel *als_ch,
-		int id)
+        Channel<> *als_ch,
+        int id)
    :  xorg(xorg),
       id(id),
       backlight(bl),

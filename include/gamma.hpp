@@ -25,7 +25,7 @@
 
 namespace core {
 void set_gamma(Xorg *xorg, int brt_step, int temp_step, int screen_index);
-void refresh_gamma(Xorg*, Channel&);
+void refresh_gamma(Xorg*, Channel<>&);
 }
 
 #endif

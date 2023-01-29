@@ -45,8 +45,8 @@ class Temp_Manager
 		AUTO,
 		NOTIFIED
 	};
-	Channel2<std::tuple<int, int>> _ch;
-	Channel _sig;
+	Channel<std::tuple<int, int>> _ch;
+	Channel<> _sig;
 	Xorg *xorg;
 
 	int  _global_step;
@@ -69,14 +69,14 @@ class Monitor
 	Sysfs::Backlight *backlight;
 	Sysfs::ALS *als;
 
-	Channel sig;
-	Channel brt_ch;
-	Channel *als_ch;
+	Channel<> sig;
+	Channel<> brt_ch;
+	Channel<> *als_ch;
 
 	void brightness_client(int cur_step, bool wait);
 
 public:
-	Monitor(Xorg*, Sysfs::Backlight*, Sysfs::ALS*, Channel *als_ch, int id);
+	Monitor(Xorg*, Sysfs::Backlight*, Sysfs::ALS*, Channel<> *als_ch, int id);
 	Monitor(Monitor&&);
 
 	void start();
@@ -88,8 +88,8 @@ int brt_target_als(int als_brt, int min, int max, int offset);
 
 class Brightness_Manager
 {
-	Channel als_ch;
-	Channel sig;
+	Channel<> als_ch;
+	Channel<> sig;
 
 	std::vector<Sysfs::Backlight> backlights;
 	std::vector<Sysfs::ALS>       als;

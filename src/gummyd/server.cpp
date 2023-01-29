@@ -41,7 +41,7 @@ int image_brightness(std::tuple<uint8_t*, size_t> buf, int bytes_per_pixel = 4, 
 	return ((rgb[0] * 0.2126) + (rgb[1] * 0.7152) + (rgb[2] * 0.0722)) * stride / (sz / bytes_per_pixel);
 }
 
-void brightness_server(Xorg &xorg, size_t screen_idx, Channel &brt_ch, Channel &sig, int sleep_ms, int prev, int cur)
+void brightness_server(Xorg &xorg, size_t screen_idx, Channel<> &brt_ch, Channel<> &sig, int sleep_ms, int prev, int cur)
 {
 	while (true) {
 		prev = cur;
@@ -57,7 +57,7 @@ void brightness_server(Xorg &xorg, size_t screen_idx, Channel &brt_ch, Channel &
 	}
 }
 
-void als_server(Sysfs::ALS &als, Channel &ch, Channel &sig, int sleep_ms, int prev, int cur)
+void als_server(Sysfs::ALS &als, Channel<> &ch, Channel<> &sig, int sleep_ms, int prev, int cur)
 {
 	while (true) {
 
@@ -77,7 +77,7 @@ void als_server(Sysfs::ALS &als, Channel &ch, Channel &sig, int sleep_ms, int pr
 	}
 }
 
-void time_server(time_window tw, Channel2<std::tuple<int, int>> &ch, Channel &sig)
+void time_server(time_window tw, Channel<std::tuple<int, int>> &ch, Channel<> &sig)
 {
 	while (true) {
 
