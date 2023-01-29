@@ -45,12 +45,12 @@ class Temp_Manager
 		AUTO,
 		NOTIFIED
 	};
-	Channel _ch;
+	Channel2<std::tuple<int, int>> _ch;
+	Channel _sig;
 	Xorg *xorg;
 
 	int  _global_step;
-	void adjust(time_window tw, bool catch_up);
-	void check_mode_loop();
+	void adjust(bool step, bool daytime, std::time_t time_since_last);
 
 public:
 	Temp_Manager(Xorg*);
