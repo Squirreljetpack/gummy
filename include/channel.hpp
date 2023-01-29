@@ -22,70 +22,8 @@
 
 #include <condition_variable>
 
+template <typename T = int>
 class Channel
-{
-    std::condition_variable cv;
-	std::mutex mtx;
-	int _data{0};
-public:
-	int data();
-	int recv();
-	int recv_timeout(int ms);
-	void send(int);
-};
-
-inline int Channel::data()
-{
-	int out;
-
-	{
-		std::lock_guard lk(mtx);
-		out = _data;
-	}
-
-	return out;
-}
-
-inline void Channel::send(int data)
-{
-	{
-		std::lock_guard lk(mtx);
-		_data = data;
-	}
-
-	cv.notify_all();
-}
-
-inline int Channel::recv()
-{
-	int out;
-
-	{
-		std::unique_lock lk(mtx);
-		cv.wait(lk);
-		out = _data;
-	}
-
-	return out;
-}
-
-inline int Channel::recv_timeout(int ms)
-{
-	using namespace std::chrono;
-
-	int out;
-
-	{
-		std::unique_lock lk(mtx);
-		cv.wait_until(lk, system_clock::now() + milliseconds(ms));
-		out = _data;
-	}
-
-	return out;
-}
-
-template <typename T>
-class Channel2
 {
 	std::condition_variable cv;
 	std::mutex mtx;

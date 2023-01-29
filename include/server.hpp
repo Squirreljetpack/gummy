@@ -26,8 +26,8 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
-void brightness_server(Xorg &xorg, size_t screen_idx, Channel &brt_ch, Channel &sig, int sleep_ms, int prev, int cur);
-void als_server(Sysfs::ALS &als, Channel &ch, Channel &sig, int sleep_ms, int prev, int cur);
-void time_server(time_window tw, Channel2<std::tuple<int, int>> &ch, Channel &sig);
+void brightness_server(Xorg &xorg, size_t screen_idx, Channel<> &brt_ch, Channel<> &sig, int sleep_ms, int prev, int cur);
+void als_server(Sysfs::ALS &als, Channel<> &ch, Channel<> &sig, int sleep_ms, int prev, int cur);
+void time_server(time_window tw, Channel<std::tuple<int, int>> &ch, Channel<> &sig);
 
 #endif // SERVER_HPP¨

@@ -131,7 +131,7 @@ void core::set_gamma(Xorg *xorg, int brt_step, int temp_step, int screen_index)
 	xorg->set_gamma_ramp(screen_index, ramps);
 }
 
-void core::refresh_gamma(Xorg *xorg, Channel &ch)
+void core::refresh_gamma(Xorg *xorg, Channel<> &ch)
 {
 	for (size_t i = 0; i < xorg->scr_count(); ++i)
 		core::set_gamma(xorg, cfg.screens[i].brt_step, cfg.screens[i].temp_step, i);
