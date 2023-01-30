@@ -8,6 +8,7 @@ set(SOURCES
 	sysfs_devices.cpp
 	screenctl.cpp
 	server.cpp
+	config.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
