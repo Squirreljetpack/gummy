@@ -253,16 +253,18 @@ enum {
 
 	TIME_START,
 	TIME_END,
-	TIME_ADAPTATION,
+	TIME_ADAPTATION_MS,
 
 	SCREENSHOT_OFFSET,
 	SCREENSHOT_POLL_MS,
+	SCREENSHOT_ADAPTATION_MS,
 
 	ALS_OFFSET,
 	ALS_POLL_MS,
+	ALS_ADAPTATION_MS
 };
 
-const std::array<std::array<std::string, 2>, 21> options {{
+const std::array<std::array<std::string, 2>, 23> options {{
 {"-v, --version", "Print version and exit"},
 {"-s,--screen", "Screen on which to act. If omitted, any changes will be applied on all screens."},
 
@@ -283,13 +285,15 @@ const std::array<std::array<std::string, 2>, 21> options {{
 
 {"-y,--time-start", "Starting time in 24h format, for example `06:00`."},
 {"-u,--time-end", "End time in 24h format, for example `16:30`."},
-{"-i,--time-adaptation", "Adaptation speed in minutes.\nFor example, if this is set to 30 minutes, time-based values start easing into their minimum value 30 minutes before the end time."},
+{"-i,--time-adaptation-min", "Adaptation speed in minutes.\nFor example, if this is set to 30 minutes, time-based values start easing into their minimum value 30 minutes before the end time."},
 
 {"--screenshot-offset-perc", "Adds to the screenshot brightness calculation."},
 {"--screenshot-poll-ms", "Time interval between each screenshot."},
+{"--screenshot-adaptation-ms", "Adaptation speed in milliseconds."},
 
 {"--als-offset-perc", "Adds to the ALS brightness calculation."},
 {"--als-poll-ms", "Time interval between each sensor reading."},
+{"--als-adaptation-ms", "Adaptation speed in milliseconds."},
 }};
 
 int interface(int argc, const char **argv)
@@ -340,26 +344,30 @@ int interface(int argc, const char **argv)
 	app.add_option(options[TEMP_MIN][0], temp_min, options[TEMP_MIN][1])->check(CLI::Range(temp_k_min, temp_k_max))->group(grp_temp);
 	app.add_option(options[TEMP_MAX][0], temp_max, options[TEMP_MAX][1])->check(CLI::Range(temp_k_min, temp_k_max))->group(grp_temp);
 
-	int time_start         = -1;
-	int time_end           = -1;
-	int time_adaptation_ms = -1;
+	int time_start          = -1;
+	int time_end            = -1;
+	int time_adaptation_min = -1;
 
 	const std::string grp_time("Time-based mode settings");
 	app.add_option(options[TIME_START][0], time_start, options[TIME_START][1])->check(time_format_callback)->group(grp_time);
 	app.add_option(options[TIME_END][0], time_end, options[TIME_END][1])->check(time_format_callback)->group(grp_time);
-	app.add_option(options[TIME_ADAPTATION][0], time_adaptation_ms, options[TIME_ADAPTATION][1])->check(CLI::Range(1, 60 * 12))->group(grp_time);
+	app.add_option(options[TIME_ADAPTATION_MS][0], time_adaptation_min, options[TIME_ADAPTATION_MS][1])->check(CLI::Range(1, 60 * 12))->group(grp_time);
 
 	const std::string grp_ss("Screenshot mode settings");
-	int screenshot_offset_perc = -1;
-	int screenshot_poll_ms = -1;
+	int screenshot_offset_perc   = -1;
+	int screenshot_poll_ms       = -1;
+	int screenshot_adaptation_ms = -1;
 	app.add_option(options[SCREENSHOT_OFFSET][0], screenshot_offset_perc, options[SCREENSHOT_OFFSET][1])->check(CLI::Range(0, 100))->group(grp_ss);
 	app.add_option(options[SCREENSHOT_POLL_MS][0], screenshot_poll_ms, options[SCREENSHOT_POLL_MS][1])->check(CLI::Range(0, 100))->group(grp_ss);
+	app.add_option(options[SCREENSHOT_ADAPTATION_MS][0], screenshot_adaptation_ms, options[SCREENSHOT_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_ss);
 
 	const std::string grp_als("ALS mode settings");
-	int als_offset_perc = -1;
-	int als_poll_ms = -1;
+	int als_offset_perc   = -1;
+	int als_poll_ms       = -1;
+	int als_adaptation_ms = -1;
 	app.add_option(options[ALS_OFFSET][0], als_offset_perc, options[ALS_OFFSET][1])->check(CLI::Range(0, 100))->group(grp_als);
 	app.add_option(options[ALS_POLL_MS][0], als_poll_ms, options[ALS_POLL_MS][1])->check(CLI::Range(0, 100))->group(grp_als);
+	app.add_option(options[ALS_ADAPTATION_MS][0], als_adaptation_ms, options[ALS_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_als);
 
 	try {
 		app.parse(argc, argv);
@@ -392,13 +400,15 @@ int interface(int argc, const char **argv)
 
 		{"time_start", time_start},
 		{"time_end", time_end},
-		{"time_adaptation_ms", time_adaptation_ms},
+		{"time_adaptation_min", time_adaptation_min},
 
 		{"screenshot_offset_perc", screenshot_offset_perc},
 		{"screenshot_poll_ms", screenshot_poll_ms},
+		{"screenshot_adaptation_ms", screenshot_adaptation_ms},
 
 		{"als_offset_perc", als_offset_perc},
 		{"als_poll_ms", als_poll_ms},
+		{"als_adaptation_ms", als_adaptation_ms},
 	};
 
 	send(msg.dump());

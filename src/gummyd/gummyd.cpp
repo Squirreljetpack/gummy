@@ -28,6 +28,7 @@
 #include "sysfs_devices.hpp"
 #include "screenctl.hpp"
 #include "gamma.hpp"
+#include "config.hpp"
 
 /*void apply_options(const Message &opts, core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
 {
@@ -190,55 +191,39 @@ void init_fifo()
 {
 	if (mkfifo(fifo_name, S_IFIFO|0640) == 1) {
 		syslog(LOG_ERR, "mkfifo err %d, aborting\n", errno);
-		exit(EXIT_FAILURE);
+		std::exit(EXIT_FAILURE);
 	}
 }
 
-int message_loop(core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
+std::string read_fifo()
 {
 	std::ifstream fs(fifo_name);
+
 	if (fs.fail()) {
 		syslog(LOG_ERR, "unable to open fifo, aborting\n");
-		exit(1);
+		std::exit(EXIT_FAILURE);
 	}
 
-	std::ostringstream ss;
-	ss << fs.rdbuf();
+	std::ostringstream stream;
+	stream << fs.rdbuf();
 
-	const std::string data(ss.str());
-
-	if (data == "stop")
-		return EXIT_SUCCESS;
-
-	const auto j = json::parse(data);
-
-	//apply_options(Message(s), brtctl, tempctl);
-	cfg.write();
-
-	// need to close explicity for tail recursion
 	fs.close();
-	return message_loop(brtctl, tempctl);
+	return stream.str();
 }
 
-int init()
+int start(Xorg &xorg, config conf)
 {
-	Xorg xorg;
-	cfg.init(xorg.scr_count());
-	init_fifo();
+	std::vector<std::thread> threads;
+	threads.reserve(3);
 
 	core::Brightness_Manager b(xorg);
 	core::Temp_Manager t(&xorg);
 
-	std::vector<std::thread> threads;
-	threads.reserve(3);
-
 	Channel ch;
-	threads.emplace_back([&] { core::refresh_gamma(&xorg, ch); });
 
+	threads.emplace_back([&] { core::refresh_gamma(&xorg, ch); });
 	threads.emplace_back([&] { b.start(); });
 	threads.emplace_back([&] { t.start(); });
-
-	message_loop(b, t);
 
 	ch.send(-1);
 	t.stop();
@@ -248,6 +233,29 @@ int init()
 		t.join();
 
 	return EXIT_SUCCESS;
+}
+
+int message_loop()
+{
+	bool bootstrap = true;
+	Xorg xorg;
+	config conf(xorg.scr_count());
+
+	while (true) {
+
+		if (bootstrap) {
+			bootstrap = false;
+			//start(xorg, conf);
+			continue;
+		}
+
+		const std::string data(read_fifo());
+
+		if (data == "stop")
+			return EXIT_SUCCESS;
+
+		//start(xorg, config(json::parse(data), xorg.scr_count()));
+	}
 }
 
 int main(int argc, char **argv)
@@ -264,5 +272,7 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	return init();
+	init_fifo();
+
+	return message_loop();
 }
