@@ -112,7 +112,7 @@ gamma_state::gamma_state(Xorg &xorg, std::vector<config::screen> screens_conf)
 	for (size_t i = 0; i < xorg.scr_count(); ++i) {
 
 		int brt  = brt_steps_max;
-		int temp = temp_steps_max;
+		int temp = temp_k_max;
 
 		const auto &brt_model  = screens_conf[i].models[config::screen::model_idx::BRIGHTNESS];
 		const auto &temp_model = screens_conf[i].models[config::screen::model_idx::TEMPERATURE];
