@@ -95,10 +95,8 @@ void core::Temp_Manager::adjust(bool step, bool daytime, std::time_t time_since_
 
 	const int duration_ms = [step, max_speed_s, delta_s] {
 		const int min = 2000;
-		int ret = (!step) ? min : (max_speed_s - delta_s) * 1000;
-		if (ret < min)
-			ret = min;
-		return ret;
+		const int ret = (!step) ? min : (max_speed_s - delta_s) * 1000;
+		return std::max(ret, min);
 	}();
 
 	printf("daytime: %d\n", daytime);

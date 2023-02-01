@@ -16,10 +16,10 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <sdbus-c++/IProxy.h>
-
 #ifndef DBUS_HPP
 #define DBUS_HPP
+
+#include <sdbus-c++/IProxy.h>
 
 inline std::unique_ptr<sdbus::IProxy> dbus_register_signal_handler(
     std::string service,

@@ -3,10 +3,8 @@ project(gummyd LANGUAGES CXX)
 set(SOURCES
 	gummyd.cpp
 	xorg.cpp
-	cfg.cpp
 	gamma.cpp
 	sysfs_devices.cpp
-	screenctl.cpp
 	server.cpp
 	config.cpp
 )

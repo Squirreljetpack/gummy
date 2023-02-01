@@ -22,10 +22,11 @@
 
 #include "CLI11.hpp"
 #include "json.hpp"
-#include "cfg.hpp"
+#include "config.hpp"
 #include "utils.hpp"
 
 using std::cout;
+using namespace constants;
 
 void send(const std::string &s)
 {

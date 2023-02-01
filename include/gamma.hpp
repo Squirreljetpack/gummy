@@ -16,16 +16,31 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef GAMMA_H
-#define GAMMA_H
+#ifndef GAMMA_HPP
+#define GAMMA_HPP
 
-#include <tuple>
+#include <atomic>
 #include "xorg.hpp"
 #include "channel.hpp"
+#include "config.hpp"
 
-namespace core {
-void set_gamma(Xorg *xorg, int brt_step, int temp_step, int screen_index);
-void refresh_gamma(Xorg*, Channel<>&);
-}
+class gamma_state {
+	Xorg *_xorg;
+
+	struct values {
+		std::atomic<int> brightness;
+		std::atomic<int> temperature;
+		values(int brt, int temp) : brightness(brt), temperature(temp) {};
+	};
+
+	std::vector<std::unique_ptr<values>> _screens;
+
+	void set(size_t screen_idx, int brightness, int temperature);
+	void refresh(Channel<>&);
+public:
+	gamma_state(Xorg &xorg, std::vector<config::screen> screen_conf);
+	void set_brightness(size_t screen_idx, int val);
+	void set_temperature(size_t screen_idx, int val);
+};
 
 #endif

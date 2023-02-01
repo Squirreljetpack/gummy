@@ -19,14 +19,16 @@
 #include <array>
 
 #include "gamma.hpp"
-#include "cfg.hpp"
+#include "config.hpp"
 #include "utils.hpp"
 #include "channel.hpp"
 #include "xorg.hpp"
 
+using namespace constants;
+
 // Color ramp by Ingo Thies.
 // From Redshift: https://github.com/jonls/redshift/blob/master/README-colorramp
-std::tuple<double, double, double> temp_step_to_rgb(int step)
+std::tuple<double, double, double> kelvin_to_rgb(int val)
 {
 	constexpr std::array<std::array<double, 3>, 56> ingo_thies_table {{
 		{1.00000000, 0.18172716, 0.00000000},
@@ -87,7 +89,7 @@ std::tuple<double, double, double> temp_step_to_rgb(int step)
 		{1.00000000, 1.00000000, 1.00000000},
 	}};
 
-	const double idx_lerp = remap_to_idx(step, temp_steps_min, temp_steps_max, ingo_thies_table.size());
+	const double idx_lerp = remap_to_idx(val, temp_k_min, temp_k_max, ingo_thies_table.size());
 	const size_t idx = std::floor(idx_lerp);
 	const double r = lerp(ingo_thies_table[idx][0], ingo_thies_table[idx + 1][0], mant(idx_lerp));
 	const double g = lerp(ingo_thies_table[idx][1], ingo_thies_table[idx + 1][1], mant(idx_lerp));
@@ -101,6 +103,32 @@ double calc_brt_mult(int step, size_t ramp_sz)
 	return (double(step) / brt_steps_max) * ramp_step;
 }
 
+gamma_state::gamma_state(Xorg &xorg, std::vector<config::screen> screens_conf)
+{
+	_xorg = &xorg;
+
+	_screens.reserve(xorg.scr_count());
+
+	for (size_t i = 0; i < xorg.scr_count(); ++i) {
+
+		int brt  = brt_steps_max;
+		int temp = temp_steps_max;
+
+		const auto &brt_model  = screens_conf[i].models[config::screen::model_idx::BRIGHTNESS];
+		const auto &temp_model = screens_conf[i].models[config::screen::model_idx::TEMPERATURE];
+
+		if (brt_model.mode == config::screen::mode::MANUAL)
+			brt = brt_model.val;
+
+		if (temp_model.mode == config::screen::mode::MANUAL)
+			temp = temp_model.val;
+
+		set(i, brt, temp);
+
+		_screens.emplace_back(std::make_unique<values>(brt, temp));
+	}
+}
+
 /**
  * The gamma ramp is a set of unsigned 16-bit values for each of the three color channels.
  * Ramp size varies on different systems.
@@ -109,13 +137,13 @@ double calc_brt_mult(int step, size_t ramp_sz)
  * So, when ramp_sz = 2048, each value is increased in steps of 32,
  * When ramp_sz = 1024 (usually on iGPUs), it's 64, and so on.
  */
-void core::set_gamma(Xorg *xorg, int brt_step, int temp_step, int screen_index)
+void gamma_state::set(size_t screen_index, int brt_step, int temp_step)
 {
-	std::vector<uint16_t> ramps(xorg->ramp_size(screen_index));
+	std::vector<uint16_t> ramps(_xorg->ramp_size(screen_index));
 
 	const size_t sz = ramps.size() / 3;
 	const double brt_mult = calc_brt_mult(brt_step, sz);
-	const auto [r_mult, g_mult, b_mult] = temp_step_to_rgb(temp_step);
+	const auto [r_mult, g_mult, b_mult] = kelvin_to_rgb(temp_step);
 
 	uint16_t *r = &ramps[0 * sz];
 	uint16_t *g = &ramps[1 * sz];
@@ -128,16 +156,24 @@ void core::set_gamma(Xorg *xorg, int brt_step, int temp_step, int screen_index)
 		b[i] = uint16_t(val * b_mult);
 	}
 
-	xorg->set_gamma_ramp(screen_index, ramps);
+	_xorg->set_gamma_ramp(screen_index, ramps);
 }
 
-void core::refresh_gamma(Xorg *xorg, Channel<> &ch)
+void gamma_state::refresh(Channel<> &ch)
 {
-	for (size_t i = 0; i < xorg->scr_count(); ++i)
-		core::set_gamma(xorg, cfg.screens[i].brt_step, cfg.screens[i].temp_step, i);
+	while (true) {
 
-	if (ch.recv_timeout(10000) < 0)
-		return;
+		for (size_t i = 0; i < _xorg->scr_count(); ++i)
+			set(i, _screens[i]->brightness, _screens[i]->temperature);
 
-	core::refresh_gamma(xorg, ch);
+		// this return fails if we are still refreshing
+		if (ch.recv_timeout(10000) < 0)
+			return;
+	}
+}
+
+void gamma_state::set_temperature(size_t idx, int val)
+{
+	_screens[idx]->temperature = val;
+	set(idx, _screens[idx]->brightness, _screens[idx]->temperature);
 }

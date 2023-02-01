@@ -22,12 +22,13 @@
 #include <functional>
 #include <chrono>
 #include <thread>
+
 #include "utils.hpp"
+
+namespace easing {
 
 // Easing functions adapted from:
 // https://github.com/warrenm/AHEasing/blob/master/AHEasing/easing.c
-
-namespace easing {
 
 const auto ease_out_expo = [] (double t) {
 	return (t == 1.0) ? t : 1 - pow(2, -10 * t);
@@ -40,7 +41,7 @@ const auto ease_in_out_quad = [] (double t) {
 		return (-2 * t * t) + (4 * t) - 1;
 };
 
-void animate(std::function<double(double t)> easing, int start, int end, int duration_ms, int progress_ms, int prev_step, int cur_step, std::function<void(int)> fn, std::function<bool()> interrupt)
+inline void animate(std::function<double(double t)> easing, int start, int end, int duration_ms, int progress_ms, int prev_step, int cur_step, std::function<void(int)> fn, std::function<bool()> interrupt)
 {
 	while (true) {
 		if (cur_step == end) {

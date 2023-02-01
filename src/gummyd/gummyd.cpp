@@ -23,173 +23,17 @@
 #include <fstream>
 
 #include "utils.hpp"
-#include "cfg.hpp"
 #include "xorg.hpp"
 #include "sysfs_devices.hpp"
 #include "screenctl.hpp"
 #include "gamma.hpp"
 #include "config.hpp"
-
-/*void apply_options(const Message &opts, core::Brightness_Manager &brtctl, core::Temp_Manager &tempctl)
-{
-	using Brt_mode = Config::Screen::Brt_mode;
-	bool notify_temp = false;
-	bool notify_als = false;
-
-	// Non-screen specific options
-	{
-		if (opts.als_poll_rate_ms != -1) {
-			cfg.als_polling_rate = opts.als_poll_rate_ms;
-			notify_als = true;
-		}
-
-		if (opts.temp_day_k != -1) {
-			cfg.temp_auto_high = opts.temp_day_k;
-			notify_temp = true;
-		}
-
-		if (opts.temp_night_k != -1) {
-			cfg.temp_auto_low = opts.temp_night_k;
-			notify_temp = true;
-		}
-
-		if (!opts.sunrise_time.empty()) {
-			cfg.temp_auto_sunrise = opts.sunrise_time;
-			notify_temp = true;
-		}
-
-		if (!opts.sunset_time.empty()) {
-			cfg.temp_auto_sunset = opts.sunset_time;
-			notify_temp = true;
-		}
-
-		if (opts.temp_adaptation_time != -1) {
-			cfg.temp_auto_speed = opts.temp_adaptation_time;
-			notify_temp = true;
-		}
-	}
-
-	size_t start = 0;
-	size_t end = brtctl.monitors.size() - 1;
-
-	if (opts.scr_no != -1) {
-		if (size_t(opts.scr_no) > end) {
-			syslog(LOG_ERR, "Screen %d not available", opts.scr_no);
-			return;
-		}
-		start = end = opts.scr_no;
-
-		// make sure global temp switch is on when enabling temp on one screen
-		if (opts.temp_auto == 1) {
-			cfg.temp_auto = true;
-			notify_temp = true;
-		}
-	} else {
-		if (opts.temp_k != -1) {
-			cfg.temp_auto = false;
-			notify_temp = true;
-		} else if (opts.temp_auto != -1) {
-			cfg.temp_auto = bool(opts.temp_auto);
-			notify_temp = true;
-		}
-	}
-
-	for (size_t i = start; i <= end; ++i) {
-
-		const bool backlight_present = i < brtctl.backlights.size();
-
-		if (opts.brt_mode != -1) {
-			cfg.screens[i].brt_mode = Brt_mode(opts.brt_mode);
-			if (!brtctl.als.empty()) {
-				brtctl.als_ch.send(2);
-			}
-			brtctl.monitors[i].ch.send(Brt_mode(opts.brt_mode));
-		}
-
-		if (opts.brt_perc != -1) {
-			cfg.screens[i].brt_mode = Brt_mode::MANUAL;
-			brtctl.monitors[i].ch.send(Brt_mode::MANUAL);
-
-			const int val = int(remap(opts.brt_perc, 0, 100, 0, brt_steps_max));
-
-			int tmp = backlight_present ? brtctl.backlights[i].step() : cfg.screens[i].brt_step;
-
-			if (opts.add == 0 && opts.sub == 0)
-				tmp = val;
-			else
-				tmp += opts.add > 0 ? val : -val;
-
-			if (backlight_present)
-				brtctl.backlights[i].set(remap(tmp, brt_steps_min, brt_steps_max, 0, brtctl.backlights[i].max_brt()));
-			else
-				cfg.screens[i].brt_step = std::clamp(tmp, brt_steps_min, brt_steps_max);
-		}
-
-		if (opts.brt_auto_min != -1) {
-			cfg.screens[i].brt_auto_min = int(remap(opts.brt_auto_min, 0, 100, 0, brt_steps_max));
-			notify_als = true;
-		}
-
-		if (opts.brt_auto_max != -1) {
-			cfg.screens[i].brt_auto_max = int(remap(opts.brt_auto_max, 0, 100, 0, brt_steps_max));
-			notify_als = true;
-		}
-
-		if (opts.brt_auto_offset != -1) {
-			cfg.screens[i].brt_auto_offset = int(remap(opts.brt_auto_offset, 0, 100, 0, brt_steps_max));
-			notify_als = true;
-		}
-
-		if (opts.brt_auto_speed != -1) {
-			cfg.screens[i].brt_auto_speed = opts.brt_auto_speed;
-		}
-
-		if (opts.screenshot_rate_ms != -1) {
-			cfg.screens[i].brt_auto_polling_rate = opts.screenshot_rate_ms;
-		}
-
-		if (opts.temp_k != -1) {
-
-			cfg.screens[i].temp_auto = false;
-			int tmp = cfg.screens[i].temp_step;
-
-			if (opts.add == 0 && opts.sub == 0) {
-				tmp = int(remap(opts.temp_k, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max));
-			} else {
-
-				// convert in kelvins and add
-				const int cur_temp_k = remap(tmp, temp_steps_min, temp_steps_max, temp_k_min, temp_k_max) + (opts.add > 0 ? opts.temp_k : -opts.temp_k);
-
-				// convert again in step
-				tmp = remap(cur_temp_k, temp_k_min, temp_k_max, temp_steps_min, temp_steps_max);
-			}
-
-			cfg.screens[i].temp_step = std::clamp(tmp, temp_steps_min, temp_steps_max);
-
-		} else if (opts.temp_auto != -1) {
-			cfg.screens[i].temp_auto = bool(opts.temp_auto);
-
-			if (opts.temp_auto == 1) {
-				cfg.screens[i].temp_step = tempctl.global_step();
-			}
-		}
-
-		// todo: remove this from here
-		core::set_gamma(brtctl.monitors[i].xorg, cfg.screens[i].brt_step, cfg.screens[i].temp_step, i);
-	}
-
-	if (notify_als) {
-		brtctl.als_ch.send(1);
-	}
-
-	if (notify_temp) {
-		tempctl.notify();
-	}
-}*/
+#include "server.hpp"
+#include "easing.hpp"
 
 void init_fifo()
 {
-	if (mkfifo(fifo_name, S_IFIFO|0640) == 1) {
+	if (mkfifo(constants::fifo_name, S_IFIFO|0640) == 1) {
 		syslog(LOG_ERR, "mkfifo err %d, aborting\n", errno);
 		std::exit(EXIT_FAILURE);
 	}
@@ -197,7 +41,7 @@ void init_fifo()
 
 std::string read_fifo()
 {
-	std::ifstream fs(fifo_name);
+	std::ifstream fs(constants::fifo_name);
 
 	if (fs.fail()) {
 		syslog(LOG_ERR, "unable to open fifo, aborting\n");
@@ -213,24 +57,44 @@ std::string read_fifo()
 
 int start(Xorg &xorg, config conf)
 {
-	std::vector<std::thread> threads;
-	threads.reserve(3);
+	assert(xorg.scr_count() == conf.screens.size());
 
-	core::Brightness_Manager b(xorg);
-	core::Temp_Manager t(&xorg);
+	gamma_state gamma_state(xorg, conf.screens);
 
-	Channel ch;
+	/*Channel stop_signal(0);
 
-	threads.emplace_back([&] { core::refresh_gamma(&xorg, ch); });
-	threads.emplace_back([&] { b.start(); });
-	threads.emplace_back([&] { t.start(); });
+	Channel <time_server_message> time_ch;
 
-	ch.send(-1);
-	t.stop();
-	b.stop();
+	std::vector<std::thread> servers;
+	std::vector<std::thread> clients;
 
-	for (auto &t : threads)
+	// start time service
+	servers.emplace_back([&] {
+		time_server(time_ch, stop_signal, conf.time);
+	});
+
+	// read config.screens
+	for (size_t idx = 0; idx < conf.screens.size(); ++idx) {
+
+		const auto set_temp = [&] (int val) {
+			gamma_state.set_temperature(idx, val);
+		};
+
+		for (const auto &model : conf.screens[idx].models) {
+			if (model.mode == config::screen::TIME) {
+				clients.emplace_back([&] {
+					time_client(time_ch, model, set_temp);
+				});
+			}
+		}
+	}
+
+	stop_signal.send(-1);
+
+	for (auto &t : servers)
 		t.join();
+	for (auto &t : clients)
+		t.join();*/
 
 	return EXIT_SUCCESS;
 }
@@ -239,13 +103,13 @@ int message_loop()
 {
 	bool bootstrap = true;
 	Xorg xorg;
-	config conf(xorg.scr_count());
+	//config default_conf(xorg.scr_count());
 
 	while (true) {
 
 		if (bootstrap) {
 			bootstrap = false;
-			//start(xorg, conf);
+			start(xorg, config(std::string(constants::config_name), xorg.scr_count()));
 			continue;
 		}
 
@@ -254,7 +118,7 @@ int message_loop()
 		if (data == "stop")
 			return EXIT_SUCCESS;
 
-		//start(xorg, config(json::parse(data), xorg.scr_count()));
+		start(xorg, config(json::parse(data), xorg.scr_count()));
 	}
 }
 
@@ -267,7 +131,7 @@ int main(int argc, char **argv)
 
 	openlog("gummyd", LOG_PID, LOG_DAEMON);
 
-	if (int err = set_lock(lock_name) > 0) {
+	if (int err = set_lock(constants::lock_name) > 0) {
 		syslog(LOG_ERR, "lockfile err %d", err);
 		exit(EXIT_FAILURE);
 	}

@@ -29,6 +29,9 @@ class Channel
 	std::mutex mtx;
 	T _data;
 public:
+	Channel() : _data({}) {}
+	Channel(T data) : _data(data) {}
+
 	T data() {
 		return _data;
 	}
