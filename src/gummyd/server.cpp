@@ -16,14 +16,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <thread>
-#include "xorg.hpp"
-#include "channel.hpp"
-#include "sysfs_devices.hpp"
 #include "server.hpp"
-#include "cfg.hpp"
-#include "utils.hpp"
-#include "time.hpp"
+#include "easing.hpp"
 
 // [0, 255]
 int image_brightness(std::tuple<uint8_t*, size_t> buf, int bytes_per_pixel = 4, int stride = 1024)
@@ -43,9 +37,10 @@ int image_brightness(std::tuple<uint8_t*, size_t> buf, int bytes_per_pixel = 4, 
 
 void brightness_server(Xorg &xorg, size_t screen_idx, Channel<> &brt_ch, Channel<> &sig, int sleep_ms, int prev, int cur)
 {
+
 	while (true) {
 		prev = cur;
-		cur = remap(image_brightness(xorg.screen_data(screen_idx)), 0, 255, brt_steps_min, brt_steps_max);
+		cur = remap(image_brightness(xorg.screen_data(screen_idx)), 0, 255, constants::brt_steps_min, constants::brt_steps_max);
 
 		if (prev != cur)
 			brt_ch.send(cur);
@@ -77,8 +72,10 @@ void als_server(Sysfs::ALS &als, Channel<> &ch, Channel<> &sig, int sleep_ms, in
 	}
 }
 
-void time_server(time_window tw, Channel<std::tuple<int, int>> &ch, Channel<> &sig)
+void time_server(Channel<time_server_message> &ch, Channel<> &sig, config::time_config conf)
 {
+	time_window tw(std::time(nullptr), conf.start, conf.end, -(conf.adaptation_minutes * 60));
+
 	while (true) {
 
 		tw.reference(std::time(nullptr));
@@ -87,7 +84,7 @@ void time_server(time_window tw, Channel<std::tuple<int, int>> &ch, Channel<> &s
 
 		printf("time_server: sending signal: %d\n", in_range);
 
-		ch.send(std::make_tuple(in_range, tw.time_since_last()));
+		ch.send({tw.in_range(), tw.time_since_last(), conf.adaptation_minutes * 60, true});
 
 		if (!in_range && tw.reference() > tw.start())
 			    tw.shift_dates();
@@ -96,9 +93,59 @@ void time_server(time_window tw, Channel<std::tuple<int, int>> &ch, Channel<> &s
 		//printf("time to next event: %d s\n", time_to_next_ms / 1000);
 
 		if (sig.recv_timeout(time_to_next_ms) < 0) {
-			ch.send(std::make_tuple(-1, -1));
+			ch.send({0, 0, 0, false});
 			printf("time_server: exit\n");
 			return;
 		}
 	}
 }
+
+time_target calc_time_target(bool step, time_server_message data, config::screen::model model)
+{
+	const std::time_t min_duration_ms = 2000;
+
+	if (step)
+		return { (data.in_range ? model.max : model.min), min_duration_ms };
+
+	const std::time_t delta_s = std::min(std::abs(data.time_since_last_event), data.adaptation_s);
+
+	const int target = [&] {
+		const double lerp_fac = double(delta_s) / data.adaptation_s;
+		if (data.in_range)
+			return int(lerp(model.min, model.max, lerp_fac));
+		else
+			return int(lerp(model.max, model.min, lerp_fac));
+	}();
+
+	const int duration_ms = std::max(((data.adaptation_s - delta_s) * 1000), min_duration_ms);
+
+	printf("in_range: %d\n", data.in_range);
+	printf("target: %d\n", target);
+	printf("duration_ms: %d\n", duration_ms);
+
+	return { target, duration_ms };
+}
+
+void time_client(Channel<time_server_message> &time_ch, config::screen::model model, std::function<void(int)> model_fn)
+{
+	int cur;
+
+	const auto interrupt = [&] {
+		return !time_ch.data().keep_alive;
+	};
+
+	while (true) {
+		const time_server_message data = time_ch.recv();
+
+		if (!data.keep_alive)
+			return;
+
+		for (int step = 0; step < 2; ++step) {
+			const time_target target = calc_time_target(step, data, model);
+			cur = target.val;
+			easing::animate(easing::ease_in_out_quad, cur, target.val, target.duration_ms, 0, cur, cur, model_fn, interrupt);
+		}
+	}
+}
+
+

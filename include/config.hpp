@@ -16,12 +16,14 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <vector>
-#include <string>
-#include <json.hpp>
-
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
+
+#include <vector>
+#include <string>
+#include "json.hpp"
+
+using nlohmann::json;
 
 namespace constants {
 extern const char* config_name;
@@ -38,35 +40,13 @@ extern const int temp_k_max;
 
 class config {
 
-	class screen {
-		enum mode {
-			MANUAL,
-			SCREENSHOT,
-			ALS,
-			TIME,
-		};
-		struct model {
-			screen::mode mode;
-			int val;
-			int min;
-			int max;
-		};
-		model backlight;
-		model brightness;
-		model temperature;
-	public:
-		screen();
-		screen(nlohmann::json data);
-		nlohmann::json to_json() const;
-	};
+	//std::vector<screen> screens;
 
-	std::vector<screen> screens;
-
-	struct {
-		std::string start;
-		std::string end;
-		int adaptation_min;
-	} time;
+	//struct {
+	//	std::string start;
+	//	std::string end;
+	//	int adaptation_min;
+	//} time;
 
 	struct {
 		int offset_perc;
@@ -91,8 +71,45 @@ class config {
 	void from_json(nlohmann::json data);
 	nlohmann::json to_json() const;
 public:
+
+	struct screen {
+
+		enum mode {
+			MANUAL,
+			SCREENSHOT,
+			ALS,
+			TIME,
+		};
+
+		struct model {
+			screen::mode mode;
+			int val;
+			int min;
+			int max;
+		};
+
+		enum model_idx {
+			BACKLIGHT,
+			BRIGHTNESS,
+			TEMPERATURE
+		};
+		std::array<model, 3> models;
+
+		screen();
+		screen(nlohmann::json data);
+		nlohmann::json to_json() const;
+	};
+	std::vector<screen> screens;
+
+	struct time_config {
+		std::string start;
+		std::string end;
+		int adaptation_minutes;
+	} time;
+
 	config(size_t scr_no);
 	config(nlohmann::json data, size_t scr_no);
+	config(std::string path, size_t scr_no);
 };
 
 #endif // CONFIG_HPP

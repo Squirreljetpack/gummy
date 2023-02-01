@@ -37,11 +37,9 @@ constexpr int temp_k_max     = 6500;
 
 void config::defaults()
 {
-	screens.emplace_back(screen());
-
 	time.start               = "06:00";
 	time.end                 = "16:00";
-	time.adaptation_min      = 60;
+	time.adaptation_minutes  = 60;
 
 	screenshot.offset_perc   = 0;
 	screenshot.poll_ms       = 200;
@@ -55,16 +53,20 @@ void config::defaults()
 config::screen::screen()
 {
 	using namespace constants;
+
+	auto &backlight = models[BACKLIGHT];
 	backlight.mode = MANUAL;
 	backlight.val  = brt_steps_max;
 	backlight.min  = brt_steps_min;
 	backlight.max  = brt_steps_max;
 
+	auto &brightness = models[BRIGHTNESS];
 	brightness.mode = MANUAL;
 	brightness.val  = brt_steps_max;
 	brightness.min  = brt_steps_min;
 	brightness.max  = brt_steps_max;
 
+	auto &temperature = models[TEMPERATURE];
 	temperature.mode = MANUAL;
 	temperature.val  = temp_k_max;
 	temperature.min  = temp_k_min;
@@ -73,24 +75,31 @@ config::screen::screen()
 
 config::screen::screen(json in)
 {
-	backlight.mode = in["bl_mode"];
-	backlight.val  = in["bl_perc"];
-	backlight.min  = in["bl_min"];
-	backlight.max  = in["bl_max"];
+	auto &backlight = models[BACKLIGHT];
+	backlight.mode = in["backlight"]["mode"];
+	backlight.val  = in["backlight"]["val"];
+	backlight.min  = in["backlight"]["min"];
+	backlight.max  = in["backlight"]["max"];
 
-	brightness.mode = in["brt_mode"];
-	brightness.val  = in["brt_perc"];
-	brightness.min  = in["brt_min"];
-	brightness.max  = in["brt_max"];
+	auto &brightness = models[BRIGHTNESS];
+	brightness.mode = in["brightness"]["mode"];
+	brightness.val  = in["brightness"]["val"];
+	brightness.min  = in["brightness"]["min"];
+	brightness.max  = in["brightness"]["max"];
 
-	temperature.mode = in["temp_mode"];
-	temperature.val  = in["temp_kelv"];
-	temperature.min  = in["temp_min"];
-	temperature.max  = in["temp_max"];
+	auto &temperature = models[TEMPERATURE];
+	temperature.mode = in["temperature"]["mode"];
+	temperature.val  = in["temperature"]["val"];
+	temperature.min  = in["temperature"]["min"];
+	temperature.max  = in["temperature"]["max"];
 }
 
 json config::screen::to_json() const
 {
+	const auto &backlight   = models[BACKLIGHT];
+	const auto &brightness  = models[BRIGHTNESS];
+	const auto &temperature = models[TEMPERATURE];
+
 	return {
 		{"backlight", {
 				{"mode", backlight.mode},
@@ -123,7 +132,7 @@ json config::to_json() const
 		{"time", {
 				{"start", time.start},
 				{"end", time.end},
-				{"adaptation_min", time.adaptation_min},
+				{"adaptation_min", time.adaptation_minutes},
 		}},
 
 		{"screenshot", {
@@ -169,6 +178,13 @@ config::config(size_t scr_no)
 {
 	defaults();
 	disk_read(path(constants::config_name));
+	screen_diff(scr_no);
+}
+
+config::config(std::string name, size_t scr_no)
+{
+	defaults();
+	disk_read(path(name));
 	screen_diff(scr_no);
 }
 
@@ -234,17 +250,17 @@ void config::from_json(json in)
 		screens.emplace_back(s);
 	}
 
-	time.start          = in["time_start"];
-	time.end            = in["time_end"];
-	time.adaptation_min = in["time_adaptation_min"];
+	time.start               = in["time"]["start"];
+	time.end                 = in["time"]["end"];
+	time.adaptation_minutes  = in["time"]["adaptation_min"];
 
-	screenshot.offset_perc   = in["screenshot_offset_perc"];
-	screenshot.poll_ms       = in["screenshot_poll_ms"];
-	screenshot.adaptation_ms = in["screenshot_adaptation_ms"];
+	screenshot.offset_perc   = in["screenshot"]["offset_perc"];
+	screenshot.poll_ms       = in["screenshot"]["poll_ms"];
+	screenshot.adaptation_ms = in["screenshot"]["adaptation_ms"];
 
-	als.offset_perc   = in["als_offset_perc"];
-	als.poll_ms       = in["als_poll_ms"];
-	als.adaptation_ms = in["als_adaptation_ms"];
+	als.offset_perc          = in["als"]["offset_perc"];
+	als.poll_ms              = in["als"]["poll_ms"];
+	als.adaptation_ms        = in["als"]["adaptation_ms"];
 }
 
 std::string config::path(std::string filename)

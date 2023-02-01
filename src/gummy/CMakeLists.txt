@@ -1,6 +1,6 @@
 project(gummy LANGUAGES CXX)
 
-set(SOURCES gummy.cpp ../gummyd/cfg.cpp)
+set(SOURCES gummy.cpp ../gummyd/config.cpp)
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)

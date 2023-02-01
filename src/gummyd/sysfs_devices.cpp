@@ -23,7 +23,7 @@
 #include <libudev.h>
 
 #include "sysfs_devices.hpp"
-#include "cfg.hpp"
+#include "config.hpp"
 #include "utils.hpp"
 
 const struct {
@@ -87,7 +87,7 @@ void Sysfs::Backlight::set(int brt)
 
 int Sysfs::Backlight::step() const
 {
-	return remap(_cur, 0, _max_brt, brt_steps_min, brt_steps_max);
+	return remap(_cur, 0, _max_brt, constants::brt_steps_min, constants::brt_steps_max);
 }
 
 int Sysfs::Backlight::max_brt() const 
@@ -136,5 +136,5 @@ int Sysfs::calc_lux_step(double lux)
 {
 	if (lux == 0.)
 		return 0;
-	return log10(lux) / 5 * brt_steps_max;
+	return log10(lux) / 5 * constants::brt_steps_max;
 }
