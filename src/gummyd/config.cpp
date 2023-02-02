@@ -28,7 +28,7 @@ const char *fifo_name   = "/tmp/gummy.fifo";
 const char *lock_name   = "/tmp/gummy.lock";
 
 constexpr int brt_steps_min  = 100;
-constexpr int brt_steps_max  = 500;
+constexpr int brt_steps_max  = 1000;
 constexpr int temp_k_min     = 1000;
 constexpr int temp_k_max     = 6500;
 }
