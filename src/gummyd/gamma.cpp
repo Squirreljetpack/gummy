@@ -150,7 +150,7 @@ void gamma_state::set(size_t screen_index, int brt_step, int temp_step)
 	uint16_t *b = &ramps[2 * sz];
 
 	for (size_t i = 0; i < sz; ++i) {
-		const int val = std::clamp(int(i * brt_mult), 0, UINT16_MAX);
+		const int val = std::min(int(i * brt_mult), UINT16_MAX);
 		r[i] = uint16_t(val * r_mult);
 		g[i] = uint16_t(val * g_mult);
 		b[i] = uint16_t(val * b_mult);
