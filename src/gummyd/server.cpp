@@ -72,7 +72,7 @@ void als_server(Sysfs::ALS &als, Channel<> &ch, Channel<> &sig, int sleep_ms, in
 	}
 }
 
-void time_server(Channel<time_server_message> &ch, Channel<> &sig, config::time_config conf)
+void time_server(Channel<time_server_message> &ch, Channel<> &sig, struct config::time conf)
 {
 	time_window tw(std::time(nullptr), conf.start, conf.end, -(conf.adaptation_minutes * 60));
 

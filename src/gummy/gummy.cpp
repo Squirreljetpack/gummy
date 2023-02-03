@@ -103,7 +103,7 @@ std::string time_format_callback(const std::string &s)
 
 	return std::string("");
 }
-
+/*
 int interface_old(int argc, const char **argv)
 {
 	CLI::App app("Screen manager for X11.", "gummy");
@@ -232,23 +232,23 @@ int interface_old(int argc, const char **argv)
 	send(msg.dump());
 	return 0;
 }
-
+*/
 enum {
 	VERS,
 	SCREEN_NUM,
 
-	BACKLIGHT_PERC,
 	BACKLIGHT_MODE,
+	BACKLIGHT_PERC,
 	BACKLIGHT_MIN,
 	BACKLIGHT_MAX,
 
-	BRT_PERC,
 	BRT_MODE,
+	BRT_PERC,
 	BRT_MIN,
 	BRT_MAX,
 
-	TEMP_KELV,
 	TEMP_MODE,
+	TEMP_KELV,
 	TEMP_MIN,
 	TEMP_MAX,
 
@@ -267,20 +267,20 @@ enum {
 
 const std::array<std::array<std::string, 2>, 23> options {{
 {"-v, --version", "Print version and exit"},
-{"-s,--screen", "Screen on which to act. If omitted, any changes will be applied on all screens."},
+{"-s,--screen", "Index on which to apply screen-related settings. If omitted, any changes will be applied on all screens."},
 
-{"-b,--backlight-perc", "Set backlight percentage."},
-{"-B,--backlight-mode", "Backlight mode. 0 = manual, 1 = screenshot, 2 = ALS (if available), 3 = time-based"},
+{"-B,--backlight-mode", "Backlight mode. 0 = manual, 1 = screenshot, 2 = ALS (if available), 3 = time range"},
+{"-b,--backlight-val", "Set backlight percentage."},
 {"--backlight-min", "Set minimum backlight (for non-manual modes)"},
 {"--backlight-max", "Set maximum backlight (for non-manual modes)"},
 
-{"-p,--brightness-perc", "Set pixel brightness percentage."},
-{"-P,--brightness-mode", "Brightness mode. 0 = manual, 1 = screenshot, 2 = ALS (if available), 3 = time-based"},
+{"-P,--brightness-mode", "Brightness mode. 0 = manual, 1 = screenshot, 2 = ALS (if available), 3 = time range"},
+{"-p,--brightness-val", "Set pixel brightness percentage."},
 {"--brightness-min", "Set minimum brightness (for non-manual modes)"},
 {"--brightness-max", "Set maximum brightness (for non-manual modes)"},
 
-{"-t,--temperature-kelv", "Set pixel temperature in kelvins."},
-{"-T,--temperature-mode", "Temperature mode. 0 = manual, 1 = screenshot, 2 = ALS (if available), 3 = time-based"},
+{"-T,--temperature-mode", "Temperature mode. 0 = manual, 1 = screenshot, 2 = ALS (if available), 3 = time range"},
+{"-t,--temperature-val", "Set pixel temperature in kelvins."},
 {"--temperature-min", "Set minimum temperature (for non-manual modes)"},
 {"--temperature-max", "Set maximum temperature (for non-manual modes)"},
 
@@ -297,78 +297,73 @@ const std::array<std::array<std::string, 2>, 23> options {{
 {"--als-adaptation-ms", "Adaptation speed in milliseconds."},
 }};
 
+void setif(json &val, int new_val)
+{
+	if (val.is_number_integer() && new_val > -1)
+		val = new_val;
+}
+
+void setif(json &val, std::string new_val)
+{
+	if (val.is_string() && !new_val.empty())
+		val = new_val;
+}
+
 int interface(int argc, const char **argv)
 {
 	CLI::App app("Screen manager for X11.", "gummy");
+
 	app.add_subcommand("start", "Start the background process.")->callback(start);
 	app.add_subcommand("stop", "Stop the background process.")->callback(stop);
 	app.add_subcommand("status", "Show app / screen status.")->callback(status);
-
-	int scr_no    = -1;
 
 	app.add_flag(options[VERS][0], [] ([[maybe_unused]] int64_t t) {
 		std::puts(VERSION);
 		std::exit(0);
 	}, options[VERS][1]);
 
-	app.add_option(options[SCREEN_NUM][0], scr_no, options[SCREEN_NUM][1])->check(CLI::Range(0, 99));
+	int scr_idx = -1;
+	app.add_option(options[SCREEN_NUM][0], scr_idx, options[SCREEN_NUM][1])->check(CLI::Range(0, 99));
 
-	int bl_perc = -1;
-	int bl_mode = -1;
-	int bl_min  = -1;
-	int bl_max  = -1;
-	const std::string grp_bl("Backlight options");
-	app.add_option(options[BACKLIGHT_PERC][0], bl_perc, options[BACKLIGHT_PERC][1])->check(CLI::Range(0, 100))->group(grp_bl);
-	app.add_option(options[BACKLIGHT_MODE][0], bl_mode, options[BACKLIGHT_MODE][1])->check(CLI::Range(0, 2))->group(grp_bl);
-	app.add_option(options[BACKLIGHT_MIN][0], bl_min, options[BACKLIGHT_MIN][1])->check(CLI::Range(0, 100))->group(grp_bl);
-	app.add_option(options[BACKLIGHT_MAX][0], bl_max, options[BACKLIGHT_MAX][1])->check(CLI::Range(0, 100))->group(grp_bl);
+	const std::string grp_bl("Screen backlight settings");
+	config::screen::model backlight;
+	app.add_option(options[BACKLIGHT_MODE][0], backlight.mode, options[BACKLIGHT_MODE][1])->check(CLI::Range(0, 2))->group(grp_bl);
+	app.add_option(options[BACKLIGHT_PERC][0], backlight.val, options[BACKLIGHT_PERC][1])->check(CLI::Range(0, 100))->group(grp_bl);
+	app.add_option(options[BACKLIGHT_MIN][0], backlight.min, options[BACKLIGHT_MIN][1])->check(CLI::Range(0, 100))->group(grp_bl);
+	app.add_option(options[BACKLIGHT_MAX][0], backlight.max, options[BACKLIGHT_MAX][1])->check(CLI::Range(0, 100))->group(grp_bl);
 
-	int brt_perc = -1;
-	int brt_mode = -1;
-	int brt_min  = -1;
-	int brt_max  = -1;
+	const std::string grp_brt("Screen brightness settings");
+	config::screen::model brightness;
+	app.add_option(options[BRT_MODE][0], brightness.mode, options[BRT_MODE][1])->check(CLI::Range(0, 2))->group(grp_brt);
+	app.add_option(options[BRT_PERC][0], brightness.val, options[BRT_PERC][1])->check(CLI::Range(0, 100))->group(grp_brt);
+	app.add_option(options[BRT_MIN][0], brightness.min, options[BRT_MIN][1])->check(CLI::Range(0, 100))->group(grp_brt);
+	app.add_option(options[BRT_MAX][0], brightness.max, options[BRT_MAX][1])->check(CLI::Range(0, 100))->group(grp_brt);
 
-	const std::string grp_brt("Brightness options");
-	app.add_option(options[BRT_PERC][0], brt_perc, options[BRT_PERC][1])->check(CLI::Range(0, 100))->group(grp_brt);
-	app.add_option(options[BRT_MODE][0], brt_mode, options[BRT_MODE][1])->check(CLI::Range(0, 2))->group(grp_brt);
-	app.add_option(options[BRT_MIN][0], brt_min, options[BRT_MIN][1])->check(CLI::Range(0, 100))->group(grp_brt);
-	app.add_option(options[BRT_MAX][0], brt_max, options[BRT_MAX][1])->check(CLI::Range(0, 100))->group(grp_brt);
+	const std::string grp_temp("Screen temperature settings");
+	config::screen::model temperature;
 
-	int temp_kelv = -1;
-	int temp_mode = -1;
-	int temp_min  = -1;
-	int temp_max  = -1;
+	app.add_option(options[TEMP_MODE][0], temperature.mode, options[TEMP_MODE][1])->check(CLI::Range(0, 2))->group(grp_temp);
+	app.add_option(options[TEMP_KELV][0], temperature.val, options[TEMP_KELV][1])->check(CLI::Range(temp_k_min, temp_k_max))->group(grp_temp);
+	app.add_option(options[TEMP_MIN][0], temperature.min, options[TEMP_MIN][1])->check(CLI::Range(temp_k_min, temp_k_max))->group(grp_temp);
+	app.add_option(options[TEMP_MAX][0], temperature.max, options[TEMP_MAX][1])->check(CLI::Range(temp_k_min, temp_k_max))->group(grp_temp);
 
-	const std::string grp_temp("Temperature options");
-	app.add_option(options[TEMP_KELV][0], temp_kelv, options[TEMP_KELV][1])->check(CLI::Range(temp_k_min, temp_k_max))->group(grp_temp);
-	app.add_option(options[TEMP_MODE][0], temp_mode, options[TEMP_MODE][1])->check(CLI::Range(0, 2))->group(grp_temp);
-	app.add_option(options[TEMP_MIN][0], temp_min, options[TEMP_MIN][1])->check(CLI::Range(temp_k_min, temp_k_max))->group(grp_temp);
-	app.add_option(options[TEMP_MAX][0], temp_max, options[TEMP_MAX][1])->check(CLI::Range(temp_k_min, temp_k_max))->group(grp_temp);
-
-	int time_start          = -1;
-	int time_end            = -1;
-	int time_adaptation_min = -1;
-
-	const std::string grp_time("Time-based mode settings");
-	app.add_option(options[TIME_START][0], time_start, options[TIME_START][1])->check(time_format_callback)->group(grp_time);
-	app.add_option(options[TIME_END][0], time_end, options[TIME_END][1])->check(time_format_callback)->group(grp_time);
-	app.add_option(options[TIME_ADAPTATION_MS][0], time_adaptation_min, options[TIME_ADAPTATION_MS][1])->check(CLI::Range(1, 60 * 12))->group(grp_time);
+	const std::string grp_time("Time range mode settings");
+	struct config::time time;
+	app.add_option(options[TIME_START][0], time.start, options[TIME_START][1])->check(time_format_callback)->group(grp_time);
+	app.add_option(options[TIME_END][0], time.end, options[TIME_END][1])->check(time_format_callback)->group(grp_time);
+	app.add_option(options[TIME_ADAPTATION_MS][0], time.adaptation_minutes, options[TIME_ADAPTATION_MS][1])->check(CLI::Range(1, 60 * 12))->group(grp_time);
 
 	const std::string grp_ss("Screenshot mode settings");
-	int screenshot_offset_perc   = -1;
-	int screenshot_poll_ms       = -1;
-	int screenshot_adaptation_ms = -1;
-	app.add_option(options[SCREENSHOT_OFFSET][0], screenshot_offset_perc, options[SCREENSHOT_OFFSET][1])->check(CLI::Range(0, 100))->group(grp_ss);
-	app.add_option(options[SCREENSHOT_POLL_MS][0], screenshot_poll_ms, options[SCREENSHOT_POLL_MS][1])->check(CLI::Range(0, 100))->group(grp_ss);
-	app.add_option(options[SCREENSHOT_ADAPTATION_MS][0], screenshot_adaptation_ms, options[SCREENSHOT_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_ss);
+	struct config::screenshot screenshot;
+	app.add_option(options[SCREENSHOT_OFFSET][0], screenshot.offset_perc, options[SCREENSHOT_OFFSET][1])->check(CLI::Range(0, 100))->group(grp_ss);
+	app.add_option(options[SCREENSHOT_POLL_MS][0], screenshot.poll_ms, options[SCREENSHOT_POLL_MS][1])->check(CLI::Range(1, 10000))->group(grp_ss);
+	app.add_option(options[SCREENSHOT_ADAPTATION_MS][0], screenshot.adaptation_ms, options[SCREENSHOT_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_ss);
 
 	const std::string grp_als("ALS mode settings");
-	int als_offset_perc   = -1;
-	int als_poll_ms       = -1;
-	int als_adaptation_ms = -1;
-	app.add_option(options[ALS_OFFSET][0], als_offset_perc, options[ALS_OFFSET][1])->check(CLI::Range(0, 100))->group(grp_als);
-	app.add_option(options[ALS_POLL_MS][0], als_poll_ms, options[ALS_POLL_MS][1])->check(CLI::Range(0, 100))->group(grp_als);
-	app.add_option(options[ALS_ADAPTATION_MS][0], als_adaptation_ms, options[ALS_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_als);
+	struct config::als als;
+	app.add_option(options[ALS_OFFSET][0], als.offset_perc, options[ALS_OFFSET][1])->check(CLI::Range(0, 100))->group(grp_als);
+	app.add_option(options[ALS_POLL_MS][0], als.poll_ms, options[ALS_POLL_MS][1])->check(CLI::Range(1, 10000 * 60 * 60))->group(grp_als);
+	app.add_option(options[ALS_ADAPTATION_MS][0], als.adaptation_ms, options[ALS_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_als);
 
 	try {
 		app.parse(argc, argv);
@@ -378,41 +373,68 @@ int interface(int argc, const char **argv)
 
 	if (set_lock(lock_name) == 0) {
 		std::puts("gummy is not running.\nType: `gummy start`\n");
-		std::exit(1);
+		std::exit(EXIT_SUCCESS);
 	}
 
-	nlohmann::json msg {
-		{"scr_no", scr_no},
+	json config_json = [&] {
+		std::ifstream ifs(xdg_config_path(constants::config_name));
+		json j;
+		try {
+			ifs >> j;
+		} catch (json::exception &e) {
+			return json({"exception", e.what()});
+		}
+		return j;
+	}();
 
-		{"bl_perc", bl_perc},
-		{"bl_mode", bl_mode},
-		{"bl_min", bl_min},
-		{"bl_max",  bl_max},
+	if (config_json.contains("exception")) {
+		printf("%s\n", config_json["exception"].get<std::string>().c_str());
+		return EXIT_FAILURE;
+	}
 
-		{"brt_perc", brt_perc},
-		{"brt_mode", brt_mode},
-		{"brt_min", brt_min},
-		{"brt_max",  brt_max},
+	const auto update_screen_conf = [&] (size_t idx) {
 
-		{"temp_kelv", temp_kelv},
-		{"temp_mode", temp_mode},
-		{"temp_min", temp_min},
-		{"temp_max",  temp_max},
+		if (idx > config_json["screens"].size() - 1)
+			return;
 
-		{"time_start", time_start},
-		{"time_end", time_end},
-		{"time_adaptation_min", time_adaptation_min},
+		auto &scr = config_json["screens"][idx];
 
-		{"screenshot_offset_perc", screenshot_offset_perc},
-		{"screenshot_poll_ms", screenshot_poll_ms},
-		{"screenshot_adaptation_ms", screenshot_adaptation_ms},
+		setif(scr["backlight"]["mode"], backlight.mode);
+		setif(scr["backlight"]["val"], remap(backlight.val, 0, 100, 0, 1000));
+		setif(scr["backlight"]["min"], remap(backlight.min, 0, 100, 0, 1000));
+		setif(scr["backlight"]["max"], remap(backlight.max, 0, 100, 0, 1000));
 
-		{"als_offset_perc", als_offset_perc},
-		{"als_poll_ms", als_poll_ms},
-		{"als_adaptation_ms", als_adaptation_ms},
+		setif(scr["brightness"]["mode"], brightness.mode);
+		setif(scr["brightness"]["val"], remap(brightness.val, 0, 100, 0, 1000));
+		setif(scr["brightness"]["min"], remap(brightness.min, 0, 100, 0, 1000));
+		setif(scr["brightness"]["max"], remap(brightness.max, 0, 100, 0, 1000));
+
+		setif(scr["temperature"]["mode"], temperature.mode);
+		setif(scr["temperature"]["val"], temperature.val);
+		setif(scr["temperature"]["min"], temperature.min);
+		setif(scr["temperature"]["max"], temperature.max);
 	};
 
-	send(msg.dump());
+	if (scr_idx > -1) {
+		update_screen_conf(scr_idx);
+	} else {
+		for (size_t i = 0; i < config_json["screens"].size(); ++i)
+			update_screen_conf(i);
+	}
+
+	setif(config_json["time"]["start"], time.start);
+	setif(config_json["time"]["end"], time.end);
+	setif(config_json["time"]["adaptation_minutes"], time.adaptation_minutes);
+
+	setif(config_json["screenshot"]["poll_ms"], screenshot.poll_ms);
+	setif(config_json["screenshot"]["adaptation_ms"], screenshot.adaptation_ms);
+	setif(config_json["screenshot"]["offset_perc"], screenshot.offset_perc);
+
+	setif(config_json["als"]["poll_ms"], als.poll_ms);
+	setif(config_json["als"]["adaptation_ms"], als.adaptation_ms);
+	setif(config_json["als"]["offset_perc"], als.offset_perc);
+
+	send(config_json.dump());
 	return 0;
 }
 

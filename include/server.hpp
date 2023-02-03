@@ -44,7 +44,7 @@ struct time_target {
 	int duration_ms;
 };
 
-void time_server(Channel<time_server_message> &ch, Channel<> &sig, config::time_config conf);
+void time_server(Channel<time_server_message> &ch, Channel<> &sig, struct config::time conf);
 void time_client(Channel<time_server_message> &time_ch, config::screen::model model, std::function<void(int)> model_fn);
 
 #endif // SERVER_HPP

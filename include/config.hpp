@@ -38,29 +38,9 @@ extern const int temp_k_min;
 extern const int temp_k_max;
 }
 
+std::string xdg_config_path(std::string config_name);
+
 class config {
-
-	//std::vector<screen> screens;
-
-	//struct {
-	//	std::string start;
-	//	std::string end;
-	//	int adaptation_min;
-	//} time;
-
-	struct {
-		int offset_perc;
-		int poll_ms;
-		int adaptation_ms;
-	} screenshot;
-
-	struct {
-		int offset_perc;
-		int poll_ms;
-		int adaptation_ms;
-	} als;
-
-	static std::string path(std::string config_name);
 
 	void disk_read(std::string path);
 	void disk_write(std::string path) const;
@@ -75,6 +55,7 @@ public:
 	struct screen {
 
 		enum mode {
+			UNINITIALIZED = -1,
 			MANUAL,
 			SCREENSHOT,
 			ALS,
@@ -86,6 +67,7 @@ public:
 			int val;
 			int min;
 			int max;
+			model() : mode(UNINITIALIZED), val(-1), min(-1), max(-1) {};
 		};
 
 		enum model_idx {
@@ -101,11 +83,26 @@ public:
 	};
 	std::vector<screen> screens;
 
-	struct time_config {
+	struct time {
 		std::string start;
 		std::string end;
 		int adaptation_minutes;
+		time() : start(""), end(""), adaptation_minutes(-1) {};
 	} time;
+
+	struct screenshot {
+		int offset_perc;
+		int poll_ms;
+		int adaptation_ms;
+		screenshot() : offset_perc(-1), poll_ms(-1), adaptation_ms(-1) {};
+	} screenshot;
+
+	struct als {
+		int offset_perc;
+		int poll_ms;
+		int adaptation_ms;
+		als() : offset_perc(-1), poll_ms(-1), adaptation_ms(-1) {};
+	} als;
 
 	config(size_t scr_no);
 	config(nlohmann::json data, size_t scr_no);

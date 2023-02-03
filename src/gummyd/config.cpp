@@ -130,7 +130,7 @@ json config::to_json() const
 		{"time", {
 				{"start", time.start},
 				{"end", time.end},
-				{"adaptation_min", time.adaptation_minutes},
+				{"adaptation_minutes", time.adaptation_minutes},
 		}},
 
 		{"screenshot", {
@@ -152,6 +152,25 @@ json config::to_json() const
 	return ret;
 }
 
+void config::from_json(json in)
+{
+	for (const auto &s : in["screens"]) {
+		screens.emplace_back(s);
+	}
+
+	time.start               = in["time"]["start"];
+	time.end                 = in["time"]["end"];
+	time.adaptation_minutes  = in["time"]["adaptation_minutes"];
+
+	screenshot.offset_perc   = in["screenshot"]["offset_perc"];
+	screenshot.poll_ms       = in["screenshot"]["poll_ms"];
+	screenshot.adaptation_ms = in["screenshot"]["adaptation_ms"];
+
+	als.offset_perc          = in["als"]["offset_perc"];
+	als.poll_ms              = in["als"]["poll_ms"];
+	als.adaptation_ms        = in["als"]["adaptation_ms"];
+}
+
 void config::screen_diff(size_t scr_no)
 {
 	// positive: new screens
@@ -169,20 +188,20 @@ void config::screen_diff(size_t scr_no)
 			screens.pop_back();
 	}
 
-	disk_write(path(constants::config_name));
+	disk_write(xdg_config_path(constants::config_name));
 }
 
 config::config(size_t scr_no)
 {
 	defaults();
-	disk_read(path(constants::config_name));
+	disk_read(xdg_config_path(constants::config_name));
 	screen_diff(scr_no);
 }
 
 config::config(std::string name, size_t scr_no)
 {
 	defaults();
-	disk_read(path(name));
+	disk_read(xdg_config_path(name));
 	screen_diff(scr_no);
 }
 
@@ -191,7 +210,7 @@ config::config(json in, size_t scr_no)
 	defaults();
 	from_json(in);
 	screen_diff(scr_no);
-	disk_write(path(constants::config_name));
+	disk_write(xdg_config_path(constants::config_name));
 }
 
 void config::disk_write(std::string path) const
@@ -242,26 +261,7 @@ void config::disk_read(std::string path)
 	from_json(data);
 }
 
-void config::from_json(json in)
-{
-	for (const auto &s : in["screens"]) {
-		screens.emplace_back(s);
-	}
-
-	time.start               = in["time"]["start"];
-	time.end                 = in["time"]["end"];
-	time.adaptation_minutes  = in["time"]["adaptation_min"];
-
-	screenshot.offset_perc   = in["screenshot"]["offset_perc"];
-	screenshot.poll_ms       = in["screenshot"]["poll_ms"];
-	screenshot.adaptation_ms = in["screenshot"]["adaptation_ms"];
-
-	als.offset_perc          = in["als"]["offset_perc"];
-	als.poll_ms              = in["als"]["poll_ms"];
-	als.adaptation_ms        = in["als"]["adaptation_ms"];
-}
-
-std::string config::path(std::string filename)
+std::string xdg_config_path(std::string filename)
 {
 	const char *home   = getenv("XDG_CONFIG_HOME");
 	const char *format = "/";
