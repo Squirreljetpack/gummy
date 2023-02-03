@@ -55,7 +55,7 @@ std::string read_fifo()
 	return stream.str();
 }
 
-int start(Xorg &xorg, config conf)
+void start(Xorg &xorg, config conf)
 {
 	assert(xorg.scr_count() == conf.screens.size());
 
@@ -95,21 +95,20 @@ int start(Xorg &xorg, config conf)
 		t.join();
 	for (auto &t : clients)
 		t.join();*/
-
-	return EXIT_SUCCESS;
 }
 
 int message_loop()
 {
 	bool bootstrap = true;
 	Xorg xorg;
-	//config default_conf(xorg.scr_count());
+
+	config conf(std::string(constants::config_name), xorg.scr_count());
 
 	while (true) {
 
 		if (bootstrap) {
 			bootstrap = false;
-			start(xorg, config(std::string(constants::config_name), xorg.scr_count()));
+			start(xorg, conf);
 			continue;
 		}
 
@@ -118,7 +117,20 @@ int message_loop()
 		if (data == "stop")
 			return EXIT_SUCCESS;
 
-		start(xorg, config(json::parse(data), xorg.scr_count()));
+		const json msg = [&] {
+			try {
+				return json::parse(data);
+			} catch (json::exception &e) {
+				return json({"exception", e.what()});
+			}
+		}();
+
+		if (msg.contains("exception")) {
+			printf("%s\n", msg["error"].get<std::string>().c_str());
+			continue;
+		}
+
+		start(xorg, config(msg, xorg.scr_count()));
 	}
 }
 
