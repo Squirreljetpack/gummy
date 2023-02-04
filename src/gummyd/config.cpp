@@ -19,13 +19,14 @@
 #include <fstream>
 #include "config.hpp"
 #include "syslog.h"
+#include "file.hpp"
 
 using nlohmann::json;
 
 namespace constants {
-const char *config_name = "gummyconf.json";
-const char *fifo_name   = "/tmp/gummy.fifo";
-const char *lock_name   = "/tmp/gummy.lock";
+const char *config_filename = "gummyconf.json";
+const char *fifo_filepath   = "/tmp/gummy.fifo";
+const char *flock_filepath  = "/tmp/gummy.lock";
 
 constexpr int brt_steps_min  = 100;
 constexpr int brt_steps_max  = 1000;
@@ -188,20 +189,13 @@ void config::screen_diff(size_t scr_no)
 			screens.pop_back();
 	}
 
-	disk_write(xdg_config_path(constants::config_name));
+	disk_write(xdg_config_filepath(constants::config_filename));
 }
 
 config::config(size_t scr_no)
 {
 	defaults();
-	disk_read(xdg_config_path(constants::config_name));
-	screen_diff(scr_no);
-}
-
-config::config(std::string name, size_t scr_no)
-{
-	defaults();
-	disk_read(xdg_config_path(name));
+	disk_read(xdg_config_filepath(constants::config_filename));
 	screen_diff(scr_no);
 }
 
@@ -210,12 +204,12 @@ config::config(json in, size_t scr_no)
 	defaults();
 	from_json(in);
 	screen_diff(scr_no);
-	disk_write(xdg_config_path(constants::config_name));
+	disk_write(xdg_config_filepath(constants::config_filename));
 }
 
-void config::disk_write(std::string path) const
+void config::disk_write(std::string filepath) const
 {
-	std::ofstream ofs(path);
+	std::ofstream ofs(filepath);
 
 	if (ofs.fail()) {
 		syslog(LOG_ERR, "disk_write fail\n");
@@ -230,9 +224,9 @@ void config::disk_write(std::string path) const
 	}
 }
 
-void config::disk_read(std::string path)
+void config::disk_read(std::string filepath)
 {
-	std::ifstream fs(path, std::fstream::in | std::fstream::app);
+	std::ifstream fs(filepath, std::fstream::in | std::fstream::app);
 
 	if (fs.fail()) {
 		syslog(LOG_ERR, "disk_read error\n");
@@ -242,7 +236,7 @@ void config::disk_read(std::string path)
 	fs.seekg(0, std::ios::end);
 
 	if (fs.tellg() == 0) {
-		disk_write(path);
+		disk_write(filepath);
 		return;
 	}
 
@@ -254,24 +248,9 @@ void config::disk_read(std::string path)
 		fs >> data;
 	} catch (json::exception &e) {
 		syslog(LOG_ERR, "%s\n", e.what());
-		disk_write(path);
+		disk_write(filepath);
 		return;
 	}
 
 	from_json(data);
-}
-
-std::string xdg_config_path(std::string filename)
-{
-	const char *home   = getenv("XDG_CONFIG_HOME");
-	const char *format = "/";
-
-	if (!home) {
-		format = "/.config/";
-		home = getenv("HOME");
-	}
-
-	std::ostringstream ss;
-	ss << home << format << filename;
-	return ss.str();
 }
