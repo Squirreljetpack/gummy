@@ -194,7 +194,7 @@ int interface_old(int argc, const char **argv)
 	// show help with no args
 	if (argc == 1) {
 		++argc;
-		argv[1] = "-hpp";
+		argv[1] = "-h";
 	}
 
 	try {
@@ -366,8 +366,12 @@ int interface(int argc, const char **argv)
 	app.add_option(options[ALS_ADAPTATION_MS][0], als.adaptation_ms, options[ALS_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_als);
 
 	try {
-		app.parse(argc, argv);
-	} catch(const CLI::ParseError &e) {
+		if (argc == 1) {
+			app.parse("-h");
+		} else {
+			app.parse(argc, argv);
+		}
+	} catch (const CLI::ParseError &e) {
 		return app.exit(e);
 	}
 
