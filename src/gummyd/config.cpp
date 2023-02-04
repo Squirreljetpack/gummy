@@ -36,6 +36,8 @@ constexpr int temp_k_max     = 6500;
 
 void config::defaults()
 {
+	filepath = xdg_config_filepath(constants::config_filename);
+
 	time.start               = "06:00";
 	time.end                 = "16:00";
 	time.adaptation_minutes  = 60;
@@ -123,6 +125,47 @@ json config::screen::to_json() const
 	};
 }
 
+config::config(size_t scr_no)
+{
+	defaults();
+
+	file_parse();
+
+	screen_diff(scr_no);
+
+	file_pretty_write();
+}
+
+config::config(json in, size_t scr_no)
+{
+	defaults();
+
+	from_json(in);
+
+	screen_diff(scr_no);
+
+	file_pretty_write();
+}
+
+void config::from_json(json in)
+{
+	for (const auto &s : in["screens"]) {
+		screens.emplace_back(s);
+	}
+
+	time.start               = in["time"]["start"];
+	time.end                 = in["time"]["end"];
+	time.adaptation_minutes  = in["time"]["adaptation_minutes"];
+
+	screenshot.offset_perc   = in["screenshot"]["offset_perc"];
+	screenshot.poll_ms       = in["screenshot"]["poll_ms"];
+	screenshot.adaptation_ms = in["screenshot"]["adaptation_ms"];
+
+	als.offset_perc          = in["als"]["offset_perc"];
+	als.poll_ms              = in["als"]["poll_ms"];
+	als.adaptation_ms        = in["als"]["adaptation_ms"];
+}
+
 json config::to_json() const
 {
 	json ret {
@@ -153,25 +196,6 @@ json config::to_json() const
 	return ret;
 }
 
-void config::from_json(json in)
-{
-	for (const auto &s : in["screens"]) {
-		screens.emplace_back(s);
-	}
-
-	time.start               = in["time"]["start"];
-	time.end                 = in["time"]["end"];
-	time.adaptation_minutes  = in["time"]["adaptation_minutes"];
-
-	screenshot.offset_perc   = in["screenshot"]["offset_perc"];
-	screenshot.poll_ms       = in["screenshot"]["poll_ms"];
-	screenshot.adaptation_ms = in["screenshot"]["adaptation_ms"];
-
-	als.offset_perc          = in["als"]["offset_perc"];
-	als.poll_ms              = in["als"]["poll_ms"];
-	als.adaptation_ms        = in["als"]["adaptation_ms"];
-}
-
 void config::screen_diff(size_t scr_no)
 {
 	// positive: new screens
@@ -188,69 +212,34 @@ void config::screen_diff(size_t scr_no)
 		for (int i = screen_diff; i < 0; ++i)
 			screens.pop_back();
 	}
-
-	disk_write(xdg_config_filepath(constants::config_filename));
 }
 
-config::config(size_t scr_no)
+void config::file_pretty_write() const
 {
-	defaults();
-	disk_read(xdg_config_filepath(constants::config_filename));
-	screen_diff(scr_no);
+	std::ofstream fs(filepath);
+	fs.exceptions(std::fstream::failbit);
+	fs << std::setw(4) << config::to_json();
 }
 
-config::config(json in, size_t scr_no)
+void config::file_parse()
 {
-	defaults();
-	from_json(in);
-	screen_diff(scr_no);
-	disk_write(xdg_config_filepath(constants::config_filename));
-}
+	const std::string data = [&] {
+		try {
+			return file_read(filepath);
+		} catch (std::system_error &e) {
+			return std::string();
+		}
+	}();
 
-void config::disk_write(std::string filepath) const
-{
-	std::ofstream ofs(filepath);
+	const json jdata = [&] {
+		try {
+			return json::parse(data);
+		} catch (json::exception &e) {
+			return json();
+		}
+	}();
 
-	if (ofs.fail()) {
-		syslog(LOG_ERR, "disk_write fail\n");
-		return;
+	if (!jdata.empty()) {
+		from_json(jdata);
 	}
-
-	try {
-		ofs << std::setw(4) << config::to_json();
-	} catch (json::exception &e) {
-		syslog(LOG_ERR, "%s\n", e.what());
-		return;
-	}
-}
-
-void config::disk_read(std::string filepath)
-{
-	std::ifstream fs(filepath, std::fstream::in | std::fstream::app);
-
-	if (fs.fail()) {
-		syslog(LOG_ERR, "disk_read error\n");
-		return;
-	}
-
-	fs.seekg(0, std::ios::end);
-
-	if (fs.tellg() == 0) {
-		disk_write(filepath);
-		return;
-	}
-
-	fs.seekg(0);
-
-	json data;
-
-	try {
-		fs >> data;
-	} catch (json::exception &e) {
-		syslog(LOG_ERR, "%s\n", e.what());
-		disk_write(filepath);
-		return;
-	}
-
-	from_json(data);
 }

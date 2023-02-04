@@ -75,13 +75,11 @@ int message_loop()
 	bool bootstrap = true;
 	Xorg xorg;
 
-	config conf(xorg.scr_count());
-
 	while (true) {
 
 		if (bootstrap) {
 			bootstrap = false;
-			start(xorg, conf);
+			start(xorg, config(xorg.scr_count()));
 			continue;
 		}
 

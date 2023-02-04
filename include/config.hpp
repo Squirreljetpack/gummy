@@ -42,14 +42,16 @@ std::string xdg_config_path(std::string config_name);
 
 class config {
 
-	void disk_read(std::string path);
-	void disk_write(std::string path) const;
-
-	void screen_diff(size_t scr_no);
 	void defaults();
+
+	void file_parse();
+	void screen_diff(size_t scr_no);
+	void file_pretty_write() const;
 
 	void from_json(nlohmann::json data);
 	nlohmann::json to_json() const;
+
+	std::string filepath;
 public:
 
 	struct screen {
