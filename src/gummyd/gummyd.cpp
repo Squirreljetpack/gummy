@@ -17,16 +17,14 @@
 */
 
 #include <syslog.h>
-#include <fstream>
 
+#include "config.hpp"
+#include "file.hpp"
 #include "utils.hpp"
 #include "xorg.hpp"
 #include "sysfs_devices.hpp"
-#include "screenctl.hpp"
 #include "gamma.hpp"
-#include "config.hpp"
 #include "server.hpp"
-#include "file.hpp"
 
 void start(Xorg &xorg, config conf)
 {
@@ -97,7 +95,7 @@ int message_loop()
 		}();
 
 		if (msg.contains("exception")) {
-			printf("%s\n", msg["error"].get<std::string>().c_str());
+			printf("%s\n", msg["exception"].get<std::string>().c_str());
 			continue;
 		}
 
