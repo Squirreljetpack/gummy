@@ -21,14 +21,14 @@
 
 #include <vector>
 #include <string>
-#include "json.hpp"
 
+#include "json.hpp"
 using nlohmann::json;
 
 namespace constants {
-extern const char* config_name;
-extern const char* fifo_name;
-extern const char* lock_name;
+extern const char* config_filename;
+extern const char* fifo_filepath;
+extern const char* flock_filepath;
 
 extern const int brt_steps_min;
 extern const int brt_steps_max;
@@ -106,7 +106,6 @@ public:
 
 	config(size_t scr_no);
 	config(nlohmann::json data, size_t scr_no);
-	config(std::string path, size_t scr_no);
 };
 
 #endif // CONFIG_HPP

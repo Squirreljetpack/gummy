@@ -19,9 +19,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <string>
 #include <cmath>
-#include <fcntl.h>
 
 // scale value in a [0, 1] range
 inline double invlerp(double val, double min, double max)
@@ -53,24 +51,6 @@ inline double mant(double x)
 inline double remap_to_idx(int val, int min, int max, size_t arr_sz)
 {
 	return remap(val, min, max, 0, arr_sz - 1);
-}
-
-inline int set_lock(std::string name)
-{
-	int fd = open(name.c_str(), O_WRONLY | O_CREAT, 0666);
-	if (fd == -1)
-		return 1;
-
-	flock fl;
-	fl.l_type   = F_WRLCK;
-	fl.l_whence = SEEK_SET;
-	fl.l_start  = 0;
-	fl.l_len    = 1;
-
-	if (fcntl(fd, F_SETLK, &fl) == -1)
-		return 2;
-
-	return 0;
 }
 
 #endif // UTILS_H

@@ -17,9 +17,6 @@
 */
 
 #include <syslog.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <fstream>
 
 #include "utils.hpp"
@@ -29,31 +26,7 @@
 #include "gamma.hpp"
 #include "config.hpp"
 #include "server.hpp"
-#include "easing.hpp"
-
-void init_fifo()
-{
-	if (mkfifo(constants::fifo_name, S_IFIFO|0640) == 1) {
-		syslog(LOG_ERR, "mkfifo err %d, aborting\n", errno);
-		std::exit(EXIT_FAILURE);
-	}
-}
-
-std::string read_fifo()
-{
-	std::ifstream fs(constants::fifo_name);
-
-	if (fs.fail()) {
-		syslog(LOG_ERR, "unable to open fifo, aborting\n");
-		std::exit(EXIT_FAILURE);
-	}
-
-	std::ostringstream stream;
-	stream << fs.rdbuf();
-
-	fs.close();
-	return stream.str();
-}
+#include "file.hpp"
 
 void start(Xorg &xorg, config conf)
 {
@@ -102,7 +75,7 @@ int message_loop()
 	bool bootstrap = true;
 	Xorg xorg;
 
-	config conf(std::string(constants::config_name), xorg.scr_count());
+	config conf(xorg.scr_count());
 
 	while (true) {
 
@@ -112,7 +85,7 @@ int message_loop()
 			continue;
 		}
 
-		const std::string data(read_fifo());
+		const std::string data(file_read(constants::fifo_filepath));
 
 		if (data == "stop")
 			return EXIT_SUCCESS;
@@ -143,12 +116,12 @@ int main(int argc, char **argv)
 
 	openlog("gummyd", LOG_PID, LOG_DAEMON);
 
-	if (int err = set_lock(constants::lock_name) > 0) {
-		syslog(LOG_ERR, "lockfile err %d", err);
+	if (set_flock(constants::flock_filepath) < 0) {
+		syslog(LOG_ERR, "lockfile error");
 		exit(EXIT_FAILURE);
 	}
 
-	init_fifo();
+	make_fifo(constants::fifo_filepath);
 
 	return message_loop();
 }

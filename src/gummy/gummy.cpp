@@ -24,72 +24,62 @@
 #include "json.hpp"
 #include "config.hpp"
 #include "utils.hpp"
+#include "file.hpp"
 
 using std::cout;
 using namespace constants;
 
-void send(const std::string &s)
-{
-	std::ofstream fs(fifo_name);
-
-	if (!fs.good()) {
-		std::cout << "fifo open error, aborting\n";
-		std::exit(1);
-	}
-
-	fs.write(s.c_str(), s.size());
-
-	if (!fs.good()) {
-		std::cout << "fifo write error, aborting\n";
-		std::exit(1);
-	}
-}
-
 void start()
 {
-	if (set_lock(lock_name) > 0) {
-		cout << "already started\n";
-		std::exit(0);
+	if (set_flock(flock_filepath) < 0) {
+		std::puts("already started");
+		std::exit(EXIT_SUCCESS);
 	}
 
-	cout << "starting gummy\n";
+	std::puts("starting gummy");
 	pid_t pid = fork();
 
 	if (pid < 0) {
-		cout << "fork() failed\n";
-		std::exit(1);
+		std::puts("fork() failed");
+		std::exit(EXIT_FAILURE);
 	}
 
 	// parent
 	if (pid > 0) {
-		std::exit(0);
+		std::exit(EXIT_SUCCESS);
 	}
 
 	execl(CMAKE_INSTALL_DAEMON_PATH, "", nullptr);
-	cout << "failed to start gummyd\n";
-	std::exit(1);
+
+	std::puts("failed to start gummyd");
+	std::exit(EXIT_FAILURE);
 }
 
 void stop()
 {
-	if (set_lock(lock_name) == 0) {
-		cout << "already stopped\n";
-		std::exit(0);
+	if (set_flock(flock_filepath) == 0) {
+		std::puts("already stopped");
+		std::exit(EXIT_SUCCESS);
 	}
 
-	send("stop");
+	file_write(constants::fifo_filepath, "stop");
 
-	cout << "gummy stopped\n";
-	std::exit(0);
+	std::puts("gummy stopped");
+	std::exit(EXIT_SUCCESS);
 }
 
 void status()
 {
-	cout << (set_lock(lock_name) == 0 ? "not running" : "running") << "\n";
-	std::exit(0);
+	if (set_flock(flock_filepath) == 0) {
+		std::puts("not running");
+	} else {
+		std::puts("running");
+	}
+
+	std::exit(EXIT_SUCCESS);
 }
 
-std::string time_format_callback(const std::string &s)
+std::string check_time_format(const std::string &s)
 {
 	std::regex pattern("^\\d{2}:\\d{2}$");
 	std::string err("option should match the 24h format.");
@@ -103,136 +93,7 @@ std::string time_format_callback(const std::string &s)
 
 	return std::string("");
 }
-/*
-int interface_old(int argc, const char **argv)
-{
-	CLI::App app("Screen manager for X11.", "gummy");
 
-	app.add_subcommand("start", "Start the background process.")->callback(start);
-	app.add_subcommand("stop", "Stop the background process.")->callback(stop);
-	app.add_subcommand("status", "Show app / screen status.")->callback(status);
-
-	int scr_no          = -1;
-	int brt             = -1;
-	int bm              = -1;
-	int brt_auto_min    = -1;
-	int brt_auto_max    = -1;
-	int brt_auto_offset = -1;
-	int brt_auto_speed  = -1;
-	int scr_rate        = -1;
-	int als_poll        = -1;
-	int temp            = -1;
-	int tm              = -1;
-	int temp_day        = -1;
-	int temp_night      = -1;
-	int adapt_time      = -1;
-	std::string sunrise_time;
-	std::string sunset_time;
-
-	int add = -1;
-	int sub = -1;
-
-	app.add_flag("-v,--version", [] ([[maybe_unused]] int64_t t) {
-		cout << VERSION << '\n';
-		std::exit(0);
-	}, "Print version and exit");
-
-	app.add_flag("--add", add, "Interpret value as increment");
-	app.add_flag("--sub", sub, "Interpret value as decrement");
-
-	app.add_option("-s,--screen", scr_no,
-	               "Screen on which to act. If omitted, any changes will be applied on all screens.")->check(CLI::Range(0, 99));
-
-	std::string brt_grp("Brightness options");
-	app.add_option("-b,--brightness", brt,
-	               "Set screen brightness percentage.")->check(CLI::Range(1, 100))->group(brt_grp);
-	app.add_option("-B,--brt-mode", bm,
-	               "Brightness mode. 0 = manual, 1 = screenshot, 2 = ALS (if available)")->check(CLI::Range(0, 2))->group(brt_grp);
-	app.add_option("-N,--brt-auto-min", brt_auto_min,
-	               "Set minimum automatic brightness.")->check(CLI::Range(1, 100))->group(brt_grp);
-	app.add_option("-M,--brt-auto-max", brt_auto_max,
-	               "Set maximum automatic brightness.")->check(CLI::Range(1, 100))->group(brt_grp);
-	app.add_option("-L,--brt-auto-offset", brt_auto_offset,
-	               "Set automatic brightness offset. Higher = brighter image.")->check(CLI::Range(-100, 100))->group(brt_grp);
-	app.add_option("--brt-auto-speed", brt_auto_speed,
-	               "Set brightness adaptation speed in milliseconds. Default is 1000 ms.")->check(CLI::Range(1, 10000))->group(brt_grp);
-	app.add_option("--screen-poll-rate", scr_rate,
-	               "How often to check for screen image changes in milliseconds. Only relevant for screens with brightness mode 1.")->check(CLI::Range(1, 5000))->group(brt_grp);
-	app.add_option("--als-poll-rate", als_poll,
-	               "How often to check for ambient light changes in milliseconds. Only relevant for screens with brightness mode 2.")->check(CLI::Range(1, 30000))->group(brt_grp);
-
-	auto temp_range_callback = [&] (std::string &x) {
-		int val = std::stoi(x);
-		if (app.count("--add") == 0 && app.count("--sub") == 0) {
-			if (val < temp_k_min || val > temp_k_max)
-				return std::string("Value not in range " + std::to_string(temp_k_min) + " to " + std::to_string(temp_k_max));
-		}
-		if (val < 0)
-			return std::string("Invalid value");
-		return std::string("");
-	};
-
-	std::string temp_grp("Temperature options");
-	app.add_option("-t,--temperature", temp,
-	               "Set screen temperature in kelvins.\nSetting this option will disable automatic temperature if enabled.")
-	               ->check(CLI::Validator(temp_range_callback, "INT in [2000 - 6500]"))
-	               ->group(temp_grp);
-
-	app.add_option("-T,--temp-mode", tm,
-	               "Temperature mode. 0 for manual, 1 for automatic.")->check(CLI::Range(0, 1))->group(temp_grp);
-	app.add_option("-j,--temp-day", temp_day,
-	               "Set day time temperature in kelvins.")->check(CLI::Range(temp_k_min, temp_k_max))->group(temp_grp);
-	app.add_option("-k,--temp-night", temp_night,
-	               "Set night time temperature in kelvins.")->check(CLI::Range(temp_k_min, temp_k_max))->group(temp_grp);
-	app.add_option("-y,--sunrise-time", sunrise_time,
-	               "Set sunrise time in 24h format, for example `06:00`.")->check(time_format_callback)->group(temp_grp);
-	app.add_option("-u,--sunset-time", sunset_time,
-	               "Set sunset time in 24h format, for example `16:30`.")->check(time_format_callback)->group(temp_grp);
-	app.add_option("-i,--temp-adaptation-time", adapt_time,
-	               "Temperature adaptation time in minutes.\nFor example, if this option is set to 30 min. and the sunset time is at 16:30,\ntemperature starts adjusting at 16:00, going down gradually until 16:30.")->group(temp_grp);
-
-	// show help with no args
-	if (argc == 1) {
-		++argc;
-		argv[1] = "-h";
-	}
-
-	try {
-		app.parse(argc, argv);
-	} catch(const CLI::ParseError &e) {
-		return app.exit(e);
-	}
-
-	if (set_lock(lock_name) == 0) {
-		cout << "gummy is not running.\nType: `gummy start`\n";
-		std::exit(1);
-	}
-
-	nlohmann::json msg {
-		{"scr_no", scr_no},
-		{"brt_mode", bm},
-		{"brt_auto_min", brt_auto_min},
-		{"brt_auto_max", brt_auto_max},
-		{"brt_auto_offset", brt_auto_offset},
-		{"brt_auto_speed", brt_auto_speed},
-		{"brt_auto_screenshot_rate", scr_rate},
-		{"brt_auto_als_poll_rate", als_poll},
-		{"temp_mode", tm},
-		{"brt_perc", brt},
-		{"temp_k", temp},
-		{"temp_day_k", temp_day},
-		{"temp_night_k", temp_night},
-		{"sunrise_time", sunrise_time},
-		{"sunset_time", sunset_time},
-		{"temp_adaptation_time", adapt_time},
-		{"add", add},
-		{"sub", sub}
-	};
-
-	send(msg.dump());
-	return 0;
-}
-*/
 enum {
 	VERS,
 	SCREEN_NUM,
@@ -264,6 +125,18 @@ enum {
 	ALS_POLL_MS,
 	ALS_ADAPTATION_MS
 };
+
+void setif(json &val, int new_val)
+{
+	if (val.is_number_integer() && new_val > -1)
+		val = new_val;
+}
+
+void setif(json &val, std::string new_val)
+{
+	if (val.is_string() && !new_val.empty())
+		val = new_val;
+}
 
 const std::array<std::array<std::string, 2>, 23> options {{
 {"-v, --version", "Print version and exit"},
@@ -297,19 +170,7 @@ const std::array<std::array<std::string, 2>, 23> options {{
 {"--als-adaptation-ms", "Adaptation speed in milliseconds."},
 }};
 
-void setif(json &val, int new_val)
-{
-	if (val.is_number_integer() && new_val > -1)
-		val = new_val;
-}
-
-void setif(json &val, std::string new_val)
-{
-	if (val.is_string() && !new_val.empty())
-		val = new_val;
-}
-
-int interface(int argc, const char **argv)
+int interface(int argc, char **argv)
 {
 	CLI::App app("Screen manager for X11.", "gummy");
 
@@ -349,8 +210,8 @@ int interface(int argc, const char **argv)
 
 	const std::string grp_time("Time range mode settings");
 	struct config::time time;
-	app.add_option(options[TIME_START][0], time.start, options[TIME_START][1])->check(time_format_callback)->group(grp_time);
-	app.add_option(options[TIME_END][0], time.end, options[TIME_END][1])->check(time_format_callback)->group(grp_time);
+	app.add_option(options[TIME_START][0], time.start, options[TIME_START][1])->check(check_time_format)->group(grp_time);
+	app.add_option(options[TIME_END][0], time.end, options[TIME_END][1])->check(check_time_format)->group(grp_time);
 	app.add_option(options[TIME_ADAPTATION_MS][0], time.adaptation_minutes, options[TIME_ADAPTATION_MS][1])->check(CLI::Range(1, 60 * 12))->group(grp_time);
 
 	const std::string grp_ss("Screenshot mode settings");
@@ -375,13 +236,13 @@ int interface(int argc, const char **argv)
 		return app.exit(e);
 	}
 
-	if (set_lock(lock_name) == 0) {
+	if (set_flock(flock_filepath) == 0) {
 		std::puts("gummy is not running.\nType: `gummy start`\n");
 		std::exit(EXIT_SUCCESS);
 	}
 
 	json config_json = [&] {
-		std::ifstream ifs(xdg_config_path(constants::config_name));
+		std::ifstream ifs(xdg_config_filepath(constants::config_filename));
 		json j;
 		try {
 			ifs >> j;
@@ -438,11 +299,12 @@ int interface(int argc, const char **argv)
 	setif(config_json["als"]["adaptation_ms"], als.adaptation_ms);
 	setif(config_json["als"]["offset_perc"], als.offset_perc);
 
-	send(config_json.dump());
-	return 0;
+	file_write(constants::fifo_filepath, config_json.dump());
+
+	return EXIT_SUCCESS;
 }
 
-int main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
 	return interface(argc, argv);
 }
