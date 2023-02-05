@@ -3,7 +3,7 @@ project(gummy VERSION 0.4 LANGUAGES CXX)
 
 add_compile_definitions(VERSION="${PROJECT_VERSION}")
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_compile_options("$<$<CONFIG:RELEASE>:-W;-Wall;-O3;-pedantic>")

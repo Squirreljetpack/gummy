@@ -26,16 +26,24 @@
 #include "gamma.hpp"
 #include "server.hpp"
 
-void start(Xorg &xorg, config conf)
+void start(Xorg &xorg, config conf, std::stop_token stoken)
 {
 	assert(xorg.scr_count() == conf.screens.size());
 
-	gamma_state gamma_state(xorg, conf.screens);
+	gamma_state gamma_state(xorg, config(xorg.scr_count()).screens);
+
+	std::vector<std::jthread> threads;
+	threads.emplace_back([&] {
+		gamma_state.refresh(stoken);
+	});
 
 	std::vector<Sysfs::Backlight> vec = Sysfs::get_backlights();
 	if (!vec.empty()) {
 		vec[0].set_step(conf.screens[0].models[config::screen::model_idx::BACKLIGHT].val);
 	}
+
+	for (auto &t : threads)
+		t.join();
 
 	/*Channel stop_signal(0);
 
@@ -75,16 +83,15 @@ void start(Xorg &xorg, config conf)
 
 int message_loop()
 {
-	bool bootstrap = true;
 	Xorg xorg;
 
-	while (true) {
+	std::vector<std::jthread> threads;
 
-		if (bootstrap) {
-			bootstrap = false;
-			start(xorg, config(xorg.scr_count()));
-			continue;
-		}
+	threads.emplace_back([&] (std::stop_token stoken) {
+		start(xorg, config(xorg.scr_count()), stoken);
+	});
+
+	while (true) {
 
 		const std::string data(file_read(constants::fifo_filepath));
 
@@ -104,7 +111,12 @@ int message_loop()
 			continue;
 		}
 
-		start(xorg, config(msg, xorg.scr_count()));
+		threads[0].request_stop();
+		threads.clear();
+
+		threads.emplace_back([&] (std::stop_token stoken) {
+			start(xorg, config(msg, xorg.scr_count()), stoken);
+		});
 	}
 }
 
