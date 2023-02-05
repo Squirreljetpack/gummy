@@ -43,14 +43,14 @@ const struct {
 	} als;
 } config;
 
-std::vector<Sysfs::Backlight> Sysfs::get_bl()
+std::vector<Sysfs::Backlight> Sysfs::get_backlights()
 {
 	using namespace std::filesystem;
 	std::vector<Sysfs::Backlight> vec;
 
 	if (exists(config.backlight.path)) {
 		for (const auto &s : directory_iterator(config.backlight.path))
-			vec.emplace_back(udev_new(), s.path());
+			vec.emplace_back(s.path());
 	}
 
 	return vec;
@@ -65,38 +65,44 @@ std::vector<Sysfs::ALS> Sysfs::get_als()
 		for (const auto &s : directory_iterator(config.als.path)) {
 			const auto str = s.path().stem().string();
 			if (str.find(config.als.name) != std::string::npos)
-				vec.emplace_back(udev_new(), s.path());
+				vec.emplace_back(s.path());
 		}
 	}
 
 	return vec;
 }
 
-Sysfs::Backlight::Backlight(udev *addr, std::string path)
-    : _dev(addr, path),
-      _max_brt(std::stoi(_dev.get(config.backlight.max_brt))),
-      _cur(std::stoi(_dev.get(config.backlight.brt)))
+Sysfs::Backlight::Backlight(std::string path)
+    : _dev(path),
+      _val(std::stoi(_dev.get(config.backlight.brt))),
+      _max(std::stoi(_dev.get(config.backlight.max_brt)))
 {
 }
 
-void Sysfs::Backlight::set(int brt)
+void Sysfs::Backlight::set_step(int step)
 {
-	_cur = std::clamp(brt, 0, _max_brt);
-	_dev.set(config.backlight.brt, std::to_string(_cur).c_str());
+	_val = remap(step, 0, constants::brt_steps_max, 0, _max);
+
+	_dev.set(config.backlight.brt, std::to_string(_val).c_str());
+}
+
+int Sysfs::Backlight::val() const
+{
+	return _val;
 }
 
 int Sysfs::Backlight::step() const
 {
-	return remap(_cur, 0, _max_brt, constants::brt_steps_min, constants::brt_steps_max);
+	return remap(_val, 0, _max, 0, constants::brt_steps_max);
 }
 
-int Sysfs::Backlight::max_brt() const 
+int Sysfs::Backlight::max() const
 {
-	return _max_brt;
+	return _max;
 }
 
-Sysfs::ALS::ALS(udev *addr, std::string path)
-    : _dev(addr, path),
+Sysfs::ALS::ALS(std::string path)
+    : _dev(path),
 	  _lux_scale(1.0)
 {
 	for (const auto &name : config.als.lux_files) {
@@ -117,7 +123,7 @@ Sysfs::ALS::ALS(udev *addr, std::string path)
 
 void Sysfs::ALS::update()
 {
-	Sysfs::Device dev(udev_new(), _dev.path());
+	Sysfs::Device dev(_dev.path());
 
 	const double lux = std::stod(dev.get(_lux_name)) * _lux_scale;
 

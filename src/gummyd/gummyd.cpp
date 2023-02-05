@@ -32,6 +32,11 @@ void start(Xorg &xorg, config conf)
 
 	gamma_state gamma_state(xorg, conf.screens);
 
+	std::vector<Sysfs::Backlight> vec = Sysfs::get_backlights();
+	if (!vec.empty()) {
+		vec[0].set_step(conf.screens[0].models[config::screen::model_idx::BACKLIGHT].val);
+	}
+
 	/*Channel stop_signal(0);
 
 	Channel <time_server_message> time_ch;

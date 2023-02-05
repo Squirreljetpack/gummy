@@ -25,48 +25,46 @@
 namespace Sysfs
 {
 
-class Device
+class udev_context
 {
+    udev *_addr;
 public:
-    Device(udev*, std::string path);
-	Device(Device&&);
-	~Device();
-	std::string get(std::string attr) const;
-	void        set(std::string attr, std::string val);
-	std::string path() const;
-private:
-	udev_device *_addr;
+	udev_context() {
+		_addr = udev_new();
+	}
+	~udev_context() {
+		udev_unref(_addr);
+	}
+	udev* get() {
+		return _addr;
+	}
 };
 
-inline Sysfs::Device::Device(udev *udev, std::string path)
+class Device
 {
-	_addr = udev_device_new_from_syspath(udev, path.c_str());
-}
+    udev_device *_addr;
+public:
+	Device(std::string path) {
+		udev_context udev;
+		_addr = udev_device_new_from_syspath(udev.get(), path.c_str());
+	}
+	~Device() {
+		udev_device_unref(_addr);
+	};
 
-inline Sysfs::Device::Device(Device &&d) : _addr(d._addr)
-{
-}
+	std::string path() const {
+		return udev_device_get_syspath(_addr);
+	}
 
-inline std::string Sysfs::Device::path() const
-{
-	return udev_device_get_syspath(_addr);
-}
+	std::string get(std::string attr) const {
+		const char *s = udev_device_get_sysattr_value(_addr, attr.c_str());
+		return s ? s : "";
+	}
 
-inline Sysfs::Device::~Device()
-{
-	udev_device_unref(_addr);
-}
-
-inline std::string Sysfs::Device::get(std::string attr) const
-{
-	const char *s = udev_device_get_sysattr_value(_addr, attr.c_str());
-	return s ? s : "";
-}
-
-inline void Sysfs::Device::set(std::string attr, std::string val)
-{
-	udev_device_set_sysattr_value(_addr, attr.c_str(), val.c_str());
-}
+	void set(std::string attr, std::string val) {
+		udev_device_set_sysattr_value(_addr, attr.c_str(), val.c_str());
+	}
+};
 
 };
 

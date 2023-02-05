@@ -27,13 +27,14 @@ namespace Sysfs {
 class Backlight
 {
     Sysfs::Device _dev;
-	int _max_brt;
-	int _cur;
+	int _val;
+	int _max;
 public:
-	Backlight(udev*, std::string path);
-	int max_brt() const;
+	Backlight(std::string path);
+	int val() const;
+	int max() const;
 	int step() const;
-	void set(int);
+	void set_step(int);
 };
 
 class ALS
@@ -43,13 +44,13 @@ class ALS
 	double      _lux_scale;
 	int         _lux_step;
 public:
-	ALS(udev*, std::string path);
+	ALS(std::string path);
 	int lux_step() const;
 	void update();
 };
 
 int calc_lux_step(double lux);
-std::vector<Backlight> get_bl();
+std::vector<Backlight> get_backlights();
 std::vector<ALS>       get_als();
 }
 
