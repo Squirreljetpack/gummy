@@ -20,6 +20,7 @@
 #define GAMMA_HPP
 
 #include <atomic>
+
 #include "xorg.hpp"
 #include "channel.hpp"
 #include "config.hpp"
@@ -36,11 +37,11 @@ class gamma_state {
 	std::vector<std::unique_ptr<values>> _screens;
 
 	void set(size_t screen_idx, int brightness, int temperature);
-	void refresh(Channel<>&);
 public:
 	gamma_state(Xorg &xorg, std::vector<config::screen> screen_conf);
 	void set_brightness(size_t screen_idx, int val);
 	void set_temperature(size_t screen_idx, int val);
+	void refresh(std::stop_token stoken);
 };
 
 #endif

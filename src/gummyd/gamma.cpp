@@ -159,15 +159,20 @@ void gamma_state::set(size_t screen_index, int brt_step, int temp_step)
 	_xorg->set_gamma_ramp(screen_index, ramps);
 }
 
-void gamma_state::refresh(Channel<> &ch)
+void gamma_state::refresh(std::stop_token stoken)
 {
+	using namespace std::chrono;
 	while (true) {
 
 		for (size_t i = 0; i < _xorg->scr_count(); ++i)
 			set(i, _screens[i]->brightness, _screens[i]->temperature);
 
-		// this return fails if we are still refreshing
-		if (ch.recv_timeout(10000) < 0)
+		std::mutex mutex;
+		std::unique_lock lock(mutex);
+		std::condition_variable_any()
+		.wait_until(lock, stoken, system_clock::now() + milliseconds(10000), [&] { return stoken.stop_requested(); });
+
+		if (stoken.stop_requested())
 			return;
 	}
 }
