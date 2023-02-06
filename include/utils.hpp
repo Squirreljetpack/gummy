@@ -20,6 +20,9 @@
 #define UTILS_H
 
 #include <cmath>
+#include <chrono>
+#include <thread>
+#include <condition_variable>
 
 // scale value in a [0, 1] range
 inline double invlerp(double val, double min, double max)
@@ -51,6 +54,15 @@ inline double mant(double x)
 inline double remap_to_idx(int val, int min, int max, size_t arr_sz)
 {
 	return remap(val, min, max, 0, arr_sz - 1);
+}
+
+inline void jthread_wait_until(int ms, std::stop_token stoken)
+{
+	using namespace std::chrono;
+	std::mutex mutex;
+	std::unique_lock lock(mutex);
+	std::condition_variable_any()
+	        .wait_until(lock, stoken, system_clock::now() + milliseconds(ms), [&] { return stoken.stop_requested(); });
 }
 
 #endif // UTILS_H
