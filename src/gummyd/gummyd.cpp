@@ -38,6 +38,7 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 	});
 
 	std::vector<Sysfs::Backlight> vec = Sysfs::get_backlights();
+
 	if (!vec.empty()) {
 		vec[0].set_step(conf.screens[0].models[config::screen::model_idx::BACKLIGHT].val);
 	}
@@ -46,6 +47,7 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 		t.join();
 
 	/*Channel stop_signal(0);
+
 
 	Channel <time_server_message> time_ch;
 
@@ -114,8 +116,11 @@ int message_loop()
 		threads[0].request_stop();
 		threads.clear();
 
+		// if I put this call in the thread, "msg" breaks for some reason.
+		const auto conf = config(msg, xorg.scr_count());
+
 		threads.emplace_back([&] (std::stop_token stoken) {
-			start(xorg, config(msg, xorg.scr_count()), stoken);
+			start(xorg, conf, stoken);
 		});
 	}
 }
