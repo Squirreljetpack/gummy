@@ -123,9 +123,9 @@ gamma_state::gamma_state(Xorg &xorg, std::vector<config::screen> screens_conf)
 		if (temp_model.mode == config::screen::mode::MANUAL)
 			temp = temp_model.val;
 
-		set(i, brt, temp);
-
-		_screens.emplace_back(std::make_unique<values>(brt, temp));
+		const values vals { brt, temp };
+		set(i, vals);
+		_screens.emplace_back(std::make_unique<std::atomic<values>>(vals));
 	}
 }
 
@@ -137,13 +137,13 @@ gamma_state::gamma_state(Xorg &xorg, std::vector<config::screen> screens_conf)
  * So, when ramp_sz = 2048, each value is increased in steps of 32,
  * When ramp_sz = 1024 (usually on iGPUs), it's 64, and so on.
  */
-void gamma_state::set(size_t screen_index, int brt_step, int temp_step)
+void gamma_state::set(size_t screen_index, values vals)
 {
 	std::vector<uint16_t> ramps(_xorg->ramp_size(screen_index));
 
 	const size_t sz = ramps.size() / 3;
-	const double brt_mult = calc_brt_mult(brt_step, sz);
-	const auto [r_mult, g_mult, b_mult] = kelvin_to_rgb(temp_step);
+	const double brt_mult = calc_brt_mult(vals.brightness, sz);
+	const auto [r_mult, g_mult, b_mult] = kelvin_to_rgb(vals.temperature);
 
 	uint16_t *r = &ramps[0 * sz];
 	uint16_t *g = &ramps[1 * sz];
@@ -163,8 +163,9 @@ void gamma_state::refresh(std::stop_token stoken)
 {
 	while (true) {
 
-		for (size_t i = 0; i < _xorg->scr_count(); ++i)
-			set(i, _screens[i]->brightness, _screens[i]->temperature);
+		for (size_t i = 0; i < _xorg->scr_count(); ++i) {
+			set(i, _screens[i]->load());
+		}
 
 		jthread_wait_until(10000, stoken);
 
@@ -174,8 +175,20 @@ void gamma_state::refresh(std::stop_token stoken)
 	}
 }
 
+void gamma_state::set_brightness(size_t idx, int val)
+{
+	values values = _screens[idx]->load();
+	values.brightness = val;
+	_screens[idx]->store(values);
+
+	set(idx, values);
+}
+
 void gamma_state::set_temperature(size_t idx, int val)
 {
-	_screens[idx]->temperature = val;
-	set(idx, _screens[idx]->brightness, _screens[idx]->temperature);
+	values values = _screens[idx]->load();
+	values.temperature = val;
+	_screens[idx]->store(values);
+
+	set(idx, values);
 }

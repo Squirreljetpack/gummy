@@ -243,3 +243,15 @@ void config::file_parse()
 		from_json(jdata);
 	}
 }
+
+size_t config::clients_for(config::screen::mode _mode)
+{
+	size_t c = 0;
+	for (const auto &scr : screens) {
+		for (const auto &model : scr.models) {
+			if (model.mode == _mode)
+				++c;
+		}
+	}
+	return c;
+}

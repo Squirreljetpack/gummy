@@ -29,14 +29,13 @@ class gamma_state {
 	Xorg *_xorg;
 
 	struct values {
-		std::atomic<int> brightness;
-		std::atomic<int> temperature;
-		values(int brt, int temp) : brightness(brt), temperature(temp) {};
+		int brightness;
+		int temperature;
 	};
 
-	std::vector<std::unique_ptr<values>> _screens;
+	std::vector<std::unique_ptr<std::atomic<values>>> _screens;
 
-	void set(size_t screen_idx, int brightness, int temperature);
+	void set(size_t screen_idx, values);
 public:
 	gamma_state(Xorg &xorg, std::vector<config::screen> screen_conf);
 	void set_brightness(size_t screen_idx, int val);

@@ -31,11 +31,10 @@
 void brightness_server(Xorg &xorg, size_t screen_idx, Channel<> &brt_ch, Channel<> &sig, int sleep_ms, int prev, int cur);
 void als_server(Sysfs::ALS &als, Channel<> &ch, Channel<> &sig, int sleep_ms, int prev, int cur);
 
-struct time_server_message {
+struct time_data {
 	bool in_range;
 	std::time_t time_since_last_event;
 	std::time_t adaptation_s;
-
 	bool keep_alive;
 };
 
@@ -44,7 +43,6 @@ struct time_target {
 	int duration_ms;
 };
 
-void time_server(Channel<time_server_message> &ch, Channel<> &sig, struct config::time conf);
-void time_client(Channel<time_server_message> &time_ch, config::screen::model model, std::function<void(int)> model_fn);
-
+void time_server(server_channel<time_data> &ch, struct config::time conf, std::stop_token stoken);
+void time_client(server_channel<time_data> &ch, config::screen::model model, std::function<void(int)> model_fn);
 #endif // SERVER_HPP

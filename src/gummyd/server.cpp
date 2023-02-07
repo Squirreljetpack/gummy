@@ -19,6 +19,7 @@
 #include "server.hpp"
 #include "easing.hpp"
 
+
 // [0, 255]
 int image_brightness(std::tuple<uint8_t*, size_t> buf, int bytes_per_pixel = 4, int stride = 1024)
 {
@@ -72,7 +73,7 @@ void als_server(Sysfs::ALS &als, Channel<> &ch, Channel<> &sig, int sleep_ms, in
 	}
 }
 
-void time_server(Channel<time_server_message> &ch, Channel<> &sig, struct config::time conf)
+void time_server(server_channel<time_data> &ch, struct config::time conf, std::stop_token stoken)
 {
 	time_window tw(std::time(nullptr), conf.start, conf.end, -(conf.adaptation_minutes * 60));
 
@@ -82,9 +83,14 @@ void time_server(Channel<time_server_message> &ch, Channel<> &sig, struct config
 
 		const int in_range = tw.in_range();
 
-		printf("time_server: sending signal: %d\n", in_range);
+		printf("[time_server] writing: %d\n", in_range);
 
-		ch.send({tw.in_range(), tw.time_since_last(), conf.adaptation_minutes * 60, true});
+		ch.update({
+		    tw.in_range(),
+		    tw.time_since_last(),
+		    conf.adaptation_minutes * 60,
+		    true
+		});
 
 		if (!in_range && tw.reference() > tw.start())
 			    tw.shift_dates();
@@ -92,15 +98,43 @@ void time_server(Channel<time_server_message> &ch, Channel<> &sig, struct config
 		const int time_to_next_ms = std::abs(tw.time_to_next()) * 1000;
 		//printf("time to next event: %d s\n", time_to_next_ms / 1000);
 
-		if (sig.recv_timeout(time_to_next_ms) < 0) {
-			ch.send({0, 0, 0, false});
-			printf("time_server: exit\n");
+		jthread_wait_until(time_to_next_ms, stoken);
+
+		if (stoken.stop_requested()) {
+			ch.update({0, 0, 0, false});
 			return;
 		}
 	}
 }
 
-time_target calc_time_target(bool step, time_server_message data, config::screen::model model)
+time_target calc_time_target(bool step, time_data data, config::screen::model model);
+
+void time_client(server_channel<time_data> &ch, config::screen::model model, std::function<void(int)> model_fn)
+{
+	int cur = constants::temp_k_max;
+
+	const auto interrupt = [&] {
+		return !ch.data().keep_alive;
+	};
+
+	while (true) {
+
+		puts("[time_client]: reading...");
+		const time_data data = ch.recv();
+
+		if (!data.keep_alive)
+			return;
+
+		for (int step = 0; step < 2; ++step) {
+			const time_target target = calc_time_target(step, data, model);
+			printf("[time_client]: animating from %d to %d (duration: %d ms)..\n", cur, target.val, target.duration_ms);
+			easing::animate(easing::ease_in_out_quad, cur, target.val, target.duration_ms, 0, cur, cur, model_fn, interrupt);
+			cur = target.val;
+		}
+	}
+}
+
+time_target calc_time_target(bool step, time_data data, config::screen::model model)
 {
 	const std::time_t min_duration_ms = 2000;
 
@@ -124,28 +158,6 @@ time_target calc_time_target(bool step, time_server_message data, config::screen
 	printf("duration_ms: %d\n", duration_ms);
 
 	return { target, duration_ms };
-}
-
-void time_client(Channel<time_server_message> &time_ch, config::screen::model model, std::function<void(int)> model_fn)
-{
-	int cur;
-
-	const auto interrupt = [&] {
-		return !time_ch.data().keep_alive;
-	};
-
-	while (true) {
-		const time_server_message data = time_ch.recv();
-
-		if (!data.keep_alive)
-			return;
-
-		for (int step = 0; step < 2; ++step) {
-			const time_target target = calc_time_target(step, data, model);
-			cur = target.val;
-			easing::animate(easing::ease_in_out_quad, cur, target.val, target.duration_ms, 0, cur, cur, model_fn, interrupt);
-		}
-	}
 }
 
 

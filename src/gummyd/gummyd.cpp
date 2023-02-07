@@ -17,6 +17,7 @@
 */
 
 #include <syslog.h>
+#include <latch>
 
 #include "config.hpp"
 #include "file.hpp"
@@ -43,53 +44,65 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 		vec[0].set_step(conf.screens[0].models[config::screen::model_idx::BACKLIGHT].val);
 	}
 
-	for (auto &t : threads)
-		t.join();
+	//////////////////////////////////////////////////////////////////////
 
-	/*Channel stop_signal(0);
+	const size_t screenshot_clients = conf.clients_for(config::screen::mode::SCREENSHOT);
+	const size_t als_clients        = conf.clients_for(config::screen::mode::ALS);
+	const size_t time_clients       = conf.clients_for(config::screen::mode::TIME);
+	printf("screenshot: %zu, als: %zu, time: %zu\n", screenshot_clients, als_clients, time_clients);
 
-
-	Channel <time_server_message> time_ch;
-
-	std::vector<std::thread> servers;
-	std::vector<std::thread> clients;
+	server_channel<time_data> time_ch(time_clients, {0,0,0,0});
 
 	// start time service
-	servers.emplace_back([&] {
-		time_server(time_ch, stop_signal, conf.time);
+	threads.emplace_back([&] {
+		time_server(time_ch, conf.time, stoken);
 	});
+
+	const auto model_fn = [&] (size_t idx, config::screen::model_idx model_idx, int val) {
+		switch (model_idx) {
+		case config::screen::model_idx::BACKLIGHT:
+			printf("model fn: set backlight\n");
+			if (!vec.empty()) {
+				vec[0].set_step(val);
+			}
+			break;
+		case config::screen::model_idx::BRIGHTNESS:
+			printf("model fn: set brightness\n");
+			gamma_state.set_brightness(idx, val);
+			break;
+		case config::screen::model_idx::TEMPERATURE:
+			printf("model fn: set temperature\n");
+			gamma_state.set_temperature(idx, val);
+			break;
+		}
+	};
 
 	// read config.screens
 	for (size_t idx = 0; idx < conf.screens.size(); ++idx) {
 
-		const auto set_temp = [&] (int val) {
-			gamma_state.set_temperature(idx, val);
-		};
+		for (size_t model_idx = 0; model_idx < conf.screens[idx].models.size(); ++model_idx) {
 
-		for (const auto &model : conf.screens[idx].models) {
+			const auto &model = conf.screens[idx].models[model_idx];
+
 			if (model.mode == config::screen::TIME) {
-				clients.emplace_back([&] {
-					time_client(time_ch, model, set_temp);
-				});
+				printf("screen %zu has model %zu on mode TIME\n", idx, model_idx);
+				const auto x = [&] (int val) {
+					gamma_state.set_temperature(idx, val);
+				};
+				threads.emplace_back(std::jthread(time_client, std::ref(time_ch), model, x));
 			}
 		}
 	}
 
-	stop_signal.send(-1);
-
-	for (auto &t : servers)
+	for (auto &t : threads)
 		t.join();
-	for (auto &t : clients)
-		t.join();*/
 }
 
 int message_loop()
 {
 	Xorg xorg;
 
-	std::vector<std::jthread> threads;
-
-	threads.emplace_back([&] (std::stop_token stoken) {
+	std::jthread thr([&] (std::stop_token stoken) {
 		start(xorg, config(xorg.scr_count()), stoken);
 	});
 
@@ -113,15 +126,9 @@ int message_loop()
 			continue;
 		}
 
-		threads[0].request_stop();
-		threads.clear();
-
-		// if I put this call in the thread, "msg" breaks for some reason.
-		const auto conf = config(msg, xorg.scr_count());
-
-		threads.emplace_back([&] (std::stop_token stoken) {
-			start(xorg, conf, stoken);
-		});
+		thr.request_stop();
+		thr.join();
+		thr = std::jthread(start, std::ref(xorg), config(msg, xorg.scr_count()), thr.get_stop_token());
 	}
 }
 

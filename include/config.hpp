@@ -108,6 +108,7 @@ public:
 
 	config(size_t scr_no);
 	config(nlohmann::json data, size_t scr_no);
+	size_t clients_for(config::screen::mode);
 };
 
 #endif // CONFIG_HPP
