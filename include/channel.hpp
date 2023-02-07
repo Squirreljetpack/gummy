@@ -21,6 +21,7 @@
 #define CHANNEL_H
 
 #include <condition_variable>
+#include <atomic>
 
 template <typename T = int>
 class Channel
@@ -68,6 +69,36 @@ public:
 		}
 
 		cv.notify_all();
+	}
+};
+
+template <class T>
+
+class server_channel {
+	int _nclients;
+	std::atomic<int> _nclients_to_notify;
+	std::atomic<T> _data;
+
+public:
+	server_channel(int nclients, T data)
+	: _nclients(nclients),
+	  _nclients_to_notify(0),
+	  _data(data) {}
+
+	T recv() {
+		_nclients_to_notify.wait(0);
+		--_nclients_to_notify;
+		return _data.load();
+	}
+
+	T data() {
+		return _data.load();
+	}
+
+	void update(T data) {
+		_data.store(data);
+		_nclients_to_notify.store(_nclients);
+		_nclients_to_notify.notify_all();
 	}
 };
 
