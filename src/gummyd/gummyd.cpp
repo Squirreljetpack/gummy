@@ -52,12 +52,11 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 	printf("screenshot: %zu, als: %zu, time: %zu\n", screenshot_clients, als_clients, time_clients);
 
 	server_channel<time_data> time_ch(time_clients, {0,0,0,0});
-
-	// start time service
-	threads.emplace_back([&] {
-		time_server(time_ch, conf.time, stoken);
-	});
-
+	if (time_clients > 0) {
+		threads.emplace_back([&] {
+			time_server(time_ch, conf.time, stoken);
+		});
+	}
 	// read config.screens
 	for (size_t idx = 0; idx < conf.screens.size(); ++idx) {
 
@@ -84,9 +83,27 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 				break;
 			}
 
-			if (model.mode == config::screen::TIME) {
+			switch (model.mode) {
+			case config::screen::UNINITIALIZED: {
+				break;
+			}
+			case config::screen::MANUAL: {
+				break;
+			}
+			case config::screen::ALS: {
+				break;
+			}
+			case config::screen::SCREENSHOT: {
+				server_channel<int> ch(1, 0);
+				threads.emplace_back(std::jthread(brightness_server, std::ref(xorg), idx, std::ref(ch), conf.screenshot, stoken));
+				//threads.emplace_back(std::jthread(brightness_client, std::ref(ch), model, fn, conf.screenshot.adaptation_ms));
+				break;
+			}
+			case config::screen::TIME: {
 				printf("screen %zu has model %zu on mode TIME\n", idx, model_idx);
 				threads.emplace_back(std::jthread(time_client, std::ref(time_ch), model, fn));
+				break;
+			}
 			}
 		}
 	}

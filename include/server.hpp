@@ -28,7 +28,9 @@
 #include "time.hpp"
 #include "config.hpp"
 
-void brightness_server(Xorg &xorg, size_t screen_idx, Channel<> &brt_ch, Channel<> &sig, int sleep_ms, int prev, int cur);
+void brightness_server(Xorg &xorg, size_t screen_idx, server_channel<int> &ch, struct config::screenshot conf, std::stop_token stoken);
+void brightness_client(server_channel<int> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms);
+
 void als_server(Sysfs::ALS &als, Channel<> &ch, Channel<> &sig, int sleep_ms, int prev, int cur);
 
 struct time_data {

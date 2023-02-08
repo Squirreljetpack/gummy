@@ -19,7 +19,6 @@
 #include "server.hpp"
 #include "easing.hpp"
 
-
 // [0, 255]
 int image_brightness(std::tuple<uint8_t*, size_t> buf, int bytes_per_pixel = 4, int stride = 1024)
 {
@@ -36,20 +35,64 @@ int image_brightness(std::tuple<uint8_t*, size_t> buf, int bytes_per_pixel = 4, 
 	return ((rgb[0] * 0.2126) + (rgb[1] * 0.7152) + (rgb[2] * 0.0722)) * stride / (sz / bytes_per_pixel);
 }
 
-void brightness_server(Xorg &xorg, size_t screen_idx, Channel<> &brt_ch, Channel<> &sig, int sleep_ms, int prev, int cur)
+void brightness_server(Xorg &xorg, size_t screen_idx, server_channel<int> &ch, struct config::screenshot conf, std::stop_token stoken)
 {
+	int cur = constants::brt_steps_max;
+	int prev;
+	int delta = 0;
 
 	while (true) {
 		prev = cur;
-		cur = remap(image_brightness(xorg.screen_data(screen_idx)), 0, 255, constants::brt_steps_min, constants::brt_steps_max);
 
-		if (prev != cur)
-			brt_ch.send(cur);
+		cur = image_brightness(xorg.screen_data(screen_idx)) + remap(conf.offset_perc, 0, 100, 0, 255);
 
-		if (sig.recv_timeout(sleep_ms) < 0) {
-			brt_ch.send(-1);
+		delta += std::abs(prev - cur);
+
+		if (delta > 8) {
+			delta = 0;
+			printf("[brightness_server]: sending %d\n", cur);
+			ch.update(cur);
+		}
+
+		jthread_wait_until(conf.poll_ms, stoken);
+
+		if (stoken.stop_requested()) {
+			ch.update(-1);
 			return;
 		}
+	}
+}
+
+int brt_target_als(int als_brt, int min, int max, int offset)
+{
+	const int offset_step = offset * constants::brt_steps_max / max;
+	return std::clamp(als_brt + offset_step, min, max);
+}
+
+void brightness_client(server_channel<int> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
+{
+	int cur = model.max;
+
+	while (true) {
+
+		const int brightness = ch.recv();
+
+		printf("[brightness client] received %d.\n", brightness);
+
+		if (brightness < 0) {
+			return;
+		}
+
+		const int model_brightness = remap(brightness, 0, constants::brt_steps_max, model.min, model.max);
+		const int target = std::max(model.max - model_brightness, model.min);
+
+		const auto interrupt = [&] {
+			return brightness != ch.data();
+		};
+
+		printf("[brightness client] easing from %d to %d...\n", cur, target);
+		//easing::animate(easing::ease_out_expo, cur, target, adaptation_ms, 0, cur, cur, model_fn, interrupt);
+		cur = target;
 	}
 }
 
