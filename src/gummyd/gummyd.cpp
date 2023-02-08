@@ -86,27 +86,30 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 
 			if (model.mode == config::screen::TIME) {
 				printf("screen %zu has model %zu on mode TIME\n", idx, model_idx);
-				const auto x = [&] (int val) {
-					gamma_state.set_temperature(idx, val);
-				};
-				threads.emplace_back(std::jthread(time_client, std::ref(time_ch), model, x));
+				using std::placeholders::_1;
+				std::function<void(int)> fn = std::bind(&gamma_state::set_temperature, &gamma_state, idx, _1);
+				threads.emplace_back(std::jthread(time_client, std::ref(time_ch), model, fn));
 			}
 		}
 	}
 
 	for (auto &t : threads)
 		t.join();
+
+	puts("==========================end=============================");
 }
 
 int message_loop()
 {
 	Xorg xorg;
 
-	std::jthread thr([&] (std::stop_token stoken) {
-		start(xorg, config(xorg.scr_count()), stoken);
-	});
+	config conf(xorg.scr_count());
 
 	while (true) {
+
+		std::jthread thr([&] (std::stop_token stoken) {
+			start(xorg, conf, stoken);
+		});
 
 		const std::string data(file_read(constants::fifo_filepath));
 
@@ -128,7 +131,7 @@ int message_loop()
 
 		thr.request_stop();
 		thr.join();
-		thr = std::jthread(start, std::ref(xorg), config(msg, xorg.scr_count()), thr.get_stop_token());
+		conf = config(msg, xorg.scr_count());
 	}
 }
 
