@@ -136,11 +136,6 @@ void time_client(server_channel<time_data> &ch, config::screen::model model, std
 
 time_target calc_time_target(bool step, time_data data, config::screen::model model)
 {
-	const std::time_t min_duration_ms = 2000;
-
-	if (step)
-		return { (data.in_range ? model.max : model.min), min_duration_ms };
-
 	const std::time_t delta_s = std::min(std::abs(data.time_since_last_event), data.adaptation_s);
 
 	const int target = [&] {
@@ -151,13 +146,18 @@ time_target calc_time_target(bool step, time_data data, config::screen::model mo
 			return int(lerp(model.max, model.min, lerp_fac));
 	}();
 
+	const std::time_t min_duration_ms = 2000;
+
 	const int duration_ms = std::max(((data.adaptation_s - delta_s) * 1000), min_duration_ms);
 
 	printf("in_range: %d\n", data.in_range);
 	printf("target: %d\n", target);
 	printf("duration_ms: %d\n", duration_ms);
 
-	return { target, duration_ms };
+	if (!step)
+		return { target, min_duration_ms };
+	else
+		return { data.in_range ? model.max : model.min, duration_ms };
 }
 
 
