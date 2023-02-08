@@ -111,7 +111,7 @@ time_target calc_time_target(bool step, time_data data, config::screen::model mo
 
 void time_client(server_channel<time_data> &ch, config::screen::model model, std::function<void(int)> model_fn)
 {
-	int cur = constants::temp_k_max;
+	int cur = model.max;
 
 	const auto interrupt = [&] {
 		return !ch.data().keep_alive;
