@@ -58,25 +58,6 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 		time_server(time_ch, conf.time, stoken);
 	});
 
-	const auto model_fn = [&] (size_t idx, config::screen::model_idx model_idx, int val) {
-		switch (model_idx) {
-		case config::screen::model_idx::BACKLIGHT:
-			printf("model fn: set backlight\n");
-			if (!vec.empty()) {
-				vec[0].set_step(val);
-			}
-			break;
-		case config::screen::model_idx::BRIGHTNESS:
-			printf("model fn: set brightness\n");
-			gamma_state.set_brightness(idx, val);
-			break;
-		case config::screen::model_idx::TEMPERATURE:
-			printf("model fn: set temperature\n");
-			gamma_state.set_temperature(idx, val);
-			break;
-		}
-	};
-
 	// read config.screens
 	for (size_t idx = 0; idx < conf.screens.size(); ++idx) {
 
@@ -84,10 +65,27 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 
 			const auto &model = conf.screens[idx].models[model_idx];
 
+			using std::placeholders::_1;
+			using model_name = config::screen::model_idx;
+
+			// dummy function
+			std::function<void(int)> fn = [] ([[maybe_unused]] int val) { };
+
+			switch (model_idx) {
+			case model_name::BACKLIGHT:
+				if (!vec.empty())
+					fn = std::bind(&Sysfs::Backlight::set_step, &vec[0], _1);
+				break;
+			case model_name::BRIGHTNESS:
+				fn = std::bind(&gamma_state::set_brightness, &gamma_state, idx, _1);
+				break;
+			case model_name::TEMPERATURE:
+				fn = std::bind(&gamma_state::set_temperature, &gamma_state, idx, _1);
+				break;
+			}
+
 			if (model.mode == config::screen::TIME) {
 				printf("screen %zu has model %zu on mode TIME\n", idx, model_idx);
-				using std::placeholders::_1;
-				std::function<void(int)> fn = std::bind(&gamma_state::set_temperature, &gamma_state, idx, _1);
 				threads.emplace_back(std::jthread(time_client, std::ref(time_ch), model, fn));
 			}
 		}
