@@ -83,11 +83,10 @@ public:
 	channel(int nclients) :
 	    _nclients(nclients),
 	    _nclients_to_notify(0) {
-		puts("constructed");
 	}
 
 	channel(const channel &src) :
-	    _nclients(_nclients),
+	    _nclients(src._nclients),
 	    _nclients_to_notify(src._nclients_to_notify.load()),
 	    _data(src._data.load()) {
 	}
