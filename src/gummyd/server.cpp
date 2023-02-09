@@ -35,7 +35,7 @@ int image_brightness(std::tuple<uint8_t*, size_t> buf, int bytes_per_pixel = 4, 
 	return ((rgb[0] * 0.2126) + (rgb[1] * 0.7152) + (rgb[2] * 0.0722)) * stride / (sz / bytes_per_pixel);
 }
 
-void brightness_server(Xorg &xorg, size_t screen_idx, server_channel<int> &ch, struct config::screenshot conf, std::stop_token stoken)
+void brightness_server(Xorg &xorg, size_t screen_idx, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken)
 {
 	int cur = constants::brt_steps_max;
 	int prev;
@@ -44,8 +44,7 @@ void brightness_server(Xorg &xorg, size_t screen_idx, server_channel<int> &ch, s
 	while (true) {
 		prev = cur;
 
-		cur = image_brightness(xorg.screen_data(screen_idx)) + remap(conf.offset_perc, 0, 100, 0, 255);
-
+		cur = std::clamp(image_brightness(xorg.screen_data(screen_idx)) + int(remap(conf.offset_perc, -100, 100, -255, 255)), 0, 255);
 		delta += std::abs(prev - cur);
 
 		if (delta > 8) {
@@ -69,7 +68,7 @@ int brt_target_als(int als_brt, int min, int max, int offset)
 	return std::clamp(als_brt + offset_step, min, max);
 }
 
-void brightness_client(server_channel<int> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
+void brightness_client(channel<int> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
 {
 	int cur = model.max;
 
@@ -83,16 +82,14 @@ void brightness_client(server_channel<int> &ch, config::screen::model model, std
 			return;
 		}
 
-		const int model_brightness = remap(brightness, 0, constants::brt_steps_max, model.min, model.max);
-		const int target = std::max(model.max - model_brightness, model.min);
+		const int target = remap(brightness, 0, 255, model.max, model.min);
 
 		const auto interrupt = [&] {
 			return brightness != ch.data();
 		};
 
 		printf("[brightness client] easing from %d to %d...\n", cur, target);
-		//easing::animate(easing::ease_out_expo, cur, target, adaptation_ms, 0, cur, cur, model_fn, interrupt);
-		cur = target;
+		cur = easing::animate2(cur, target, adaptation_ms, easing::ease_out_expo, model_fn, interrupt);
 	}
 }
 
@@ -116,7 +113,7 @@ void als_server(Sysfs::ALS &als, Channel<> &ch, Channel<> &sig, int sleep_ms, in
 	}
 }
 
-void time_server(server_channel<time_data> &ch, struct config::time conf, std::stop_token stoken)
+void time_server(channel<time_data> &ch, struct config::time conf, std::stop_token stoken)
 {
 	time_window tw(std::time(nullptr), conf.start, conf.end, -(conf.adaptation_minutes * 60));
 
@@ -152,7 +149,7 @@ void time_server(server_channel<time_data> &ch, struct config::time conf, std::s
 
 time_target calc_time_target(bool step, time_data data, config::screen::model model);
 
-void time_client(server_channel<time_data> &ch, config::screen::model model, std::function<void(int)> model_fn)
+void time_client(channel<time_data> &ch, config::screen::model model, std::function<void(int)> model_fn)
 {
 	int cur = model.max;
 

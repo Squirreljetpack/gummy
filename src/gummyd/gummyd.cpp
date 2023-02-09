@@ -51,14 +51,23 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 	const size_t time_clients       = conf.clients_for(config::screen::mode::TIME);
 	printf("screenshot: %zu, als: %zu, time: %zu\n", screenshot_clients, als_clients, time_clients);
 
-	server_channel<time_data> time_ch(time_clients, {0,0,0,0});
+	channel<time_data> time_ch(time_clients);
 	if (time_clients > 0) {
 		threads.emplace_back([&] {
 			time_server(time_ch, conf.time, stoken);
 		});
 	}
+
+	std::vector<channel<int>> brt_channels;
+	brt_channels.reserve(screenshot_clients);
+
 	// read config.screens
 	for (size_t idx = 0; idx < conf.screens.size(); ++idx) {
+
+		//todo: start screenshots only if at least one model is in screenshot mode
+		//todo: clients for this screen only
+		brt_channels.emplace_back(screenshot_clients);
+		threads.emplace_back(std::jthread(brightness_server, std::ref(xorg), idx, std::ref(brt_channels.back()), conf.screenshot, stoken));
 
 		for (size_t model_idx = 0; model_idx < conf.screens[idx].models.size(); ++model_idx) {
 
@@ -94,9 +103,7 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 				break;
 			}
 			case config::screen::SCREENSHOT: {
-				server_channel<int> ch(1, 0);
-				threads.emplace_back(std::jthread(brightness_server, std::ref(xorg), idx, std::ref(ch), conf.screenshot, stoken));
-				//threads.emplace_back(std::jthread(brightness_client, std::ref(ch), model, fn, conf.screenshot.adaptation_ms));
+				threads.emplace_back(std::jthread(brightness_client, std::ref(brt_channels.back()), model, fn, conf.screenshot.adaptation_ms));
 				break;
 			}
 			case config::screen::TIME: {
