@@ -68,6 +68,37 @@ inline void animate(std::function<double(double t)> easing, int start, int end, 
 	}
 }
 
+inline int animate2(int start, int end, int duration_ms, std::function<double(double t)> easing, std::function<void(int)> fn, std::function<bool()> interrupt)
+{
+	int cur = start;
+	int prev;
+	int progress_ms = 0;
+
+	while (true) {
+		if (cur == end) {
+			return cur;
+		}
+
+		prev = cur;
+		cur = lerp(start, end, easing(double(progress_ms) / duration_ms));
+		//printf("cur step %d, progress %d/%d\n", cur_step, progress_ms, duration_ms);
+
+		if (prev != cur)
+			fn(cur);
+
+		if (progress_ms == duration_ms) {
+			return cur;
+		}
+
+		if (interrupt()) {
+			return cur;
+		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		progress_ms += 1;
+	}
+}
+
 }
 
 #endif // EASING_HPP

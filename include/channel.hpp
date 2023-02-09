@@ -74,16 +74,23 @@ public:
 
 template <class T>
 
-class server_channel {
+class channel {
 	int _nclients;
-	std::atomic<int> _nclients_to_notify;
+	std::atomic_int _nclients_to_notify;
 	std::atomic<T> _data;
 
 public:
-	server_channel(int nclients, T data)
-	: _nclients(nclients),
-	  _nclients_to_notify(0),
-	  _data(data) {}
+	channel(int nclients) :
+	    _nclients(nclients),
+	    _nclients_to_notify(0) {
+		puts("constructed");
+	}
+
+	channel(const channel &src) :
+	    _nclients(_nclients),
+	    _nclients_to_notify(src._nclients_to_notify.load()),
+	    _data(src._data.load()) {
+	}
 
 	T recv() {
 		_nclients_to_notify.wait(0);

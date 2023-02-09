@@ -126,10 +126,21 @@ enum {
 	ALS_ADAPTATION_MS
 };
 
+int perc_to_step(int val) {
+	return remap(val, 0, 100, 0, constants::brt_steps_max);
+}
+
 void setif(json &val, int new_val)
 {
-	if (val.is_number_integer() && new_val > -1)
+	if (val.is_number_integer() && new_val > std::numeric_limits<int>::min()) {
 		val = new_val;
+	}
+}
+
+void setif(json &val, int new_val, std::function<int(int)> fn)
+{
+	if (val.is_number_integer() && new_val > std::numeric_limits<int>::min())
+		val = fn(new_val);
 }
 
 void setif(json &val, std::string new_val)
@@ -216,13 +227,13 @@ int interface(int argc, char **argv)
 
 	const std::string grp_ss("Screenshot mode settings");
 	struct config::screenshot screenshot;
-	app.add_option(options[SCREENSHOT_OFFSET][0], screenshot.offset_perc, options[SCREENSHOT_OFFSET][1])->check(CLI::Range(0, 100))->group(grp_ss);
+	app.add_option(options[SCREENSHOT_OFFSET][0], screenshot.offset_perc, options[SCREENSHOT_OFFSET][1])->check(CLI::Range(-100, 100))->group(grp_ss);
 	app.add_option(options[SCREENSHOT_POLL_MS][0], screenshot.poll_ms, options[SCREENSHOT_POLL_MS][1])->check(CLI::Range(1, 10000))->group(grp_ss);
 	app.add_option(options[SCREENSHOT_ADAPTATION_MS][0], screenshot.adaptation_ms, options[SCREENSHOT_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_ss);
 
 	const std::string grp_als("ALS mode settings");
 	struct config::als als;
-	app.add_option(options[ALS_OFFSET][0], als.offset_perc, options[ALS_OFFSET][1])->check(CLI::Range(0, 100))->group(grp_als);
+	app.add_option(options[ALS_OFFSET][0], als.offset_perc, options[ALS_OFFSET][1])->check(CLI::Range(-100, 100))->group(grp_als);
 	app.add_option(options[ALS_POLL_MS][0], als.poll_ms, options[ALS_POLL_MS][1])->check(CLI::Range(1, 10000 * 60 * 60))->group(grp_als);
 	app.add_option(options[ALS_ADAPTATION_MS][0], als.adaptation_ms, options[ALS_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_als);
 
@@ -265,14 +276,14 @@ int interface(int argc, char **argv)
 		auto &scr = config_json["screens"][idx];
 
 		setif(scr["backlight"]["mode"], backlight.mode);
-		setif(scr["backlight"]["val"], remap(backlight.val, 0, 100, 0, 1000));
-		setif(scr["backlight"]["min"], remap(backlight.min, 0, 100, 0, 1000));
-		setif(scr["backlight"]["max"], remap(backlight.max, 0, 100, 0, 1000));
+		setif(scr["backlight"]["val"], backlight.val, perc_to_step);
+		setif(scr["backlight"]["min"], backlight.min, perc_to_step);
+		setif(scr["backlight"]["max"], backlight.max, perc_to_step);
 
 		setif(scr["brightness"]["mode"], brightness.mode);
-		setif(scr["brightness"]["val"], remap(brightness.val, 0, 100, 0, 1000));
-		setif(scr["brightness"]["min"], remap(brightness.min, 0, 100, 0, 1000));
-		setif(scr["brightness"]["max"], remap(brightness.max, 0, 100, 0, 1000));
+		setif(scr["brightness"]["val"], brightness.val, perc_to_step);
+		setif(scr["brightness"]["min"], brightness.min, perc_to_step);
+		setif(scr["brightness"]["max"], brightness.max, perc_to_step);
 
 		setif(scr["temperature"]["mode"], temperature.mode);
 		setif(scr["temperature"]["val"], temperature.val);

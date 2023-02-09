@@ -21,6 +21,7 @@
 
 #include <vector>
 #include <string>
+#include <limits>
 
 #include "json.hpp"
 using nlohmann::json;
@@ -57,8 +58,8 @@ public:
 	struct screen {
 
 		enum mode {
-			UNINITIALIZED = -1,
-			MANUAL,
+			UNINITIALIZED = std::numeric_limits<int>::min(),
+			MANUAL = 0,
 			SCREENSHOT,
 			ALS,
 			TIME,
@@ -69,7 +70,12 @@ public:
 			int val;
 			int min;
 			int max;
-			model() : mode(UNINITIALIZED), val(-1), min(-1), max(-1) {};
+
+			model() :
+			mode(UNINITIALIZED),
+			val(std::numeric_limits<int>::min()),
+			min(std::numeric_limits<int>::min()),
+			max(std::numeric_limits<int>::min()) {};
 		};
 
 		enum model_idx {
@@ -89,21 +95,34 @@ public:
 		std::string start;
 		std::string end;
 		int adaptation_minutes;
-		time() : start(""), end(""), adaptation_minutes(-1) {};
+
+		time() :
+		start(""),
+		end(""),
+		adaptation_minutes(std::numeric_limits<int>::min()) {};
 	} time;
 
 	struct screenshot {
 		int offset_perc;
 		int poll_ms;
 		int adaptation_ms;
-		screenshot() : offset_perc(-1), poll_ms(-1), adaptation_ms(-1) {};
+
+		screenshot() :
+		offset_perc(std::numeric_limits<int>::min()),
+		poll_ms(std::numeric_limits<int>::min()),
+		adaptation_ms(std::numeric_limits<int>::min())
+		{};
 	} screenshot;
 
 	struct als {
 		int offset_perc;
 		int poll_ms;
 		int adaptation_ms;
-		als() : offset_perc(-1), poll_ms(-1), adaptation_ms(-1) {};
+
+		als() :
+		offset_perc(std::numeric_limits<int>::min()),
+		poll_ms(std::numeric_limits<int>::min()),
+		adaptation_ms(std::numeric_limits<int>::min()) {};
 	} als;
 
 	config(size_t scr_no);
