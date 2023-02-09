@@ -1,5 +1,5 @@
 /**
-* Channel: tiny thread concurrency library.
+* Channel: tiny thread concurrency library, loosely Rust-inspired.
 *
 * Copyright (C) 2023  Francesco Fusco
 *
@@ -20,60 +20,9 @@
 #ifndef CHANNEL_H
 #define CHANNEL_H
 
-#include <condition_variable>
 #include <atomic>
 
-template <typename T = int>
-class Channel
-{
-	std::condition_variable cv;
-	std::mutex mtx;
-	T _data;
-public:
-	Channel() : _data({}) {}
-	Channel(T data) : _data(data) {}
-
-	T data() {
-		return _data;
-	}
-	T recv() {
-		T out;
-
-		{
-			std::unique_lock lk(mtx);
-			cv.wait(lk);
-			out = _data;
-		}
-
-		return out;
-	}
-
-	T recv_timeout(int ms) {
-		using namespace std::chrono;
-
-		T out;
-
-		{
-			std::unique_lock lk(mtx);
-			cv.wait_until(lk, system_clock::now() + milliseconds(ms));
-			out = _data;
-		}
-
-		return out;
-	};
-
-	void send(T data) {
-		{
-			std::lock_guard lk(mtx);
-			_data = data;
-		}
-
-		cv.notify_all();
-	}
-};
-
 template <class T>
-
 class channel {
 	int _nclients;
 	std::atomic_int _nclients_to_notify;
@@ -101,7 +50,7 @@ public:
 		return _data.load();
 	}
 
-	void update(T data) {
+	void send(T data) {
 		_data.store(data);
 		_nclients_to_notify.store(_nclients);
 		_nclients_to_notify.notify_all();

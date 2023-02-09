@@ -50,13 +50,13 @@ void brightness_server(Xorg &xorg, size_t screen_idx, channel<int> &ch, struct c
 		if (delta > 8) {
 			delta = 0;
 			printf("[brightness_server]: sending %d\n", cur);
-			ch.update(cur);
+			ch.send(cur);
 		}
 
 		jthread_wait_until(conf.poll_ms, stoken);
 
 		if (stoken.stop_requested()) {
-			ch.update(-1);
+			ch.send(-1);
 			return;
 		}
 	}
@@ -89,11 +89,11 @@ void brightness_client(channel<int> &ch, config::screen::model model, std::funct
 		};
 
 		printf("[brightness client] easing from %d to %d...\n", cur, target);
-		cur = easing::animate2(cur, target, adaptation_ms, easing::ease_out_expo, model_fn, interrupt);
+		cur = easing::animate(cur, target, adaptation_ms, easing::ease_out_expo, model_fn, interrupt);
 	}
 }
 
-void als_server(Sysfs::ALS &als, Channel<> &ch, Channel<> &sig, int sleep_ms, int prev, int cur)
+void als_server(Sysfs::ALS &als, channel<int> &ch, int sleep_ms, int prev, int cur, std::stop_token stoken)
 {
 	while (true) {
 
@@ -105,9 +105,10 @@ void als_server(Sysfs::ALS &als, Channel<> &ch, Channel<> &sig, int sleep_ms, in
 			ch.send(cur);
 		}
 
-		if (sig.recv_timeout(sleep_ms) < 0) {
+		jthread_wait_until(sleep_ms, stoken);
+
+		if (stoken.stop_requested()) {
 			ch.send(-1);
-			printf("als_server: exit\n");
 			return;
 		}
 	}
@@ -125,7 +126,7 @@ void time_server(channel<time_data> &ch, struct config::time conf, std::stop_tok
 
 		printf("[time_server] writing: %d\n", in_range);
 
-		ch.update({
+		ch.send({
 		    tw.in_range(),
 		    tw.time_since_last(),
 		    conf.adaptation_minutes * 60,
@@ -141,7 +142,7 @@ void time_server(channel<time_data> &ch, struct config::time conf, std::stop_tok
 		jthread_wait_until(time_to_next_ms, stoken);
 
 		if (stoken.stop_requested()) {
-			ch.update({0, 0, 0, false});
+			ch.send({0, 0, 0, false});
 			return;
 		}
 	}
@@ -168,8 +169,7 @@ void time_client(channel<time_data> &ch, config::screen::model model, std::funct
 		for (int step = 0; step < 2; ++step) {
 			const time_target target = calc_time_target(step, data, model);
 			printf("[time_client]: animating from %d to %d (duration: %d ms)..\n", cur, target.val, target.duration_ms);
-			easing::animate(easing::ease_in_out_quad, cur, target.val, target.duration_ms, 0, cur, cur, model_fn, interrupt);
-			cur = target.val;
+			cur = easing::animate(cur, target.val, target.duration_ms, easing::ease_in_out_quad, model_fn, interrupt);
 		}
 	}
 }

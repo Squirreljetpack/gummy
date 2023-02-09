@@ -20,9 +20,9 @@
 #define GAMMA_HPP
 
 #include <atomic>
+#include <stop_token>
 
 #include "xorg.hpp"
-#include "channel.hpp"
 #include "config.hpp"
 
 class gamma_state {
