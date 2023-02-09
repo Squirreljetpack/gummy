@@ -21,6 +21,7 @@
 
 #include <ctime>
 #include <string>
+#include <stdexcept>
 
 inline time_t timestamp_modify(std::time_t ts, int h, int m, int s)
 {
@@ -83,6 +84,10 @@ inline time_window::time_window(std::time_t reference, std::string start, std::s
 	printf("ref: %s\n", timestamp_fmt(_reference).c_str());
 	printf("srt: %s\n", timestamp_fmt(_start).c_str());
 	printf("end: %s\n", timestamp_fmt(_end).c_str());
+
+	if (_start > _end) {
+		throw std::logic_error("invalid timestamp range");
+	}
 }
 
 inline void time_window::shift_dates()
