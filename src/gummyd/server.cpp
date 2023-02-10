@@ -19,6 +19,8 @@
 #include "server.hpp"
 #include "easing.hpp"
 
+using namespace fushko;
+
 // [0, 255]
 int image_brightness(std::tuple<uint8_t*, size_t> buf, int bytes_per_pixel = 4, int stride = 1024)
 {
@@ -72,9 +74,11 @@ void brightness_client(channel<int> &ch, config::screen::model model, std::funct
 {
 	int cur = model.max;
 
+	const size_t ch_id = ch.connect();
+
 	while (true) {
 
-		const int brightness = ch.recv();
+		const int brightness = ch.recv(ch_id);
 
 		printf("[brightness client] received %d.\n", brightness);
 
@@ -143,6 +147,7 @@ void time_server(channel<time_data> &ch, struct config::time conf, std::stop_tok
 
 		if (stoken.stop_requested()) {
 			ch.send({0, 0, 0, false});
+			puts("[time_server] exit");
 			return;
 		}
 	}
@@ -158,10 +163,12 @@ void time_client(channel<time_data> &ch, config::screen::model model, std::funct
 		return !ch.data().keep_alive;
 	};
 
+	const size_t ch_id = ch.connect();
+
 	while (true) {
 
 		puts("[time_client]: reading...");
-		const time_data data = ch.recv();
+		const time_data data = ch.recv(ch_id);
 
 		if (!data.keep_alive)
 			return;

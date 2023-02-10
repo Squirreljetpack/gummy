@@ -17,7 +17,6 @@
 */
 
 #include <syslog.h>
-#include <latch>
 
 #include "config.hpp"
 #include "file.hpp"
@@ -26,6 +25,8 @@
 #include "sysfs_devices.hpp"
 #include "gamma.hpp"
 #include "server.hpp"
+
+using namespace fushko;
 
 void start(Xorg &xorg, config conf, std::stop_token stoken)
 {
@@ -64,10 +65,11 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 	// read config.screens
 	for (size_t idx = 0; idx < conf.screens.size(); ++idx) {
 
-		//todo: start screenshots only if at least one model is in screenshot mode
-		//todo: clients for this screen only
-		brt_channels.emplace_back(screenshot_clients);
-		threads.emplace_back(std::jthread(brightness_server, std::ref(xorg), idx, std::ref(brt_channels.back()), conf.screenshot, stoken));
+		// todo: screenshot_clients for this screen only
+		if (screenshot_clients > 0) {
+			brt_channels.emplace_back(screenshot_clients);
+			threads.emplace_back(std::jthread(brightness_server, std::ref(xorg), idx, std::ref(brt_channels.back()), conf.screenshot, stoken));
+		}
 
 		for (size_t model_idx = 0; model_idx < conf.screens[idx].models.size(); ++model_idx) {
 

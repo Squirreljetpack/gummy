@@ -28,10 +28,10 @@
 #include "time.hpp"
 #include "config.hpp"
 
-void brightness_server(Xorg &xorg, size_t screen_idx, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken);
-void brightness_client(channel<int> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms);
+void brightness_server(Xorg &xorg, size_t screen_idx, fushko::channel<int> &ch, struct config::screenshot conf, std::stop_token stoken);
+void brightness_client(fushko::channel<int> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms);
 
-void als_server(Sysfs::ALS &als, channel<int> &ch, int sleep_ms, int prev, int cur, std::stop_token stoken);
+void als_server(Sysfs::ALS &als, fushko::channel<int> &ch, int sleep_ms, int prev, int cur, std::stop_token stoken);
 
 struct time_data {
 	bool in_range;
@@ -45,6 +45,6 @@ struct time_target {
 	int duration_ms;
 };
 
-void time_server(channel<time_data> &ch, struct config::time conf, std::stop_token stoken);
-void time_client(channel<time_data> &ch, config::screen::model model, std::function<void(int)> model_fn);
+void time_server(fushko::channel<time_data> &ch, struct config::time conf, std::stop_token stoken);
+void time_client(fushko::channel<time_data> &ch, config::screen::model model, std::function<void(int)> model_fn);
 #endif // SERVER_HPP
