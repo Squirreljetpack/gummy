@@ -1,5 +1,5 @@
 /**
-* Channel: tiny thread concurrency library, loosely Rust-inspired.
+* channel: tiny thread concurrency library
 *
 * Copyright (C) 2023  Francesco Fusco
 *
@@ -20,41 +20,68 @@
 #ifndef CHANNEL_H
 #define CHANNEL_H
 
+#include <vector>
+#include <memory>
+#include <semaphore>
+#include <mutex>
 #include <atomic>
+
+namespace fushko {
 
 template <class T>
 class channel {
-	int _nclients;
-	std::atomic_int _nclients_to_notify;
-	std::atomic<T> _data;
+	std::vector<std::unique_ptr<std::binary_semaphore>> clients_;
+	std::unique_ptr<std::mutex> mtx_;
 
+	T data_;
+	size_t n_clients_;
+	bool clients_ready_;
 public:
-	channel(int nclients) :
-	    _nclients(nclients),
-	    _nclients_to_notify(0) {
+	channel(int nclients) {
+		clients_ready_ = false;
+		n_clients_ = nclients;
+		clients_.reserve(nclients);
+		mtx_ = std::make_unique<std::mutex>();
 	}
 
-	channel(const channel &src) :
-	    _nclients(src._nclients),
-	    _nclients_to_notify(src._nclients_to_notify.load()),
-	    _data(src._data.load()) {
+	size_t connect() {
+		size_t id;
+
+		mtx_->lock();
+
+		    clients_.emplace_back(std::make_unique<std::binary_semaphore>(0));
+			id = clients_.size() - 1;
+
+			if (clients_.size() == n_clients_) {
+				std::atomic_ref(clients_ready_).store(true);
+				std::atomic_ref(clients_ready_).notify_one();
+			}
+
+		mtx_->unlock();
+
+		return id;
 	}
 
-	T recv() {
-		_nclients_to_notify.wait(0);
-		--_nclients_to_notify;
-		return _data.load();
+	T recv(size_t idx) {
+		clients_[idx]->acquire();
+		return std::atomic_ref(data_).load();
 	}
 
 	T data() {
-		return _data.load();
+		return std::atomic_ref(data_).load();
 	}
 
 	void send(T data) {
-		_data.store(data);
-		_nclients_to_notify.store(_nclients);
-		_nclients_to_notify.notify_all();
+		std::atomic_ref(data_).store(data);
+
+		std::atomic_ref(clients_ready_).wait(false);
+
+		for (const auto &client : clients_) {
+			client->release();
+		}
 	}
 };
+
+}
 
 #endif
