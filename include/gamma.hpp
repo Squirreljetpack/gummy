@@ -33,7 +33,7 @@ class gamma_state {
 		int temperature;
 	};
 
-	std::vector<std::unique_ptr<std::atomic<values>>> _screens;
+	std::vector<values> _screens;
 
 	void set(size_t screen_idx, values);
 public:
