@@ -72,28 +72,28 @@ int brt_target_als(int als_brt, int min, int max, int offset)
 
 void brightness_client(channel<int> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
 {
-	int cur = model.max;
-
-	const size_t ch_id = ch.connect();
+	int val = model.max;
+	int prev_brt = -1;
 
 	while (true) {
 
-		const int brightness = ch.recv(ch_id);
+		const int brt = ch.recv(prev_brt);
 
-		printf("[brightness client] received %d.\n", brightness);
+		printf("[brightness client] received %d.\n", brt);
 
-		if (brightness < 0) {
+		if (brt < 0) {
 			return;
 		}
 
-		const int target = remap(brightness, 0, 255, model.max, model.min);
+		const int target = remap(brt, 0, 255, model.max, model.min);
 
 		const auto interrupt = [&] {
-			return brightness != ch.data();
+			return ch.read() != brt;
 		};
 
-		printf("[brightness client] easing from %d to %d...\n", cur, target);
-		cur = easing::animate(cur, target, adaptation_ms, easing::ease_out_expo, model_fn, interrupt);
+		printf("[brightness client] easing from %d to %d...\n", val, target);
+		val = easing::animate(val, target, adaptation_ms, easing::ease_out_expo, model_fn, interrupt);
+		prev_brt = brt;
 	}
 }
 
@@ -131,9 +131,9 @@ void time_server(channel<time_data> &ch, struct config::time conf, std::stop_tok
 		printf("[time_server] writing: %d\n", in_range);
 
 		ch.send({
-		    tw.in_range(),
 		    tw.time_since_last(),
 		    conf.adaptation_minutes * 60,
+		    tw.in_range(),
 		    true
 		});
 
@@ -146,7 +146,7 @@ void time_server(channel<time_data> &ch, struct config::time conf, std::stop_tok
 		jthread_wait_until(time_to_next_ms, stoken);
 
 		if (stoken.stop_requested()) {
-			ch.send({0, 0, 0, false});
+			ch.send({0, 0, false, false});
 			puts("[time_server] exit");
 			return;
 		}
@@ -160,15 +160,15 @@ void time_client(channel<time_data> &ch, config::screen::model model, std::funct
 	int cur = model.max;
 
 	const auto interrupt = [&] {
-		return !ch.data().keep_alive;
+		return !ch.read().keep_alive;
 	};
 
-	const size_t ch_id = ch.connect();
+	time_data prev = {-1, -1, false, false};
 
 	while (true) {
 
 		puts("[time_client]: reading...");
-		const time_data data = ch.recv(ch_id);
+		const time_data data = ch.recv(prev);
 
 		if (!data.keep_alive)
 			return;
@@ -178,6 +178,7 @@ void time_client(channel<time_data> &ch, config::screen::model model, std::funct
 			printf("[time_client]: animating from %d to %d (duration: %d ms)..\n", cur, target.val, target.duration_ms);
 			cur = easing::animate(cur, target.val, target.duration_ms, easing::ease_in_out_quad, model_fn, interrupt);
 		}
+		prev = data;
 	}
 }
 

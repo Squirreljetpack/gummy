@@ -20,65 +20,28 @@
 #ifndef CHANNEL_H
 #define CHANNEL_H
 
-#include <vector>
-#include <memory>
-#include <semaphore>
-#include <mutex>
 #include <atomic>
 
 namespace fushko {
 
 template <class T>
 class channel {
-	std::vector<std::unique_ptr<std::binary_semaphore>> clients_;
-	std::unique_ptr<std::mutex> mtx_;
-
-	T data_;
-	size_t n_clients_;
-	bool clients_ready_;
+	T _data;
 public:
-	channel(int nclients) {
-		clients_ready_ = false;
-		n_clients_ = nclients;
-		clients_.reserve(nclients);
-		mtx_ = std::make_unique<std::mutex>();
+	channel(T data) : _data(data) {};
+
+	T read() const {
+		return std::atomic_ref(_data).load();
 	}
 
-	size_t connect() {
-		size_t id;
-
-		mtx_->lock();
-
-		    clients_.emplace_back(std::make_unique<std::binary_semaphore>(0));
-			id = clients_.size() - 1;
-
-			if (clients_.size() == n_clients_) {
-				std::atomic_ref(clients_ready_).store(true);
-				std::atomic_ref(clients_ready_).notify_one();
-			}
-
-		mtx_->unlock();
-
-		return id;
+	T recv(T old) const {
+		std::atomic_ref(_data).wait(old);
+		return read();
 	}
 
-	T recv(size_t idx) {
-		clients_[idx]->acquire();
-		return std::atomic_ref(data_).load();
-	}
-
-	T data() {
-		return std::atomic_ref(data_).load();
-	}
-
-	void send(T data) {
-		std::atomic_ref(data_).store(data);
-
-		std::atomic_ref(clients_ready_).wait(false);
-
-		for (const auto &client : clients_) {
-			client->release();
-		}
+	void send(T in) {
+		std::atomic_ref(_data).store(in);
+		std::atomic_ref(_data).notify_all();
 	}
 };
 
