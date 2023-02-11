@@ -52,7 +52,8 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 	const size_t time_clients       = conf.clients_for(config::screen::mode::TIME);
 	printf("screenshot: %zu, als: %zu, time: %zu\n", screenshot_clients, als_clients, time_clients);
 
-	channel<time_data> time_ch(time_clients);
+	channel<time_data> time_ch({-1, -1, false, false});
+
 	if (time_clients > 0) {
 		threads.emplace_back([&] {
 			time_server(time_ch, conf.time, stoken);
@@ -67,7 +68,7 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 
 		// todo: screenshot_clients for this screen only
 		if (screenshot_clients > 0) {
-			brt_channels.emplace_back(screenshot_clients);
+			brt_channels.emplace_back(-1);
 			threads.emplace_back(std::jthread(brightness_server, std::ref(xorg), idx, std::ref(brt_channels.back()), conf.screenshot, stoken));
 		}
 
