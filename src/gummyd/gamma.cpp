@@ -125,7 +125,7 @@ gamma_state::gamma_state(Xorg &xorg, std::vector<config::screen> screens_conf)
 
 		const values vals { brt, temp };
 		set(i, vals);
-		_screens.emplace_back(std::make_unique<std::atomic<values>>(vals));
+		_screens.emplace_back(vals);
 	}
 }
 
@@ -164,7 +164,7 @@ void gamma_state::refresh(std::stop_token stoken)
 	while (true) {
 
 		for (size_t i = 0; i < _xorg->scr_count(); ++i) {
-			set(i, _screens[i]->load());
+			set(i, std::atomic_ref(_screens[i]).load());
 		}
 
 		jthread_wait_until(10000, stoken);
@@ -177,18 +177,18 @@ void gamma_state::refresh(std::stop_token stoken)
 
 void gamma_state::set_brightness(size_t idx, int val)
 {
-	values values = _screens[idx]->load();
+	values values = std::atomic_ref(_screens[idx]).load();
 	values.brightness = val;
-	_screens[idx]->store(values);
+	std::atomic_ref(_screens[idx]).store(values);
 
 	set(idx, values);
 }
 
 void gamma_state::set_temperature(size_t idx, int val)
 {
-	values values = _screens[idx]->load();
+	values values = std::atomic_ref(_screens[idx]).load();
 	values.temperature = val;
-	_screens[idx]->store(values);
+	std::atomic_ref(_screens[idx]).store(values);
 
 	set(idx, values);
 }
