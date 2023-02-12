@@ -139,6 +139,7 @@ gamma_state::gamma_state(Xorg &xorg, std::vector<config::screen> screens_conf)
  */
 void gamma_state::set(size_t screen_index, values vals)
 {
+	vals = gamma_state::sanitize(vals);
 	std::vector<uint16_t> ramps(_xorg->ramp_size(screen_index));
 
 	const size_t sz = ramps.size() / 3;
@@ -157,6 +158,13 @@ void gamma_state::set(size_t screen_index, values vals)
 	}
 
 	_xorg->set_gamma_ramp(screen_index, ramps);
+}
+
+gamma_state::values gamma_state::sanitize(values vals) {
+	return {
+		std::clamp(vals.brightness, brt_steps_min, brt_steps_max),
+		std::clamp(vals.temperature, temp_k_min, temp_k_max)
+	};
 }
 
 void gamma_state::refresh(std::stop_token stoken)
@@ -179,6 +187,7 @@ void gamma_state::set_brightness(size_t idx, int val)
 {
 	values values = std::atomic_ref(_screens[idx]).load();
 	values.brightness = val;
+
 	std::atomic_ref(_screens[idx]).store(values);
 
 	set(idx, values);
@@ -188,6 +197,7 @@ void gamma_state::set_temperature(size_t idx, int val)
 {
 	values values = std::atomic_ref(_screens[idx]).load();
 	values.temperature = val;
+
 	std::atomic_ref(_screens[idx]).store(values);
 
 	set(idx, values);
