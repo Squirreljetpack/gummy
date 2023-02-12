@@ -25,6 +25,7 @@
 #include "sysfs_devices.hpp"
 #include "gamma.hpp"
 #include "server.hpp"
+#include "dbus.hpp"
 
 using namespace fushko;
 
@@ -130,6 +131,13 @@ int message_loop()
 
 	config conf(xorg.scr_count());
 
+	const auto proxy = sdbus_on_system_sleep([] (sdbus::Signal &sig) {
+	    bool sleep;
+	    sig >> sleep;
+	    if (!sleep)
+	        file_write(constants::fifo_filepath, "reset");
+    });
+
 	while (true) {
 
 		std::jthread thr([&] (std::stop_token stoken) {
@@ -140,6 +148,9 @@ int message_loop()
 
 		if (data == "stop")
 			return EXIT_SUCCESS;
+
+		if (data == "reset")
+			continue;
 
 		const json msg = [&] {
 			try {
@@ -154,8 +165,6 @@ int message_loop()
 			continue;
 		}
 
-		thr.request_stop();
-		thr.join();
 		conf = config(msg, xorg.scr_count());
 	}
 }
