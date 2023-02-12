@@ -26,13 +26,20 @@ inline std::unique_ptr<sdbus::IProxy> dbus_register_signal_handler(
     std::string obj_path,
     std::string interface,
     std::string signal_name,
-    std::function<void(sdbus::Signal &signal)> handler)
-{
+    std::function<void(sdbus::Signal &signal)> handler) {
 	auto proxy = sdbus::createProxy(service, obj_path);
 	proxy->registerSignalHandler(interface, signal_name, handler);
 	proxy->finishRegistration();
 	return proxy;
 }
 
+inline std::unique_ptr<sdbus::IProxy> sdbus_on_system_sleep(std::function<void(sdbus::Signal &signal)> fn) {
+	return dbus_register_signal_handler(
+	        "org.freedesktop.login1",
+	        "/org/freedesktop/login1",
+	        "org.freedesktop.login1.Manager",
+	        "PrepareForSleep",
+	        fn);
+}
 
 #endif // DBUS_HPP
