@@ -28,12 +28,12 @@ class Xorg
 	{
 	    xcb_randr_crtc_t crtc;
 		size_t ramp_size;
-		XCB::shared_image image;
+		xcb::shared_image image;
 		Output(xcb_randr_crtc_t crtc, size_t ramp_size,
-		XCB &xcb, unsigned int width, unsigned int height);
+		xcb &xcb, unsigned int width, unsigned int height);
 	};
 
-	XCB xcb;
+	xcb xcb_;
 	std::vector<Output> outputs;
 public:
     Xorg();
