@@ -44,10 +44,10 @@ void config::defaults()
 
 	screenshot.offset_perc   = 0;
 	screenshot.poll_ms       = 200;
-	screenshot.adaptation_ms = 1000;
+	screenshot.adaptation_ms = 5000;
 
 	als.offset_perc          = 0;
-	als.poll_ms              = 1000;
+	als.poll_ms              = 5000;
 	als.adaptation_ms        = 5000;
 }
 
