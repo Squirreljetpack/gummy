@@ -30,6 +30,10 @@ namespace easing {
 // Easing functions adapted from:
 // https://github.com/warrenm/AHEasing/blob/master/AHEasing/easing.c
 
+double ease(double t) {
+	return t;
+};
+
 double ease_out_expo(double t) {
 	return (t == 1.0) ? t : 1 - pow(2, -10 * t);
 };

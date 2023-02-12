@@ -52,7 +52,7 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 	const size_t time_clients       = conf.clients_for(config::screen::mode::TIME);
 	printf("screenshot: %zu, als: %zu, time: %zu\n", screenshot_clients, als_clients, time_clients);
 
-	channel<time_data> time_ch({-1, -1, false, false});
+	channel<time_data> time_ch({-1, -1, -1});
 
 	if (time_clients > 0) {
 		threads.emplace_back([&] {

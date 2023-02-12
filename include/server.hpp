@@ -34,10 +34,9 @@ void brightness_client(fushko::channel<int> &ch, config::screen::model model, st
 void als_server(Sysfs::ALS &als, fushko::channel<int> &ch, int sleep_ms, int prev, int cur, std::stop_token stoken);
 
 struct time_data {
-	std::time_t time_since_last_event;
-	std::time_t adaptation_s;
-	bool in_range;
-	bool keep_alive;
+	long time_since_last_event;
+	long adaptation_s;
+	long in_range;
 };
 
 struct time_target {
