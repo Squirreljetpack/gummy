@@ -11,8 +11,6 @@ set(SOURCES
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-#find_package(X11 REQUIRED)
-#find_package(Threads REQUIRED)
 find_package(sdbus-c++ REQUIRED)
 find_library(XCB_LIB "xcb" REQUIRED)
 find_library(XCB_IMAGE_LIB "xcb-image" REQUIRED)
@@ -22,15 +20,13 @@ find_library(UDEV_LIB "udev" REQUIRED)
 
 target_link_libraries(
 	${PROJECT_NAME} PRIVATE
-	#${X11_LIBRARIES}
-	#Threads::Threads
 	SDBusCpp::sdbus-c++
 	${XCB_LIB}
 	${XCB_RANDR_LIB}
 	${XCB_SHM_LIB}
 	${XCB_IMAGE_LIB}
 	${UDEV_LIB}
-	atomic
+	-latomic
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
