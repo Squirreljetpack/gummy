@@ -128,6 +128,7 @@ public:
 	config(size_t scr_no);
 	config(nlohmann::json data, size_t scr_no);
 	size_t clients_for(config::screen::mode);
+	size_t clients_for(config::screen::mode, size_t screen_index);
 
 	static bool valid_int(int val);
 };

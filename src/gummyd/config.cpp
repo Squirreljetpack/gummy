@@ -244,15 +244,20 @@ void config::file_parse()
 	}
 }
 
-size_t config::clients_for(config::screen::mode _mode)
+size_t config::clients_for(config::screen::mode mode)
 {
 	size_t c = 0;
-	for (const auto &scr : screens) {
-		for (const auto &model : scr.models) {
-			if (model.mode == _mode)
-				++c;
-		}
-	}
+	for (size_t i = 0; i < screens.size(); ++i)
+		c += clients_for(mode, i);
+	return c;
+}
+
+size_t config::clients_for(config::screen::mode mode, size_t screen_index)
+{
+	size_t c = 0;
+	for (const auto &model : screens[screen_index].models)
+		if (model.mode == mode)
+			++c;
 	return c;
 }
 

@@ -36,14 +36,15 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 	gamma_state gamma_state(xorg, config(xorg.scr_count()).screens);
 
 	std::vector<std::jthread> threads;
+
 	threads.emplace_back([&] {
 		gamma_state.refresh(stoken);
 	});
 
-	std::vector<Sysfs::Backlight> vec = Sysfs::get_backlights();
+	std::vector<Sysfs::Backlight> backlights = Sysfs::get_backlights();
 
-	if (!vec.empty()) {
-		vec[0].set_step(conf.screens[0].models[config::screen::model_idx::BACKLIGHT].val);
+	if (!backlights.empty()) {
+		backlights[0].set_step(conf.screens[0].models[config::screen::model_idx::BACKLIGHT].val);
 	}
 
 	//////////////////////////////////////////////////////////////////////
@@ -64,11 +65,9 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 	std::vector<channel<int>> brt_channels;
 	brt_channels.reserve(screenshot_clients);
 
-	// read config.screens
 	for (size_t idx = 0; idx < conf.screens.size(); ++idx) {
 
-		// todo: screenshot_clients for this screen only
-		if (screenshot_clients > 0) {
+		if (conf.clients_for(config::screen::mode::SCREENSHOT, idx) > 0) {
 			brt_channels.emplace_back(-1);
 			threads.emplace_back(std::jthread(brightness_server, std::ref(xorg), idx, std::ref(brt_channels.back()), conf.screenshot, stoken));
 		}
@@ -85,8 +84,8 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 
 			switch (model_idx) {
 			case model_name::BACKLIGHT:
-				if (!vec.empty())
-					fn = std::bind(&Sysfs::Backlight::set_step, &vec[0], _1);
+				if (!backlights.empty())
+					fn = std::bind(&Sysfs::Backlight::set_step, &backlights[0], _1);
 				break;
 			case model_name::BRIGHTNESS:
 				fn = std::bind(&gamma_state::set_brightness, &gamma_state, idx, _1);
@@ -98,9 +97,10 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 
 			switch (model.mode) {
 			case config::screen::UNINITIALIZED: {
-				break;
+				throw std::runtime_error("invalid model state");
 			}
 			case config::screen::MANUAL: {
+				// manual setting is done in gamma_state
 				break;
 			}
 			case config::screen::ALS: {

@@ -174,7 +174,7 @@ void time_client(channel<time_data> &ch, config::screen::model model, std::funct
 
 		for (int step = 0; step < 2; ++step) {
 			const time_target target = calc_time_target(step, data, model);
-			printf("[time_client]: animating from %d to %d (duration: %d ms)..\n", cur, target.val, target.duration_ms);
+			printf("[time_client] animating from %d to %d (duration: %d ms)..\n", cur, target.val, target.duration_ms);
 			cur = easing::animate(cur, target.val, target.duration_ms, easing::ease, model_fn, interrupt);
 		}
 		prev = data;
