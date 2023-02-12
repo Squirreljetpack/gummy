@@ -1,20 +1,19 @@
 cmake_minimum_required(VERSION 3.5)
 project(gummy VERSION 0.4 LANGUAGES CXX)
 
-add_compile_definitions(VERSION="${PROJECT_VERSION}")
+include(GNUInstallDirs)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_compile_options("$<$<CONFIG:RELEASE>:-W;-Wall;-O3;-pedantic>")
-#add_compile_options("$<$<CONFIG:DEBUG>:-W;-Wall;-Og;-g;-foptimize-sibling-calls;-pedantic>")
 add_compile_options("$<$<CONFIG:DEBUG>:-W;-Wall;-pedantic>")
-
-include(GNUInstallDirs)
 
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE Debug)
 endif()
+
+add_compile_definitions(VERSION="${PROJECT_VERSION}")
 
 add_subdirectory(src/gummyd)
 add_subdirectory(src/gummy)
