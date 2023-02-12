@@ -130,16 +130,13 @@ int perc_to_step(int val) {
 	return remap(val, 0, 100, 0, constants::brt_steps_max);
 }
 
-void setif(json &val, int new_val)
-{
-	if (val.is_number_integer() && new_val > std::numeric_limits<int>::min()) {
+void setif(json &val, int new_val) {
+	if (config::valid_int(new_val) && val.is_number_integer())
 		val = new_val;
-	}
 }
 
-void setif(json &val, int new_val, std::function<int(int)> fn)
-{
-	if (val.is_number_integer() && new_val > std::numeric_limits<int>::min())
+void setif(json &val, int new_val, std::function<int(int)> fn) {
+	if (config::valid_int(new_val) && val.is_number_integer())
 		val = fn(new_val);
 }
 
@@ -289,6 +286,13 @@ int interface(int argc, char **argv)
 		setif(scr["temperature"]["val"], temperature.val);
 		setif(scr["temperature"]["min"], temperature.min);
 		setif(scr["temperature"]["max"], temperature.max);
+
+		if (config::valid_int(backlight.val))
+			scr["backlight"]["mode"] = config::screen::mode::MANUAL;
+		if (config::valid_int(brightness.val))
+			scr["brightness"]["mode"] = config::screen::mode::MANUAL;
+		if (config::valid_int(temperature.val))
+			scr["temperature"]["mode"] = config::screen::mode::MANUAL;
 	};
 
 	if (scr_idx > -1) {

@@ -255,3 +255,7 @@ size_t config::clients_for(config::screen::mode _mode)
 	}
 	return c;
 }
+
+bool config::valid_int(int val) {
+	return val > std::numeric_limits<int>::min();
+}
