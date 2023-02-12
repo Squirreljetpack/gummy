@@ -26,15 +26,14 @@
 #include "config.hpp"
 
 class gamma_state {
-	Xorg *_xorg;
-
 	struct values {
 		int brightness;
 		int temperature;
 	};
-
+	Xorg *_xorg;
 	std::vector<values> _screens;
 
+	static values sanitize(values);
 	void set(size_t screen_idx, values);
 public:
 	gamma_state(Xorg &xorg, std::vector<config::screen> screen_conf);
