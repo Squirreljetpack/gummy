@@ -19,7 +19,7 @@
 #include "xorg.hpp"
 
 Xorg::Output::Output(xcb_randr_crtc_t c, size_t sz,
-XCB &xcb, unsigned int width, unsigned int height) // todo: construct image in ctor call (shared_image needs a move ctor)
+xcb &xcb, unsigned int width, unsigned int height) // todo: construct image in ctor call (shared_image needs a move ctor)
     : crtc(c),
     ramp_size(sz),
     image(xcb, width, height)
@@ -28,17 +28,17 @@ XCB &xcb, unsigned int width, unsigned int height) // todo: construct image in c
 
 Xorg::Xorg()
 {
-	auto [data, size] = xcb.crtcs();
+	auto [data, size] = xcb_.crtcs();
 
 	for (size_t i = 0; i < size; ++i) {
 
 		auto crtc = data[i];
-		auto info = xcb.crtc_data(crtc);
+		auto info = xcb_.crtc_data(crtc);
 
 		if (info->num_outputs > 0) {
 			outputs.emplace_back(crtc,
-			                     xcb.gamma_ramp_size(crtc) * 3,
-			                     xcb, info->width, info->height);
+			                     xcb_.gamma_ramp_size(crtc) * 3,
+			                     xcb_, info->width, info->height);
 		}
 
 		free(info);
@@ -47,7 +47,7 @@ Xorg::Xorg()
 
 std::tuple<uint8_t*, size_t> Xorg::screen_data(int scr_idx)
 {
-	outputs[scr_idx].image.update(xcb);
+	outputs[scr_idx].image.update(xcb_);
 	// The cast to uint8_t is important
 	return std::make_tuple(
 	    reinterpret_cast<uint8_t*>(outputs[scr_idx].image.data()),
@@ -56,7 +56,7 @@ std::tuple<uint8_t*, size_t> Xorg::screen_data(int scr_idx)
 
 void Xorg::set_gamma_ramp(int scr_idx, const std::vector<uint16_t> &ramps)
 {
-	xcb.set_gamma(outputs[scr_idx].crtc, ramps);
+	xcb_.set_gamma(outputs[scr_idx].crtc, ramps);
 }
 
 size_t Xorg::ramp_size(int scr_idx)
