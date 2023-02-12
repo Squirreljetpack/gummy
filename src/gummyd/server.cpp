@@ -134,7 +134,6 @@ void time_server(channel<time_data> &ch, struct config::time conf, std::stop_tok
 		    tw.time_since_last(),
 		    conf.adaptation_minutes * 60,
 		    tw.in_range(),
-		    true
 		});
 
 		if (!in_range && tw.reference() > tw.start())
@@ -146,7 +145,7 @@ void time_server(channel<time_data> &ch, struct config::time conf, std::stop_tok
 		jthread_wait_until(time_to_next_ms, stoken);
 
 		if (stoken.stop_requested()) {
-			ch.send({0, 0, false, false});
+			ch.send({-1, -1, -1});
 			puts("[time_server] exit");
 			return;
 		}
@@ -159,24 +158,24 @@ void time_client(channel<time_data> &ch, config::screen::model model, std::funct
 {
 	int cur = model.max;
 
-	const auto interrupt = [&] {
-		return !ch.read().keep_alive;
-	};
-
-	time_data prev = {-1, -1, false, false};
+	time_data prev {-1, -1, -1};
 
 	while (true) {
 
-		puts("[time_client]: reading...");
+		puts("[time_client] reading...");
 		const time_data data = ch.recv(prev);
 
-		if (!data.keep_alive)
+		if (data.in_range < 0)
 			return;
+
+		const auto interrupt = [&] {
+			return ch.read().time_since_last_event != data.time_since_last_event;
+		};
 
 		for (int step = 0; step < 2; ++step) {
 			const time_target target = calc_time_target(step, data, model);
 			printf("[time_client]: animating from %d to %d (duration: %d ms)..\n", cur, target.val, target.duration_ms);
-			cur = easing::animate(cur, target.val, target.duration_ms, easing::ease_in_out_quad, model_fn, interrupt);
+			cur = easing::animate(cur, target.val, target.duration_ms, easing::ease, model_fn, interrupt);
 		}
 		prev = data;
 	}
@@ -198,7 +197,7 @@ time_target calc_time_target(bool step, time_data data, config::screen::model mo
 
 	const int duration_ms = std::max(((data.adaptation_s - delta_s) * 1000), min_duration_ms);
 
-	printf("in_range: %d\n", data.in_range);
+	printf("in_range: %ld\n", data.in_range);
 	printf("target: %d\n", target);
 	printf("duration_ms: %d\n", duration_ms);
 
