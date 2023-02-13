@@ -51,6 +51,34 @@ public:
 	}
 };
 
+class xcb_shared_memory {
+	xcb_shm_segment_info_t shminfo;
+public:
+	xcb_shared_memory(const xcb_connection &conn, size_t size) {
+		shminfo.shmseg  = xcb_generate_id(conn.get());
+		shminfo.shmid   = shmget(IPC_PRIVATE, size, IPC_CREAT | 0600);
+		shminfo.shmaddr = reinterpret_cast<uint8_t*>(shmat(shminfo.shmid, nullptr, 0));
+		xcb_shm_attach(conn.get(), shminfo.shmseg, shminfo.shmid, 0);
+	}
+
+	unsigned int seg() {
+		return shminfo.shmseg;
+	}
+
+	unsigned int id() {
+		return shminfo.shmid;
+	}
+
+	uint8_t* addr() {
+		return shminfo.shmaddr;
+	}
+
+	~xcb_shared_memory() {
+		shmdt(shminfo.shmaddr);
+		shmctl(shminfo.shmseg, IPC_RMID, 0);
+	}
+};
+
 class xcb
 {
 	xcb_connection conn;
@@ -63,14 +91,6 @@ class xcb
 
 public:
 
-	struct randr_crtc_data {
-		xcb_randr_crtc_t id;
-		int num_outputs;
-		unsigned int width;
-		unsigned int height;
-		int ramp_size;
-	};
-
 	xcb() {
 		auto setup = xcb_get_setup(conn.get());
 		auto it    = xcb_setup_roots_iterator(setup);
@@ -81,11 +101,19 @@ public:
 		}
 	}
 
-	bool extension_available(std::string name) {
-		auto cookie = xcb_query_extension(conn.get(), name.size(), name.c_str());
-		c_unique_ptr<xcb_query_extension_reply_t> reply(xcb_query_extension_reply(conn.get(), cookie, nullptr));
-		return reply && reply->present;
+	bool extension_present(std::string name) {
+		auto query_c = xcb_query_extension(conn.get(), name.size(), name.c_str());
+		auto query_r = c_unique_ptr<xcb_query_extension_reply_t>(xcb_query_extension_reply(conn.get(), query_c, nullptr));
+		return query_r && query_r->present;
 	}
+
+	struct randr_crtc_data {
+		xcb_randr_crtc_t id;
+		int num_outputs;
+		unsigned int width;
+		unsigned int height;
+		int ramp_size;
+	};
 
 	std::vector<xcb::randr_crtc_data> randr_crtcs() {
 		xcb_generic_error_t *err;
@@ -128,59 +156,41 @@ public:
 
 	class shared_image
 	{
-	    xcb_image_t *image;
-		xcb_shm_segment_info_t shminfo;
+		xcb_shared_memory shmem;
+		xcb_image_t *image;
 	public:
-		shared_image(xcb &xcb, unsigned int width, unsigned int height);
-		~shared_image();
-		void update(xcb &xcb);
-		uint8_t *data();
-		uint32_t size();
+		shared_image(xcb &xcb, unsigned int width, unsigned int height)
+		    : shmem(xcb_shared_memory(xcb.conn, width * height * 4)),
+		      image(xcb_image_create_native(
+		                xcb.conn.get(), width, height, XCB_IMAGE_FORMAT_Z_PIXMAP,
+		                xcb.screens[0]->root_depth, shmem.addr(), width * height * 4, nullptr))
+		{
+		}
+
+		void update(xcb &xcb) {
+			auto image_c = xcb_shm_get_image_unchecked(
+			               xcb.conn.get(),
+			               xcb.screens[0]->root,
+			               0, 0,
+			               image->width,
+			               image->height,
+			               ~0, XCB_IMAGE_FORMAT_Z_PIXMAP, shmem.seg(), 0);
+
+			xcb_shm_get_image_reply(xcb.conn.get(), image_c, nullptr);
+		}
+
+		uint8_t *data() {
+			return image->data;
+		}
+
+		uint32_t size() {
+			return image->size;
+		}
+
+		~shared_image() {
+			// fails with "free(): invalid pointer"
+			//xcb_image_destroy(image);
+		}
 	};
 };
-
-inline xcb::shared_image::shared_image(xcb &xcb, unsigned int width, unsigned int height)
-{
-	shminfo.shmid   = shmget(IPC_PRIVATE, width * height * 4, IPC_CREAT | 0600);
-	shminfo.shmaddr = reinterpret_cast<unsigned char*>(shmat(shminfo.shmid, nullptr, 0));
-	shminfo.shmseg  = xcb_generate_id(xcb.conn.get());
-
-	xcb_shm_attach(xcb.conn.get(), shminfo.shmseg, shminfo.shmid, false);
-
-	image = xcb_image_create_native(xcb.conn.get(), width, height, XCB_IMAGE_FORMAT_Z_PIXMAP,
-	                                xcb.screens[0]->root_depth, shminfo.shmaddr, width * height * 4, nullptr);
-}
-
-inline xcb::shared_image::~shared_image()
-{
-	shmdt(shminfo.shmaddr);
-	shmctl(shminfo.shmseg, IPC_RMID, 0);
-	//xcb_image_destroy(image);
-}
-
-inline void xcb::shared_image::update(xcb &xcb)
-{
-	xcb_shm_get_image_reply(xcb.conn.get(), xcb_shm_get_image_unchecked(
-	    xcb.conn.get(),
-	    xcb.screens[0]->root,
-	    0,
-	    0,
-	    image->width,
-	    image->height,
-	    ~0,
-	    XCB_IMAGE_FORMAT_Z_PIXMAP,
-	    shminfo.shmseg,
-	    0), nullptr);
-}
-
-inline uint8_t *xcb::shared_image::data()
-{
-	return image->data;
-}
-
-inline uint32_t xcb::shared_image::size()
-{
-	return image->size;
-}
-
 #endif
