@@ -32,6 +32,8 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
+#include "utils.hpp"
+
 class xcb_connection {
 	xcb_connection_t *addr_;
 public:
@@ -53,13 +55,76 @@ class xcb
 {
 	xcb_connection conn;
 	std::vector<std::unique_ptr<xcb_screen_t>> screens;
+
+	void throw_if(xcb_generic_error_t *err, std::string err_str) {
+		if (err)
+			throw std::runtime_error(err_str + " " + std::to_string(err->error_code));
+	}
+
 public:
-	xcb();
-	auto extension_available(std::string)       -> bool;
-	auto crtcs()                                -> std::pair<xcb_randr_crtc_t*, size_t>;
-	auto crtc_data(xcb_randr_crtc_t crtc)       -> xcb_randr_get_crtc_info_reply_t*;
-	auto gamma_ramp_size(xcb_randr_crtc_t crtc) -> int;
-	auto set_gamma(xcb_randr_crtc_t crtc, const std::vector<uint16_t> &ramps) -> void;
+
+	struct randr_crtc_data {
+		xcb_randr_crtc_t id;
+		int num_outputs;
+		unsigned int width;
+		unsigned int height;
+		int ramp_size;
+	};
+
+	xcb() {
+		auto setup = xcb_get_setup(conn.get());
+		auto it    = xcb_setup_roots_iterator(setup);
+
+		while (it.rem > 0) {
+			screens.emplace_back(it.data);
+			xcb_screen_next(&it);
+		}
+	}
+
+	bool extension_available(std::string name) {
+		auto cookie = xcb_query_extension(conn.get(), name.size(), name.c_str());
+		c_unique_ptr<xcb_query_extension_reply_t> reply(xcb_query_extension_reply(conn.get(), cookie, nullptr));
+		return reply && reply->present;
+	}
+
+	std::vector<xcb::randr_crtc_data> randr_crtcs() {
+		xcb_generic_error_t *err;
+
+		auto res_c = xcb_randr_get_screen_resources_current(conn.get(), screens[0]->root);
+		auto res_r = c_unique_ptr<xcb_randr_get_screen_resources_current_reply_t> (xcb_randr_get_screen_resources_current_reply(conn.get(), res_c, &err));
+		throw_if(err, "xcb_randr_get_screen_resources_current");
+
+		std::vector<randr_crtc_data> ret;
+		xcb_randr_crtc_t *crtcs = xcb_randr_get_screen_resources_current_crtcs(res_r.get());
+
+		for (xcb_randr_crtc_t i = 0; i < res_r->num_crtcs; ++i) {
+
+			auto info_c = xcb_randr_get_crtc_info(conn.get(), crtcs[i], 0);
+			auto info_r = c_unique_ptr<xcb_randr_get_crtc_info_reply_t>(xcb_randr_get_crtc_info_reply(conn.get(), info_c, &err));
+			throw_if(err, "xcb_randr_get_crtc_info");
+
+			auto gamma_c = xcb_randr_get_crtc_gamma_size(conn.get(), crtcs[i]);
+			auto gamma_r = c_unique_ptr<xcb_randr_get_crtc_gamma_size_reply_t>(xcb_randr_get_crtc_gamma_size_reply(conn.get(), gamma_c, &err));
+			throw_if(err, "xcb_randr_get_crtc_gamma_size");
+
+			ret.emplace_back(crtcs[i],
+			info_r->num_outputs,
+			info_r->width,
+			info_r->height,
+			gamma_r->size);
+		}
+
+		return ret;
+	}
+
+	void randr_set_gamma(xcb_randr_crtc_t crtc, const std::vector<uint16_t> &ramps) {
+		const size_t sz = ramps.size() / 3;
+		auto req = xcb_randr_set_crtc_gamma_checked(conn.get(), crtc, sz,
+		&ramps[0 * sz],
+		&ramps[1 * sz],
+		&ramps[2 * sz]);
+		throw_if(xcb_request_check(conn.get(), req), "randr gamma error");
+	}
 
 	class shared_image
 	{
@@ -73,84 +138,6 @@ public:
 		uint32_t size();
 	};
 };
-
-inline xcb::xcb()
-{
-	auto setup = xcb_get_setup(conn.get());
-	auto it    = xcb_setup_roots_iterator(setup);
-
-	while (it.rem > 0) {
-		screens.emplace_back(it.data);
-		xcb_screen_next(&it);
-	}
-}
-
-inline bool xcb::extension_available(std::string name)
-{
-	auto cookie = xcb_query_extension(conn.get(), name.size(), name.c_str());
-	auto reply  = xcb_query_extension_reply(conn.get(), cookie, nullptr);
-	const bool present = reply && reply->present;
-	free(reply);
-
-	return present;
-}
-
-inline std::pair<xcb_randr_crtc_t*, size_t> xcb::crtcs()
-{
-	xcb_generic_error_t *e;
-	auto cookie = xcb_randr_get_screen_resources(conn.get(), screens[0]->root);
-	auto reply  = xcb_randr_get_screen_resources_reply(conn.get(), cookie, &e);
-
-	if (e)
-		throw std::runtime_error("xcb_randr_get_screen_resources_reply: error " + std::to_string(e->error_code));
-
-	// "get_crtc_info_reply_t" doesn't work if an std::vector is used for this.
-	return std::make_pair(xcb_randr_get_screen_resources_crtcs(reply), reply->num_crtcs);
-}
-
-inline xcb_randr_get_crtc_info_reply_t *xcb::crtc_data(xcb_randr_crtc_t crtc)
-{
-	xcb_generic_error_t *e;
-	auto cookie = xcb_randr_get_crtc_info(conn.get(), crtc, 0);
-	auto reply  = xcb_randr_get_crtc_info_reply(conn.get(), cookie, &e);
-
-	if (e)
-		throw std::runtime_error("xcb_randr_get_crtc_info_reply: error " + std::to_string(e->error_code));
-
-	// needs to be freed
-	return reply;
-}
-
-inline int xcb::gamma_ramp_size(xcb_randr_crtc_t crtc)
-{
-	xcb_generic_error_t *e;
-	auto cookie = xcb_randr_get_crtc_gamma(conn.get(), crtc);
-	auto reply  = xcb_randr_get_crtc_gamma_reply(conn.get(), cookie, &e);
-
-	if (e)
-		throw std::runtime_error("xcb_randr_get_crtc_gamma_reply: error " + std::to_string(e->error_code));
-
-	const int ret = reply->size;
-
-	free(reply);
-
-	return ret;
-}
-
-inline void xcb::set_gamma(xcb_randr_crtc_t crtc, const std::vector<uint16_t> &ramps)
-{
-	const size_t sz = ramps.size() / 3;
-
-	auto req = xcb_randr_set_crtc_gamma_checked(conn.get(), crtc, sz,
-	    &ramps[0 * sz],
-	    &ramps[1 * sz],
-	    &ramps[2 * sz]);
-
-	xcb_generic_error_t *e = xcb_request_check(conn.get(), req);
-	if (e) {
-		throw std::runtime_error("xcb_randr_set_crtc_gamma_checked: error " + std::to_string(e->error_code));
-	}
-}
 
 inline xcb::shared_image::shared_image(xcb &xcb, unsigned int width, unsigned int height)
 {
