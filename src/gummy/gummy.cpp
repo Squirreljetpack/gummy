@@ -130,17 +130,17 @@ int perc_to_step(int val) {
 	return remap(val, 0, 100, 0, constants::brt_steps_max);
 }
 
-void setif(json &val, int new_val) {
+void setif(nlohmann::json &val, int new_val) {
 	if (config::valid_int(new_val) && val.is_number_integer())
 		val = new_val;
 }
 
-void setif(json &val, int new_val, std::function<int(int)> fn) {
+void setif(nlohmann::json &val, int new_val, std::function<int(int)> fn) {
 	if (config::valid_int(new_val) && val.is_number_integer())
 		val = fn(new_val);
 }
 
-void setif(json &val, std::string new_val)
+void setif(nlohmann::json &val, std::string new_val)
 {
 	if (val.is_string() && !new_val.empty())
 		val = new_val;
@@ -249,13 +249,13 @@ int interface(int argc, char **argv)
 		std::exit(EXIT_SUCCESS);
 	}
 
-	json config_json = [&] {
+	nlohmann::json config_json = [&] {
 		std::ifstream ifs(xdg_config_filepath(constants::config_filename));
-		json j;
+		nlohmann::json j;
 		try {
 			ifs >> j;
-		} catch (json::exception &e) {
-			return json({"exception", e.what()});
+		} catch (nlohmann::json::exception &e) {
+			return nlohmann::json({"exception", e.what()});
 		}
 		return j;
 	}();

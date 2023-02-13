@@ -16,9 +16,9 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "xorg.hpp"
+#include "display.hpp"
 
-Xorg::output::output(
+display_server::output::output(
     xcb_randr_crtc_t c,
     size_t sz,
     xcb &xcb,
@@ -28,11 +28,9 @@ Xorg::output::output(
       ramp_size(sz),
       image(xcb, width, height) {}
 
-Xorg::Xorg()
+display_server::display_server()
 {
-	const auto crtcs = xcb_.randr_crtcs();
-
-	for (const auto &crtc : crtcs) {
+	for (const auto &crtc : xcb_.randr_crtcs()) {
 		if (crtc.num_outputs > 0) {
 			outputs.emplace_back(crtc.id,
 			                     crtc.ramp_size * 3,
@@ -43,26 +41,26 @@ Xorg::Xorg()
 	}
 }
 
-std::tuple<uint8_t*, size_t> Xorg::screen_data(int scr_idx)
+std::pair<uint8_t*, size_t> display_server::screen_data(int scr_idx)
 {
 	outputs[scr_idx].image.update(xcb_);
 	// The cast to uint8_t is important
-	return std::make_tuple(
+	return std::make_pair(
 	    reinterpret_cast<uint8_t*>(outputs[scr_idx].image.data()),
 	    outputs[scr_idx].image.size());
 }
 
-void Xorg::set_gamma_ramp(int scr_idx, const std::vector<uint16_t> &ramps)
+void display_server::set_gamma_ramp(int scr_idx, const std::vector<uint16_t> &ramps)
 {
 	xcb_.randr_set_gamma(outputs[scr_idx].crtc, ramps);
 }
 
-size_t Xorg::ramp_size(int scr_idx)
+size_t display_server::ramp_size(int scr_idx)
 {
 	return outputs[scr_idx].ramp_size;
 }
 
-size_t Xorg::scr_count() const
+size_t display_server::scr_count() const
 {
 	return outputs.size();
 }

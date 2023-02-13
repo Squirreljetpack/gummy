@@ -22,7 +22,7 @@
 #include <string>
 #include <libudev.h>
 
-namespace Sysfs
+namespace sysfs
 {
 
 class udev_context
@@ -40,15 +40,13 @@ public:
 	}
 };
 
-class Device
+class device
 {
     udev_device *_addr;
 public:
-	Device(std::string path) {
-		udev_context udev;
-		_addr = udev_device_new_from_syspath(udev.get(), path.c_str());
-	}
-	~Device() {
+	device(std::string path)
+	: _addr(udev_device_new_from_syspath(udev_context().get(), path.c_str())) {}
+	~device() {
 		udev_device_unref(_addr);
 	};
 
@@ -68,4 +66,4 @@ public:
 
 };
 
-#endif // SYSFS_H
+#endif // SYSFS_HPP

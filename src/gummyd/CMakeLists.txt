@@ -2,10 +2,10 @@ project(gummyd LANGUAGES CXX)
 
 set(SOURCES
 	gummyd.cpp
-	xorg.cpp
+	display.cpp
 	gamma.cpp
 	sysfs_devices.cpp
-	server.cpp
+	core.cpp
 	config.cpp
 )
 

@@ -19,10 +19,9 @@
 #ifndef GAMMA_HPP
 #define GAMMA_HPP
 
-#include <atomic>
 #include <stop_token>
 
-#include "xorg.hpp"
+#include "display.hpp"
 #include "config.hpp"
 
 class gamma_state {
@@ -30,16 +29,16 @@ class gamma_state {
 		int brightness;
 		int temperature;
 	};
-	Xorg *_xorg;
+	display_server *_xorg;
 	std::vector<values> _screens;
 
 	static values sanitize(values);
 	void set(size_t screen_idx, values);
 public:
-	gamma_state(Xorg &xorg, std::vector<config::screen> screen_conf);
+	gamma_state(display_server &xorg, std::vector<config::screen> screen_conf);
 	void set_brightness(size_t screen_idx, int val);
 	void set_temperature(size_t screen_idx, int val);
 	void refresh(std::stop_token stoken);
 };
 
-#endif
+#endif // GAMMA_HPP

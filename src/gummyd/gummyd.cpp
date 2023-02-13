@@ -21,19 +21,19 @@
 #include "config.hpp"
 #include "file.hpp"
 #include "utils.hpp"
-#include "xorg.hpp"
+#include "display.hpp"
 #include "sysfs_devices.hpp"
 #include "gamma.hpp"
-#include "server.hpp"
+#include "core.hpp"
 #include "dbus.hpp"
 
 using namespace fushko;
 
-void start(Xorg &xorg, config conf, std::stop_token stoken)
+void start(display_server &dsp, config conf, std::stop_token stoken)
 {
-	assert(xorg.scr_count() == conf.screens.size());
+	assert(dsp.scr_count() == conf.screens.size());
 
-	gamma_state gamma_state(xorg, config(xorg.scr_count()).screens);
+	gamma_state gamma_state(dsp, config(dsp.scr_count()).screens);
 
 	std::vector<std::jthread> threads;
 
@@ -41,7 +41,7 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 		gamma_state.refresh(stoken);
 	});
 
-	std::vector<Sysfs::Backlight> backlights = Sysfs::get_backlights();
+	std::vector<sysfs::backlight> backlights = sysfs::get_backlights();
 
 	if (!backlights.empty()) {
 		backlights[0].set_step(conf.screens[0].models[config::screen::model_idx::BACKLIGHT].val);
@@ -69,7 +69,7 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 
 		if (conf.clients_for(config::screen::mode::SCREENSHOT, idx) > 0) {
 			brt_channels.emplace_back(-1);
-			threads.emplace_back(std::jthread(brightness_server, std::ref(xorg), idx, std::ref(brt_channels.back()), conf.screenshot, stoken));
+			threads.emplace_back(std::jthread(brightness_server, std::ref(dsp), idx, std::ref(brt_channels.back()), conf.screenshot, stoken));
 		}
 
 		for (size_t model_idx = 0; model_idx < conf.screens[idx].models.size(); ++model_idx) {
@@ -85,7 +85,7 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 			switch (model_idx) {
 			case model_name::BACKLIGHT:
 				if (!backlights.empty())
-					fn = std::bind(&Sysfs::Backlight::set_step, &backlights[0], _1);
+					fn = std::bind(&sysfs::backlight::set_step, &backlights[0], _1);
 				break;
 			case model_name::BRIGHTNESS:
 				fn = std::bind(&gamma_state::set_brightness, &gamma_state, idx, _1);
@@ -127,9 +127,9 @@ void start(Xorg &xorg, config conf, std::stop_token stoken)
 
 int message_loop()
 {
-	Xorg xorg;
+	display_server dsp;
 
-	config conf(xorg.scr_count());
+	config conf(dsp.scr_count());
 
 	const auto proxy = sdbus_on_system_sleep([] (sdbus::Signal &sig) {
 	    bool sleep;
@@ -141,7 +141,7 @@ int message_loop()
 	while (true) {
 
 		std::jthread thr([&] (std::stop_token stoken) {
-			start(xorg, conf, stoken);
+			start(dsp, conf, stoken);
 		});
 
 		const std::string data(file_read(constants::fifo_filepath));
@@ -152,11 +152,11 @@ int message_loop()
 		if (data == "reset")
 			continue;
 
-		const json msg = [&] {
+		const nlohmann::json msg = [&] {
 			try {
-				return json::parse(data);
-			} catch (json::exception &e) {
-				return json({"exception", e.what()});
+				return nlohmann::json::parse(data);
+			} catch (nlohmann::json::exception &e) {
+				return nlohmann::json({"exception", e.what()});
 			}
 		}();
 
@@ -165,7 +165,7 @@ int message_loop()
 			continue;
 		}
 
-		conf = config(msg, xorg.scr_count());
+		conf = config(msg, dsp.scr_count());
 	}
 }
 
