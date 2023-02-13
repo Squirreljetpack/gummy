@@ -18,30 +18,28 @@
 
 #include "xorg.hpp"
 
-Xorg::Output::Output(xcb_randr_crtc_t c, size_t sz,
-xcb &xcb, unsigned int width, unsigned int height) // todo: construct image in ctor call (shared_image needs a move ctor)
+Xorg::output::output(
+    xcb_randr_crtc_t c,
+    size_t sz,
+    xcb &xcb,
+    unsigned int width,
+    unsigned int height)
     : crtc(c),
-    ramp_size(sz),
-    image(xcb, width, height)
-{
-}
+      ramp_size(sz),
+      image(xcb, width, height) {}
 
 Xorg::Xorg()
 {
-	auto [data, size] = xcb_.crtcs();
+	const auto crtcs = xcb_.randr_crtcs();
 
-	for (size_t i = 0; i < size; ++i) {
-
-		auto crtc = data[i];
-		auto info = xcb_.crtc_data(crtc);
-
-		if (info->num_outputs > 0) {
-			outputs.emplace_back(crtc,
-			                     xcb_.gamma_ramp_size(crtc) * 3,
-			                     xcb_, info->width, info->height);
+	for (const auto &crtc : crtcs) {
+		if (crtc.num_outputs > 0) {
+			outputs.emplace_back(crtc.id,
+			                     crtc.ramp_size * 3,
+			                     xcb_,
+			                     crtc.width,
+			                     crtc.height);
 		}
-
-		free(info);
 	}
 }
 
@@ -56,7 +54,7 @@ std::tuple<uint8_t*, size_t> Xorg::screen_data(int scr_idx)
 
 void Xorg::set_gamma_ramp(int scr_idx, const std::vector<uint16_t> &ramps)
 {
-	xcb_.set_gamma(outputs[scr_idx].crtc, ramps);
+	xcb_.randr_set_gamma(outputs[scr_idx].crtc, ramps);
 }
 
 size_t Xorg::ramp_size(int scr_idx)

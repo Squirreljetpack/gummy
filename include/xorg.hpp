@@ -24,17 +24,17 @@
 
 class Xorg
 {
-    struct Output
+	struct output
 	{
-	    xcb_randr_crtc_t crtc;
-		size_t ramp_size;
+		xcb_randr_crtc_t  crtc;
+		size_t            ramp_size;
 		xcb::shared_image image;
-		Output(xcb_randr_crtc_t crtc, size_t ramp_size,
-		xcb &xcb, unsigned int width, unsigned int height);
+
+		output(xcb_randr_crtc_t crtc, size_t ramp_size, xcb &xcb, unsigned int width, unsigned int height);
 	};
 
 	xcb xcb_;
-	std::vector<Output> outputs;
+	std::vector<output> outputs;
 public:
     Xorg();
 	std::tuple<uint8_t*, size_t> screen_data(int scr_idx);

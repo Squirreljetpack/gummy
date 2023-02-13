@@ -65,4 +65,17 @@ inline void jthread_wait_until(int ms, std::stop_token stoken)
 	        .wait_until(lock, stoken, system_clock::now() + milliseconds(ms), [&] { return stoken.stop_requested(); });
 }
 
+template <class T, auto fn>
+struct deleter {
+	void operator()(T *ptr) { fn(ptr); }
+};
+
+template <class T>
+struct c_deleter {
+	void operator()(T *ptr) { std::free(ptr); }
+};
+
+template <class T>
+using c_unique_ptr = std::unique_ptr<T, c_deleter<T>>;
+
 #endif // UTILS_H
