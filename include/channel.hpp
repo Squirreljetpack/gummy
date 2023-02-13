@@ -17,8 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef CHANNEL_H
-#define CHANNEL_H
+#ifndef CHANNEL_HPP
+#define CHANNEL_HPP
 
 #include <atomic>
 
@@ -47,4 +47,4 @@ public:
 
 }
 
-#endif
+#endif //CHANNEL_HPP

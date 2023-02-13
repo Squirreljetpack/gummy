@@ -24,7 +24,6 @@
 #include <limits>
 
 #include "json.hpp"
-using nlohmann::json;
 
 namespace constants {
 extern const char* config_filename;

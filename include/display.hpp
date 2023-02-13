@@ -16,13 +16,13 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef XORG_H
-#define XORG_H
+#ifndef DISPLAY_HPP
+#define DISPLAY_HPP
 
 #include <vector>
 #include "xcb.hpp"
 
-class Xorg
+class display_server
 {
 	struct output
 	{
@@ -36,11 +36,11 @@ class Xorg
 	xcb xcb_;
 	std::vector<output> outputs;
 public:
-    Xorg();
-	std::tuple<uint8_t*, size_t> screen_data(int scr_idx);
+	display_server();
+	std::pair<uint8_t*, size_t> screen_data(int scr_idx);
 	void    set_gamma_ramp(int scr_idx, const std::vector<uint16_t> &ramps);
 	size_t  ramp_size(int scr_idx);
 	size_t  scr_count() const;
 };
 
-#endif
+#endif // EASING_HPP

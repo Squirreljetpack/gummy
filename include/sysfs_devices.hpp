@@ -16,42 +16,42 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef SYSFS_DEVICES_H
-#define SYSFS_DEVICES_H
+#ifndef SYSFS_DEVICES_HPP
+#define SYSFS_DEVICES_HPP
 
 #include <vector>
 #include "sysfs.hpp"
 
-namespace Sysfs {
+namespace sysfs {
 
-class Backlight
+class backlight
 {
-    Sysfs::Device _dev;
+	sysfs::device _dev;
 	int _val;
 	int _max;
 public:
-	Backlight(std::string path);
+	backlight(std::string path);
 	int val() const;
 	int max() const;
 	int step() const;
 	void set_step(int);
 };
 
-class ALS
+class als
 {
-    Sysfs::Device _dev;
+	sysfs::device _dev;
 	std::string _lux_name;
 	double      _lux_scale;
 	int         _lux_step;
 public:
-	ALS(std::string path);
+	als(std::string path);
 	int lux_step() const;
 	void update();
 };
 
 int calc_lux_step(double lux);
-std::vector<Backlight> get_backlights();
-std::vector<ALS>       get_als();
+std::vector<backlight> get_backlights();
+std::vector<als>       get_als();
 }
 
-#endif
+#endif // SYSFS_DEVICES_HPP

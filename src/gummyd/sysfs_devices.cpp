@@ -43,10 +43,10 @@ const struct {
 	} als;
 } config;
 
-std::vector<Sysfs::Backlight> Sysfs::get_backlights()
+std::vector<sysfs::backlight> sysfs::get_backlights()
 {
 	using namespace std::filesystem;
-	std::vector<Sysfs::Backlight> vec;
+	std::vector<sysfs::backlight> vec;
 
 	if (exists(config.backlight.path)) {
 		for (const auto &s : directory_iterator(config.backlight.path))
@@ -56,10 +56,10 @@ std::vector<Sysfs::Backlight> Sysfs::get_backlights()
 	return vec;
 }
 
-std::vector<Sysfs::ALS> Sysfs::get_als()
+std::vector<sysfs::als> sysfs::get_als()
 {
 	using namespace std::filesystem;
-	std::vector<Sysfs::ALS> vec;
+	std::vector<sysfs::als> vec;
 
 	if (exists(config.als.path)) {
 		for (const auto &s : directory_iterator(config.als.path)) {
@@ -72,36 +72,36 @@ std::vector<Sysfs::ALS> Sysfs::get_als()
 	return vec;
 }
 
-Sysfs::Backlight::Backlight(std::string path)
+sysfs::backlight::backlight(std::string path)
     : _dev(path),
       _val(std::stoi(_dev.get(config.backlight.brt))),
       _max(std::stoi(_dev.get(config.backlight.max_brt)))
 {
 }
 
-void Sysfs::Backlight::set_step(int step)
+void sysfs::backlight::set_step(int step)
 {
 	_val = remap(step, 0, constants::brt_steps_max, 0, _max);
 
 	_dev.set(config.backlight.brt, std::to_string(_val).c_str());
 }
 
-int Sysfs::Backlight::val() const
+int sysfs::backlight::val() const
 {
 	return _val;
 }
 
-int Sysfs::Backlight::step() const
+int sysfs::backlight::step() const
 {
 	return remap(_val, 0, _max, 0, constants::brt_steps_max);
 }
 
-int Sysfs::Backlight::max() const
+int sysfs::backlight::max() const
 {
 	return _max;
 }
 
-Sysfs::ALS::ALS(std::string path)
+sysfs::als::als(std::string path)
     : _dev(path),
 	  _lux_scale(1.0)
 {
@@ -121,16 +121,16 @@ Sysfs::ALS::ALS(std::string path)
 		_lux_scale = std::stod(scale);
 }
 
-void Sysfs::ALS::update()
+void sysfs::als::update()
 {
-	Sysfs::Device dev(_dev.path());
+	sysfs::device dev(_dev.path());
 
 	const double lux = std::stod(dev.get(_lux_name)) * _lux_scale;
 
 	_lux_step = calc_lux_step(lux);
 }
 
-int Sysfs::ALS::lux_step() const
+int sysfs::als::lux_step() const
 {
 	return _lux_step;
 }
@@ -138,7 +138,7 @@ int Sysfs::ALS::lux_step() const
 // The human eye's perception of light intensity is roughly logarithmic.
 // The highest illuminance detected by my laptop sensor is 21090.
 // That's roughly 4.3 in log10. Assume the maximum is 5 as an approximation.
-int Sysfs::calc_lux_step(double lux)
+int sysfs::calc_lux_step(double lux)
 {
 	if (lux == 0.)
 		return 0;

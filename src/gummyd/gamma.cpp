@@ -22,7 +22,7 @@
 #include "config.hpp"
 #include "utils.hpp"
 #include "channel.hpp"
-#include "xorg.hpp"
+#include "display.hpp"
 
 using namespace constants;
 
@@ -103,7 +103,7 @@ double calc_brt_mult(int step, size_t ramp_sz)
 	return (double(step) / brt_steps_max) * ramp_step;
 }
 
-gamma_state::gamma_state(Xorg &xorg, std::vector<config::screen> screens_conf)
+gamma_state::gamma_state(display_server &xorg, std::vector<config::screen> screens_conf)
 {
 	_xorg = &xorg;
 

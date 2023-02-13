@@ -16,18 +16,18 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "server.hpp"
+#include "core.hpp"
 #include "easing.hpp"
 
 using namespace fushko;
 
 // [0, 255]
-int image_brightness(std::tuple<uint8_t*, size_t> buf, int bytes_per_pixel = 4, int stride = 1024)
+int image_brightness(std::pair<uint8_t*, size_t> buf, int bytes_per_pixel = 4, int stride = 1024)
 {
-	uint64_t rgb[3] {};
-	uint8_t  *arr = std::get<0>(buf);
-	uint64_t sz   = std::get<1>(buf);
+	uint8_t *arr      = buf.first;
+	const uint64_t sz = buf.second;
 
+	std::array<uint64_t, 3> rgb {0, 0, 0};
 	for (uint64_t i = 0, inc = stride * bytes_per_pixel; i < sz; i += inc) {
 		rgb[0] += arr[i + 2];
 		rgb[1] += arr[i + 1];
@@ -37,7 +37,7 @@ int image_brightness(std::tuple<uint8_t*, size_t> buf, int bytes_per_pixel = 4, 
 	return ((rgb[0] * 0.2126) + (rgb[1] * 0.7152) + (rgb[2] * 0.0722)) * stride / (sz / bytes_per_pixel);
 }
 
-void brightness_server(Xorg &xorg, size_t screen_idx, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken)
+void brightness_server(display_server &dsp, size_t screen_idx, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken)
 {
 	int cur = constants::brt_steps_max;
 	int prev;
@@ -46,7 +46,7 @@ void brightness_server(Xorg &xorg, size_t screen_idx, channel<int> &ch, struct c
 	while (true) {
 		prev = cur;
 
-		cur = std::clamp(image_brightness(xorg.screen_data(screen_idx)) + int(remap(conf.offset_perc, -100, 100, -255, 255)), 0, 255);
+		cur = std::clamp(image_brightness(dsp.screen_data(screen_idx)) + int(remap(conf.offset_perc, -100, 100, -255, 255)), 0, 255);
 		delta += std::abs(prev - cur);
 
 		if (delta > 8) {
@@ -97,7 +97,7 @@ void brightness_client(channel<int> &ch, config::screen::model model, std::funct
 	}
 }
 
-void als_server(Sysfs::ALS &als, channel<int> &ch, int sleep_ms, int prev, int cur, std::stop_token stoken)
+void als_server(sysfs::als &als, channel<int> &ch, int sleep_ms, int prev, int cur, std::stop_token stoken)
 {
 	while (true) {
 
@@ -152,7 +152,31 @@ void time_server(channel<time_data> &ch, struct config::time conf, std::stop_tok
 	}
 }
 
-time_target calc_time_target(bool step, time_data data, config::screen::model model);
+time_target calc_time_target(bool step, time_data data, config::screen::model model)
+{
+	const std::time_t delta_s = std::min(std::abs(data.time_since_last_event), data.adaptation_s);
+
+	const int target = [&] {
+		const double lerp_fac = double(delta_s) / data.adaptation_s;
+		if (data.in_range)
+			return int(lerp(model.min, model.max, lerp_fac));
+		else
+			return int(lerp(model.max, model.min, lerp_fac));
+	}();
+
+	const std::time_t min_duration_ms = 2000;
+
+	const int duration_ms = std::max(((data.adaptation_s - delta_s) * 1000), min_duration_ms);
+
+	printf("in_range: %ld\n", data.in_range);
+	printf("target: %d\n", target);
+	printf("duration_ms: %d\n", duration_ms);
+
+	if (!step)
+		return { target, min_duration_ms };
+	else
+		return { data.in_range ? model.max : model.min, duration_ms };
+}
 
 void time_client(channel<time_data> &ch, config::screen::model model, std::function<void(int)> model_fn)
 {
@@ -181,30 +205,5 @@ void time_client(channel<time_data> &ch, config::screen::model model, std::funct
 	}
 }
 
-time_target calc_time_target(bool step, time_data data, config::screen::model model)
-{
-	const std::time_t delta_s = std::min(std::abs(data.time_since_last_event), data.adaptation_s);
-
-	const int target = [&] {
-		const double lerp_fac = double(delta_s) / data.adaptation_s;
-		if (data.in_range)
-			return int(lerp(model.min, model.max, lerp_fac));
-		else
-			return int(lerp(model.max, model.min, lerp_fac));
-	}();
-
-	const std::time_t min_duration_ms = 2000;
-
-	const int duration_ms = std::max(((data.adaptation_s - delta_s) * 1000), min_duration_ms);
-
-	printf("in_range: %ld\n", data.in_range);
-	printf("target: %d\n", target);
-	printf("duration_ms: %d\n", duration_ms);
-
-	if (!step)
-		return { target, min_duration_ms };
-	else
-		return { data.in_range ? model.max : model.min, duration_ms };
-}
 
 

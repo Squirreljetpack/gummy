@@ -16,8 +16,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef UTILS_HPP
+#define UTILS_HPP
 
 #include <cmath>
 #include <chrono>
@@ -77,5 +77,6 @@ struct c_deleter {
 
 template <class T>
 using c_unique_ptr = std::unique_ptr<T, c_deleter<T>>;
+//using c_unique_ptr = std::unique_ptr<T, deleter<T, std::free>>;
 
 #endif // UTILS_H

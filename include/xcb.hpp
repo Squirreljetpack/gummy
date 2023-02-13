@@ -16,8 +16,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef XCB_H
-#define XCB_H
+#ifndef XCB_HPP
+#define XCB_HPP
 
 #include <stdexcept>
 #include <vector>
@@ -82,7 +82,7 @@ public:
 class xcb
 {
 	xcb_connection conn;
-	std::vector<std::unique_ptr<xcb_screen_t>> screens;
+	std::vector<xcb_screen_t*> screens;
 
 	void throw_if(xcb_generic_error_t *err, std::string err_str) {
 		if (err)
@@ -193,4 +193,4 @@ public:
 		}
 	};
 };
-#endif
+#endif // XCB_HPP
