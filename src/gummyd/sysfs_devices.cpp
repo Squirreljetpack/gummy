@@ -1,6 +1,6 @@
 ﻿/**
 * gummy
-* Copyright (C) 2022  Francesco Fusco
+* Copyright (C) 2023  Francesco Fusco
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
