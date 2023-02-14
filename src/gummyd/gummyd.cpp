@@ -88,8 +88,8 @@ void start(display_server &dsp, config conf, std::stop_token stoken)
 
 			switch (model_idx) {
 			case model_name::BACKLIGHT:
-				if (!backlights.empty())
-					fn = std::bind(&sysfs::backlight::set_step, &backlights[0], _1);
+			    if (idx < backlights.size())
+					fn = std::bind(&sysfs::backlight::set_step, &backlights[idx], _1);
 				break;
 			case model_name::BRIGHTNESS:
 				fn = std::bind(&gamma_state::set_brightness, &gamma_state, idx, _1);
