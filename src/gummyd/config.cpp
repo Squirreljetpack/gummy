@@ -46,7 +46,7 @@ void config::defaults()
 	screenshot.poll_ms       = 200;
 	screenshot.adaptation_ms = 5000;
 
-	als.scale                = 0;
+	als.scale                = 1.0;
 	als.poll_ms              = 5000;
 	als.adaptation_ms        = 5000;
 }
