@@ -25,6 +25,7 @@
 namespace sysfs {
 
 class backlight {
+    udev_context  _udev;
 	sysfs::device _dev;
 	int _val;
 	int _max;
@@ -37,6 +38,7 @@ public:
 };
 
 class als {
+    udev_context  _udev;
 	sysfs::device _dev;
 	std::string   _lux_filename;
 	double        _lux_scale;
