@@ -42,7 +42,7 @@ void config::defaults()
 	time.end                 = "16:00";
 	time.adaptation_minutes  = 60;
 
-	screenshot.offset_perc   = 0;
+	screenshot.scale         = 1.0;
 	screenshot.poll_ms       = 200;
 	screenshot.adaptation_ms = 5000;
 
@@ -157,7 +157,7 @@ void config::from_json(json in)
 	time.end                 = in["time"]["end"];
 	time.adaptation_minutes  = in["time"]["adaptation_minutes"];
 
-	screenshot.offset_perc   = in["screenshot"]["offset_perc"];
+	screenshot.scale         = in["screenshot"]["scale"];
 	screenshot.poll_ms       = in["screenshot"]["poll_ms"];
 	screenshot.adaptation_ms = in["screenshot"]["adaptation_ms"];
 
@@ -178,7 +178,7 @@ json config::to_json() const
 		}},
 
 		{"screenshot", {
-				{"offset_perc", screenshot.offset_perc},
+				{"scale", screenshot.scale},
 				{"poll_ms", screenshot.poll_ms},
 				{"adaptation_ms", screenshot.adaptation_ms},
 		}},

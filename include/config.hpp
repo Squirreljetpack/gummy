@@ -38,8 +38,6 @@ extern const int temp_k_min;
 extern const int temp_k_max;
 }
 
-std::string xdg_config_path(std::string config_name);
-
 class config {
 
 	void defaults();
@@ -102,15 +100,14 @@ public:
 	} time;
 
 	struct screenshot {
-		int offset_perc;
+		double scale;
 		int poll_ms;
 		int adaptation_ms;
 
 		screenshot() :
-		offset_perc(std::numeric_limits<int>::min()),
+		scale(std::numeric_limits<int>::min()),
 		poll_ms(std::numeric_limits<int>::min()),
-		adaptation_ms(std::numeric_limits<int>::min())
-		{};
+		adaptation_ms(std::numeric_limits<int>::min()) {};
 	} screenshot;
 
 	struct als {
