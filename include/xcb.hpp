@@ -160,7 +160,7 @@ public:
 		xcb_image_t *image;
 	public:
 		shared_image(xcb &xcb, unsigned int width, unsigned int height)
-		    : shmem(xcb_shared_memory(xcb.conn, width * height * 4)),
+		    : shmem(xcb.conn, width * height * 4),
 		      image(xcb_image_create_native(
 		                xcb.conn.get(), width, height, XCB_IMAGE_FORMAT_Z_PIXMAP,
 		                xcb.screens[0]->root_depth, shmem.addr(), width * height * 4, nullptr))
