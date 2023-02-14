@@ -117,7 +117,7 @@ enum {
 	TIME_END,
 	TIME_ADAPTATION_MS,
 
-	SCREENSHOT_OFFSET,
+	SCREENSHOT_SCALE,
 	SCREENSHOT_POLL_MS,
 	SCREENSHOT_ADAPTATION_MS,
 
@@ -174,7 +174,7 @@ const std::array<std::array<std::string, 2>, 23> options {{
 {"-u,--time-end", "End time in 24h format, for example `16:30`."},
 {"-i,--time-adaptation-min", "Adaptation speed in minutes.\nFor example, if this is set to 30 minutes, time-based values start easing into their min. value 30 minutes before the end time."},
 
-{"--screenshot-offset-perc", "Adds to the screenshot brightness calculation."},
+{"--screenshot-scale", "Screenshot brightness multiplier. Useful for calibration."},
 {"--screenshot-poll-ms", "Time interval between each screenshot."},
 {"--screenshot-adaptation-ms", "Adaptation speed in milliseconds."},
 
@@ -221,23 +221,23 @@ int interface(int argc, char **argv)
 	app.add_option(options[TEMP_MIN][0], temperature.min, options[TEMP_MIN][1])->check(CLI::Range(temp_k_min, temp_k_max))->group(grp_temp);
 	app.add_option(options[TEMP_MAX][0], temperature.max, options[TEMP_MAX][1])->check(CLI::Range(temp_k_min, temp_k_max))->group(grp_temp);
 
-	const std::string grp_time("Time range mode settings");
-	struct config::time time;
-	app.add_option(options[TIME_START][0], time.start, options[TIME_START][1])->check(check_time_format)->group(grp_time);
-	app.add_option(options[TIME_END][0], time.end, options[TIME_END][1])->check(check_time_format)->group(grp_time);
-	app.add_option(options[TIME_ADAPTATION_MS][0], time.adaptation_minutes, options[TIME_ADAPTATION_MS][1])->check(CLI::Range(1, 60 * 12))->group(grp_time);
-
-	const std::string grp_ss("Screenshot mode settings");
-	struct config::screenshot screenshot;
-	app.add_option(options[SCREENSHOT_OFFSET][0], screenshot.offset_perc, options[SCREENSHOT_OFFSET][1])->check(CLI::Range(-100, 100))->group(grp_ss);
-	app.add_option(options[SCREENSHOT_POLL_MS][0], screenshot.poll_ms, options[SCREENSHOT_POLL_MS][1])->check(CLI::Range(1, 10000))->group(grp_ss);
-	app.add_option(options[SCREENSHOT_ADAPTATION_MS][0], screenshot.adaptation_ms, options[SCREENSHOT_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_ss);
-
 	const std::string grp_als("ALS mode settings");
 	struct config::als als;
 	app.add_option(options[ALS_SCALE][0], als.scale, options[ALS_SCALE][1])->check(CLI::Range(0., 10.))->group(grp_als);
 	app.add_option(options[ALS_POLL_MS][0], als.poll_ms, options[ALS_POLL_MS][1])->check(CLI::Range(1, 10000 * 60 * 60))->group(grp_als);
 	app.add_option(options[ALS_ADAPTATION_MS][0], als.adaptation_ms, options[ALS_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_als);
+
+	const std::string grp_ss("Screenshot mode settings");
+	struct config::screenshot screenshot;
+	app.add_option(options[SCREENSHOT_SCALE][0], screenshot.scale, options[SCREENSHOT_SCALE][1])->check(CLI::Range(0., 10.))->group(grp_ss);
+	app.add_option(options[SCREENSHOT_POLL_MS][0], screenshot.poll_ms, options[SCREENSHOT_POLL_MS][1])->check(CLI::Range(1, 10000))->group(grp_ss);
+	app.add_option(options[SCREENSHOT_ADAPTATION_MS][0], screenshot.adaptation_ms, options[SCREENSHOT_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_ss);
+
+	const std::string grp_time("Time range mode settings");
+	struct config::time time;
+	app.add_option(options[TIME_START][0], time.start, options[TIME_START][1])->check(check_time_format)->group(grp_time);
+	app.add_option(options[TIME_END][0], time.end, options[TIME_END][1])->check(check_time_format)->group(grp_time);
+	app.add_option(options[TIME_ADAPTATION_MS][0], time.adaptation_minutes, options[TIME_ADAPTATION_MS][1])->check(CLI::Range(1, 60 * 12))->group(grp_time);
 
 	try {
 		if (argc == 1) {
@@ -311,13 +311,13 @@ int interface(int argc, char **argv)
 	setif(config_json["time"]["end"], time.end);
 	setif(config_json["time"]["adaptation_minutes"], time.adaptation_minutes);
 
+	setif(config_json["screenshot"]["scale"], screenshot.scale);
 	setif(config_json["screenshot"]["poll_ms"], screenshot.poll_ms);
 	setif(config_json["screenshot"]["adaptation_ms"], screenshot.adaptation_ms);
-	setif(config_json["screenshot"]["offset_perc"], screenshot.offset_perc);
 
+	setif(config_json["als"]["scale"], als.scale);
 	setif(config_json["als"]["poll_ms"], als.poll_ms);
 	setif(config_json["als"]["adaptation_ms"], als.adaptation_ms);
-	setif(config_json["als"]["scale"], als.scale);
 
 	file_write(constants::fifo_filepath, config_json.dump());
 

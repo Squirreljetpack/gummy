@@ -46,12 +46,12 @@ void brightness_server(display_server &dsp, size_t screen_idx, channel<int> &ch,
 	while (true) {
 		prev = cur;
 
-		cur = std::clamp(image_brightness(dsp.screen_data(screen_idx)) + int(remap(conf.offset_perc, -100, 100, -255, 255)), 0, 255);
+		cur = std::clamp(double(image_brightness(dsp.screen_data(screen_idx))) * conf.scale, 0., 255.);
 		delta += std::abs(prev - cur);
 
 		if (delta > 8) {
 			delta = 0;
-			printf("[brightness_server]: sending %d\n", cur);
+			printf("[brightness_server] sending %d\n", cur);
 			ch.send(cur);
 		}
 
