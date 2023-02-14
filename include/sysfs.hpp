@@ -35,7 +35,7 @@ public:
 	~udev_context() {
 		udev_unref(_addr);
 	}
-	udev* get() {
+	udev* get() const {
 		return _addr;
 	}
 };
@@ -44,8 +44,9 @@ class device
 {
     udev_device *_addr;
 public:
-	device(std::string path)
-	: _addr(udev_device_new_from_syspath(udev_context().get(), path.c_str())) {}
+	device(const udev_context &udev, std::string path)
+	: _addr(udev_device_new_from_syspath(udev.get(), path.c_str())) {}
+
 	~device() {
 		udev_device_unref(_addr);
 	};

@@ -71,7 +71,7 @@ std::vector<sysfs::als> sysfs::get_als()
 }
 
 sysfs::backlight::backlight(std::string path)
-    : _dev(path),
+    : _dev(_udev, path),
       _val(std::stoi(_dev.get(config.backlight.brt))),
       _max(std::stoi(_dev.get(config.backlight.max_brt)))
 {
@@ -100,7 +100,7 @@ int sysfs::backlight::max() const
 }
 
 sysfs::als::als(std::string path)
-    : _dev(path),
+    : _dev(_udev, path),
 	  _lux_scale(1.0)
 {
 	for (const auto &fname : config.als.lux_filenames) {
@@ -122,6 +122,6 @@ sysfs::als::als(std::string path)
 
 double sysfs::als::read_lux()
 {
-	sysfs::device dev(_dev.path());
+	sysfs::device dev(_udev, _dev.path());
 	return std::stod(dev.get(_lux_filename)) * _lux_scale;
 }
