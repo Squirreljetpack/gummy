@@ -44,9 +44,8 @@ display_server::display_server()
 std::pair<uint8_t*, size_t> display_server::screen_data(int scr_idx)
 {
 	outputs[scr_idx].image.update(xcb_);
-	// The cast to uint8_t is important
 	return std::make_pair(
-	    reinterpret_cast<uint8_t*>(outputs[scr_idx].image.data()),
+	    outputs[scr_idx].image.data(),
 	    outputs[scr_idx].image.size());
 }
 
