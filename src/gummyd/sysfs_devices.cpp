@@ -17,8 +17,6 @@
 */
 
 #include <filesystem>
-#include <algorithm>
-#include <cmath>
 #include <syslog.h>
 #include <libudev.h>
 
@@ -36,7 +34,7 @@ const struct {
 	    std::string path      = "/sys/bus/iio/devices";
 		std::string name      = "iio:device";
 		std::string lux_scale = "in_illuminance_scale";
-		std::array<std::string, 2> lux_files = {
+		std::array<std::string, 2> lux_filenames = {
 		    "in_illuminance_input",
 		    "in_illuminance_raw"
 		};
@@ -105,42 +103,25 @@ sysfs::als::als(std::string path)
     : _dev(path),
 	  _lux_scale(1.0)
 {
-	for (const auto &name : config.als.lux_files) {
-		if (!_dev.get(name).empty()) {
-			_lux_name = name;
+	for (const auto &fname : config.als.lux_filenames) {
+		if (!_dev.get(fname).empty()) {
+			_lux_filename = fname;
 			break;
 		}
 	}
 
-	if (_lux_name.empty())
-		syslog(LOG_ERR, "ALS output file not found");
+	if (_lux_filename.empty()) {
+		throw std::runtime_error("Lux data not found for ALS at path: " + path);
+	}
 
-	const std::string scale = _dev.get(config.als.lux_scale);
-
-	if (!scale.empty())
-		_lux_scale = std::stod(scale);
+	_lux_scale = [this] {
+		const std::string scale = _dev.get(config.als.lux_scale);
+		return scale.empty() ? 1.0 : std::stod(scale);
+	}();
 }
 
-void sysfs::als::update()
+double sysfs::als::read_lux()
 {
 	sysfs::device dev(_dev.path());
-
-	const double lux = std::stod(dev.get(_lux_name)) * _lux_scale;
-
-	_lux_step = calc_lux_step(lux);
-}
-
-int sysfs::als::lux_step() const
-{
-	return _lux_step;
-}
-
-// The human eye's perception of light intensity is roughly logarithmic.
-// The highest illuminance detected by my laptop sensor is 21090.
-// That's roughly 4.3 in log10. Assume the maximum is 5 as an approximation.
-int sysfs::calc_lux_step(double lux)
-{
-	if (lux == 0.)
-		return 0;
-	return log10(lux) / 5 * constants::brt_steps_max;
+	return std::stod(dev.get(_lux_filename)) * _lux_scale;
 }

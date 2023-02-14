@@ -114,12 +114,12 @@ public:
 	} screenshot;
 
 	struct als {
-		int offset_perc;
+	    double scale;
 		int poll_ms;
 		int adaptation_ms;
 
 		als() :
-		offset_perc(std::numeric_limits<int>::min()),
+		scale(std::numeric_limits<double>::min()),
 		poll_ms(std::numeric_limits<int>::min()),
 		adaptation_ms(std::numeric_limits<int>::min()) {};
 	} als;
@@ -129,6 +129,7 @@ public:
 	size_t clients_for(config::screen::mode);
 	size_t clients_for(config::screen::mode, size_t screen_index);
 
+	static bool valid_f64(double val);
 	static bool valid_int(int val);
 };
 

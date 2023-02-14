@@ -97,24 +97,61 @@ void brightness_client(channel<int> &ch, config::screen::model model, std::funct
 	}
 }
 
-void als_server(sysfs::als &als, channel<int> &ch, int sleep_ms, int prev, int cur, std::stop_token stoken)
+void als_server(sysfs::als &als, channel<double> &ch, struct config::als conf, std::stop_token stoken)
 {
+	double prev = -1;
+	double cur;
+
 	while (true) {
 
-		prev = als.lux_step();
-		als.update();
-		cur = als.lux_step();
+		// have at least 1 lux to play with
+		const double lux = std::max(als.read_lux(), 1.);
 
-		if (prev != cur) {
+		// the human eye's perception of light intensity is roughly logarithmic
+		cur = std::log10(std::max(lux * conf.scale, 1.));
+
+		//printf("[als] cur: %f\n", cur);
+
+		if (std::abs(prev - cur) > 0.01) {
+			printf("[als] sending: %f\n", cur);
 			ch.send(cur);
 		}
 
-		jthread_wait_until(sleep_ms, stoken);
+		jthread_wait_until(conf.poll_ms, stoken);
 
 		if (stoken.stop_requested()) {
 			ch.send(-1);
 			return;
 		}
+
+		prev = cur;
+	}
+}
+
+void als_client(channel<double> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
+{
+	int val = model.max;
+	double prev_brt = -1;
+
+	while (true) {
+
+		const double brt = ch.recv(prev_brt);
+
+		printf("[als client] received %f (prev: %f).\n", brt, prev_brt);
+
+		if (brt < 0) {
+			return;
+		}
+
+		const int target = lerp(model.min, model.max, std::clamp(brt, 0., 1.));
+
+		const auto interrupt = [&] {
+			return ch.read() != brt;
+		};
+
+		printf("[als client] easing from %d to %d...\n", val, target);
+		val = easing::animate(val, target, adaptation_ms, easing::ease_out_expo, model_fn, interrupt);
+		prev_brt = brt;
 	}
 }
 

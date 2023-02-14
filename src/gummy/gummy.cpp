@@ -121,13 +121,18 @@ enum {
 	SCREENSHOT_POLL_MS,
 	SCREENSHOT_ADAPTATION_MS,
 
-	ALS_OFFSET,
+	ALS_SCALE,
 	ALS_POLL_MS,
 	ALS_ADAPTATION_MS
 };
 
 int perc_to_step(int val) {
 	return remap(val, 0, 100, 0, constants::brt_steps_max);
+}
+
+void setif(nlohmann::json &val, double new_val) {
+	if (config::valid_f64(new_val) && val.is_number_float())
+		val = new_val;
 }
 
 void setif(nlohmann::json &val, int new_val) {
@@ -167,13 +172,13 @@ const std::array<std::array<std::string, 2>, 23> options {{
 
 {"-y,--time-start", "Starting time in 24h format, for example `06:00`."},
 {"-u,--time-end", "End time in 24h format, for example `16:30`."},
-{"-i,--time-adaptation-min", "Adaptation speed in minutes.\nFor example, if this is set to 30 minutes, time-based values start easing into their minimum value 30 minutes before the end time."},
+{"-i,--time-adaptation-min", "Adaptation speed in minutes.\nFor example, if this is set to 30 minutes, time-based values start easing into their min. value 30 minutes before the end time."},
 
 {"--screenshot-offset-perc", "Adds to the screenshot brightness calculation."},
 {"--screenshot-poll-ms", "Time interval between each screenshot."},
 {"--screenshot-adaptation-ms", "Adaptation speed in milliseconds."},
 
-{"--als-offset-perc", "Adds to the ALS brightness calculation."},
+{"--als-scale", "ALS signal multiplier. Useful for calibration."},
 {"--als-poll-ms", "Time interval between each sensor reading."},
 {"--als-adaptation-ms", "Adaptation speed in milliseconds."},
 }};
@@ -230,7 +235,7 @@ int interface(int argc, char **argv)
 
 	const std::string grp_als("ALS mode settings");
 	struct config::als als;
-	app.add_option(options[ALS_OFFSET][0], als.offset_perc, options[ALS_OFFSET][1])->check(CLI::Range(-100, 100))->group(grp_als);
+	app.add_option(options[ALS_SCALE][0], als.scale, options[ALS_SCALE][1])->check(CLI::Range(0., 10.))->group(grp_als);
 	app.add_option(options[ALS_POLL_MS][0], als.poll_ms, options[ALS_POLL_MS][1])->check(CLI::Range(1, 10000 * 60 * 60))->group(grp_als);
 	app.add_option(options[ALS_ADAPTATION_MS][0], als.adaptation_ms, options[ALS_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_als);
 
@@ -312,7 +317,7 @@ int interface(int argc, char **argv)
 
 	setif(config_json["als"]["poll_ms"], als.poll_ms);
 	setif(config_json["als"]["adaptation_ms"], als.adaptation_ms);
-	setif(config_json["als"]["offset_perc"], als.offset_perc);
+	setif(config_json["als"]["scale"], als.scale);
 
 	file_write(constants::fifo_filepath, config_json.dump());
 
