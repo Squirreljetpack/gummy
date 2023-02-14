@@ -42,10 +42,7 @@ void start(display_server &dsp, config conf, std::stop_token stoken)
 	});
 
 	std::vector<sysfs::backlight> backlights = sysfs::get_backlights();
-
-	if (!backlights.empty()) {
-		backlights[0].set_step(conf.screens[0].models[config::screen::model_idx::BACKLIGHT].val);
-	}
+	std::vector<sysfs::als> als              = sysfs::get_als();
 
 	//////////////////////////////////////////////////////////////////////
 
@@ -54,7 +51,14 @@ void start(display_server &dsp, config conf, std::stop_token stoken)
 	const size_t time_clients       = conf.clients_for(config::screen::mode::TIME);
 	printf("screenshot: %zu, als: %zu, time: %zu\n", screenshot_clients, als_clients, time_clients);
 
+	channel<double>    als_ch(-1.);
 	channel<time_data> time_ch({-1, -1, -1});
+
+	if (als_clients > 0 && !als.empty()) {
+		threads.emplace_back([&] {
+			als_server(als[0], als_ch, conf.als, stoken);
+		});
+	}
 
 	if (time_clients > 0) {
 		threads.emplace_back([&] {
@@ -100,10 +104,13 @@ void start(display_server &dsp, config conf, std::stop_token stoken)
 				throw std::runtime_error("invalid model state");
 			}
 			case config::screen::MANUAL: {
-				// manual setting is done in gamma_state
+				// manual setting for gamma is done in gamma_state
+				// todo: do it here, which also does it for backlight
+				//fn(model.val);
 				break;
 			}
 			case config::screen::ALS: {
+				threads.emplace_back(std::jthread(als_client, std::ref(als_ch), model, fn, conf.als.adaptation_ms));
 				break;
 			}
 			case config::screen::SCREENSHOT: {

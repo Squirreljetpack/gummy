@@ -24,8 +24,7 @@
 
 namespace sysfs {
 
-class backlight
-{
+class backlight {
 	sysfs::device _dev;
 	int _val;
 	int _max;
@@ -37,19 +36,15 @@ public:
 	void set_step(int);
 };
 
-class als
-{
+class als {
 	sysfs::device _dev;
-	std::string _lux_name;
-	double      _lux_scale;
-	int         _lux_step;
+	std::string   _lux_filename;
+	double        _lux_scale;
 public:
 	als(std::string path);
-	int lux_step() const;
-	void update();
+	double read_lux();
 };
 
-int calc_lux_step(double lux);
 std::vector<backlight> get_backlights();
 std::vector<als>       get_als();
 }

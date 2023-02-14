@@ -46,7 +46,7 @@ void config::defaults()
 	screenshot.poll_ms       = 200;
 	screenshot.adaptation_ms = 5000;
 
-	als.offset_perc          = 0;
+	als.scale                = 0;
 	als.poll_ms              = 5000;
 	als.adaptation_ms        = 5000;
 }
@@ -161,7 +161,7 @@ void config::from_json(json in)
 	screenshot.poll_ms       = in["screenshot"]["poll_ms"];
 	screenshot.adaptation_ms = in["screenshot"]["adaptation_ms"];
 
-	als.offset_perc          = in["als"]["offset_perc"];
+	als.scale                = in["als"]["scale"];
 	als.poll_ms              = in["als"]["poll_ms"];
 	als.adaptation_ms        = in["als"]["adaptation_ms"];
 }
@@ -184,7 +184,7 @@ json config::to_json() const
 		}},
 
 		{"als", {
-				{"offset_perc", als.offset_perc},
+				{"scale", als.scale},
 				{"poll_ms", als.poll_ms},
 				{"adaptation_ms", als.adaptation_ms}
 		}},
@@ -259,6 +259,10 @@ size_t config::clients_for(config::screen::mode mode, size_t screen_index)
 		if (model.mode == mode)
 			++c;
 	return c;
+}
+
+bool config::valid_f64(double val) {
+	return val > std::numeric_limits<double>::min();
 }
 
 bool config::valid_int(int val) {
