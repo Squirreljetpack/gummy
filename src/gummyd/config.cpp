@@ -58,19 +58,19 @@ config::screen::screen()
 	auto &backlight = models[BACKLIGHT];
 	backlight.mode = MANUAL;
 	backlight.val  = brt_steps_max;
-	backlight.min  = brt_steps_min;
+	backlight.min  = 500;
 	backlight.max  = brt_steps_max;
 
 	auto &brightness = models[BRIGHTNESS];
 	brightness.mode = MANUAL;
 	brightness.val  = brt_steps_max;
-	brightness.min  = brt_steps_min;
+	brightness.min  = 500;
 	brightness.max  = brt_steps_max;
 
 	auto &temperature = models[TEMPERATURE];
 	temperature.mode = MANUAL;
 	temperature.val  = temp_k_max;
-	temperature.min  = temp_k_min;
+	temperature.min  = 3400;
 	temperature.max  = temp_k_max;
 }
 
