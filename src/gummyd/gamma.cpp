@@ -105,7 +105,7 @@ double calc_brt_mult(int step, size_t ramp_sz)
 
 gamma_state::gamma_state(display_server &xorg, std::vector<config::screen> screens_conf)
 {
-	_xorg = &xorg;
+	dsp_ = &xorg;
 
 	_screens.reserve(xorg.scr_count());
 
@@ -138,9 +138,9 @@ gamma_state::gamma_state(display_server &xorg, std::vector<config::screen> scree
 void gamma_state::set(size_t screen_index, values vals)
 {
 	vals = gamma_state::sanitize(vals);
-	std::vector<uint16_t> ramps(_xorg->ramp_size(screen_index));
+	const size_t sz = dsp_->ramp_size(screen_index);
+	std::vector<uint16_t> ramps(sz * 3);
 
-	const size_t sz = ramps.size() / 3;
 	const double brt_mult = calc_brt_mult(vals.brightness, sz);
 	const auto [r_mult, g_mult, b_mult] = kelvin_to_rgb(vals.temperature);
 
@@ -155,7 +155,7 @@ void gamma_state::set(size_t screen_index, values vals)
 		b[i] = uint16_t(val * b_mult);
 	}
 
-	_xorg->set_gamma_ramp(screen_index, ramps);
+	dsp_->set_gamma_ramp(screen_index, ramps);
 }
 
 gamma_state::values gamma_state::sanitize(values vals) {
@@ -169,7 +169,7 @@ void gamma_state::refresh(std::stop_token stoken)
 {
 	while (true) {
 
-		for (size_t i = 0; i < _xorg->scr_count(); ++i) {
+		for (size_t i = 0; i < dsp_->scr_count(); ++i) {
 			set(i, std::atomic_ref(_screens[i]).load());
 		}
 

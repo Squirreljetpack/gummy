@@ -24,17 +24,11 @@
 
 class display_server
 {
-	struct output
-	{
-		xcb_randr_crtc_t  crtc;
-		size_t            ramp_size;
-		xcb::shared_image image;
-
-		output(xcb_randr_crtc_t crtc, size_t ramp_size, xcb &xcb, unsigned int width, unsigned int height);
-	};
-
-	xcb xcb_;
-	std::vector<output> outputs;
+    xcb::connection xcb_conn_;
+	xcb::randr randr_;
+	std::vector<xcb::randr::output> randr_outputs_;
+	xcb::shared_memory shmem_;
+	xcb::shared_image  shimg_;
 public:
 	display_server();
 	std::pair<uint8_t*, size_t> screen_data(int scr_idx);
