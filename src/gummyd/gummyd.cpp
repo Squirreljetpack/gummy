@@ -104,9 +104,7 @@ void start(display_server &dsp, config conf, std::stop_token stoken)
 				throw std::runtime_error("invalid model state");
 			}
 			case config::screen::MANUAL: {
-				// manual setting for gamma is done in gamma_state
-				// todo: do it here, which also does it for backlight
-				//fn(model.val);
+				fn(model.val);
 				break;
 			}
 			case config::screen::ALS: {
