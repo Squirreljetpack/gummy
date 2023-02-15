@@ -16,7 +16,6 @@ set(HEADERS
 	${INCLUDE_DIR}/xcb.hpp
 )
 
-
 set(SOURCES
 	gummyd.cpp
 	display.cpp
@@ -27,7 +26,6 @@ set(SOURCES
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
-target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR})
 
 find_package(sdbus-c++ REQUIRED)
 find_library(UDEV_LIB "udev" REQUIRED)
@@ -53,6 +51,10 @@ set(LIBS
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBS})
+target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR})
+
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
 
 if(NOT UDEV_DIR)
 	set(UDEV_DIR /usr/lib/udev/rules.d)
