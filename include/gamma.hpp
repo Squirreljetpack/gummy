@@ -29,7 +29,7 @@ class gamma_state {
 		int brightness;
 		int temperature;
 	};
-	display_server *_xorg;
+	display_server *dsp_;
 	std::vector<values> _screens;
 
 	static values sanitize(values);

@@ -34,27 +34,62 @@
 
 #include "utils.hpp"
 
-class xcb_connection {
-	xcb_connection_t *addr_;
+namespace xcb {
+
+inline void throw_if(xcb_generic_error_t *err, std::string err_str) {
+	if (err)
+		throw std::runtime_error(err_str + " " + std::to_string(err->error_code));
+}
+
+inline size_t screen_size(xcb_screen_t *scr) {
+	return scr->width_in_pixels * scr->height_in_pixels * scr->root_depth;
+}
+
+class connection {
+    xcb_connection_t *addr_;
+	std::vector<xcb_screen_t*> screens_;
+
 public:
-	xcb_connection() : addr_(xcb_connect(nullptr, nullptr)) {
+	connection() : addr_(xcb_connect(nullptr, nullptr)) {
 		if (const int err = xcb_connection_has_error(addr_) > 0)
 			throw std::runtime_error("xcb_connect failed with error " + std::to_string(err));
+
+		auto setup = xcb_get_setup(addr_);
+		auto it    = xcb_setup_roots_iterator(setup);
+
+		while (it.rem > 0) {
+			screens_.emplace_back(it.data);
+			xcb_screen_next(&it);
+		}
+
+		if (screens_.empty()) {
+			throw std::runtime_error("XCB: no screens found");
+		}
 	}
 
-	~xcb_connection() {
+	~connection() {
 		xcb_disconnect(addr_);
 	}
 
 	xcb_connection_t* get() const {
 		return addr_;
 	}
+
+	xcb_screen_t* first_screen() const {
+		return screens_[0];
+	}
+
+	bool extension_present(std::string name) {
+		auto query_c = xcb_query_extension(addr_, name.size(), name.c_str());
+		auto query_r = c_unique_ptr<xcb_query_extension_reply_t>(xcb_query_extension_reply(addr_, query_c, nullptr));
+		return query_r && query_r->present;
+	}
 };
 
-class xcb_shared_memory {
-	xcb_shm_segment_info_t shminfo;
+class shared_memory {
+    xcb_shm_segment_info_t shminfo;
 public:
-	xcb_shared_memory(const xcb_connection &conn, size_t size) {
+	shared_memory(const connection &conn, size_t size) {
 		shminfo.shmseg  = xcb_generate_id(conn.get());
 		shminfo.shmid   = shmget(IPC_PRIVATE, size, IPC_CREAT | 0600);
 		shminfo.shmaddr = reinterpret_cast<uint8_t*>(shmat(shminfo.shmid, nullptr, 0));
@@ -73,124 +108,119 @@ public:
 		return shminfo.shmaddr;
 	}
 
-	~xcb_shared_memory() {
+	~shared_memory() {
 		shmdt(shminfo.shmaddr);
 		shmctl(shminfo.shmseg, IPC_RMID, 0);
 	}
 };
 
-class xcb
+class randr
 {
-	xcb_connection conn;
-	std::vector<xcb_screen_t*> screens;
-
-	void throw_if(xcb_generic_error_t *err, std::string err_str) {
-		if (err)
-			throw std::runtime_error(err_str + " " + std::to_string(err->error_code));
-	}
-
 public:
 
-	xcb() {
-		auto setup = xcb_get_setup(conn.get());
-		auto it    = xcb_setup_roots_iterator(setup);
-
-		while (it.rem > 0) {
-			screens.emplace_back(it.data);
-			xcb_screen_next(&it);
-		}
-	}
-
-	bool extension_present(std::string name) {
-		auto query_c = xcb_query_extension(conn.get(), name.size(), name.c_str());
-		auto query_r = c_unique_ptr<xcb_query_extension_reply_t>(xcb_query_extension_reply(conn.get(), query_c, nullptr));
-		return query_r && query_r->present;
-	}
-
-	struct randr_crtc_data {
-		xcb_randr_crtc_t id;
-		int num_outputs;
-		unsigned int width;
-		unsigned int height;
-		int ramp_size;
+    struct output {
+	    xcb_randr_crtc_t crtc_id;
+		uint16_t width;
+		uint16_t height;
+		int16_t x;
+		int16_t y;
+		uint16_t ramp_size;
 	};
 
-	std::vector<xcb::randr_crtc_data> randr_crtcs() {
+	std::vector<output> outputs(const connection &conn, xcb_screen_t *screen) {
 		xcb_generic_error_t *err;
 
-		auto res_c = xcb_randr_get_screen_resources_current(conn.get(), screens[0]->root);
+		auto res_c = xcb_randr_get_screen_resources_current(conn.get(), screen->root);
 		auto res_r = c_unique_ptr<xcb_randr_get_screen_resources_current_reply_t> (xcb_randr_get_screen_resources_current_reply(conn.get(), res_c, &err));
 		throw_if(err, "xcb_randr_get_screen_resources_current");
 
-		std::vector<randr_crtc_data> ret;
-		xcb_randr_crtc_t *crtcs = xcb_randr_get_screen_resources_current_crtcs(res_r.get());
+		xcb_randr_output_t *outputs = xcb_randr_get_screen_resources_current_outputs(res_r.get());
+		const size_t num_outputs    = xcb_randr_get_screen_resources_current_outputs_length(res_r.get());
+		std::vector<output> ret;
 
-		for (xcb_randr_crtc_t i = 0; i < res_r->num_crtcs; ++i) {
+		for (size_t i = 0; i < num_outputs; ++i) {
+			auto output_c = xcb_randr_get_output_info(conn.get(), outputs[i], XCB_CURRENT_TIME);
+			auto output_r = c_unique_ptr<xcb_randr_get_output_info_reply_t>(xcb_randr_get_output_info_reply(conn.get(), output_c, &err));
+			throw_if(err, "xcb_randr_get_output_info_reply");
 
-			auto info_c = xcb_randr_get_crtc_info(conn.get(), crtcs[i], 0);
-			auto info_r = c_unique_ptr<xcb_randr_get_crtc_info_reply_t>(xcb_randr_get_crtc_info_reply(conn.get(), info_c, &err));
+			auto crtc_info_c = xcb_randr_get_crtc_info(conn.get(), output_r->crtc, XCB_CURRENT_TIME);
+			auto gamma_c     = xcb_randr_get_crtc_gamma_size(conn.get(), output_r->crtc);
+
+			auto crtc_info_r = c_unique_ptr<xcb_randr_get_crtc_info_reply_t>(xcb_randr_get_crtc_info_reply(conn.get(), crtc_info_c, &err));
 			throw_if(err, "xcb_randr_get_crtc_info");
 
-			auto gamma_c = xcb_randr_get_crtc_gamma_size(conn.get(), crtcs[i]);
 			auto gamma_r = c_unique_ptr<xcb_randr_get_crtc_gamma_size_reply_t>(xcb_randr_get_crtc_gamma_size_reply(conn.get(), gamma_c, &err));
 			throw_if(err, "xcb_randr_get_crtc_gamma_size");
 
-			ret.emplace_back(crtcs[i],
-			info_r->num_outputs,
-			info_r->width,
-			info_r->height,
-			gamma_r->size);
+			ret.push_back({
+			    output_r->crtc,
+			    crtc_info_r->width,
+			    crtc_info_r->height,
+			    crtc_info_r->x,
+			    crtc_info_r->y,
+			    gamma_r->size,
+			});
 		}
 
 		return ret;
 	}
 
-	void randr_set_gamma(xcb_randr_crtc_t crtc, const std::vector<uint16_t> &ramps) {
+	void set_gamma(const connection &conn, xcb_randr_crtc_t crtc, const std::vector<uint16_t> &ramps) {
 		const size_t sz = ramps.size() / 3;
 		auto req = xcb_randr_set_crtc_gamma_checked(conn.get(), crtc, sz,
 		&ramps[0 * sz],
 		&ramps[1 * sz],
 		&ramps[2 * sz]);
-		throw_if(xcb_request_check(conn.get(), req), "randr gamma error");
+		throw_if(xcb_request_check(conn.get(), req), "xcb_randr_set_crtc_gamma_checked");
+	}
+};
+
+class shared_image
+{
+    connection conn_;
+	shared_memory *shmem_;
+	xcb_image_t *image;
+public:
+	shared_image(shared_memory &shmem, unsigned int width, unsigned int height)
+	: shmem_(&shmem),
+	image(xcb_image_create_native(
+	                conn_.get(),
+	                width, height,
+	                XCB_IMAGE_FORMAT_Z_PIXMAP,
+	                conn_.first_screen()->root_depth,
+	                shmem_->addr(),
+	                screen_size(conn_.first_screen()),
+	                nullptr))
+	{
 	}
 
-	class shared_image
-	{
-		xcb_shared_memory shmem;
-		xcb_image_t *image;
-	public:
-		shared_image(xcb &xcb, unsigned int width, unsigned int height)
-		    : shmem(xcb.conn, width * height * 4),
-		      image(xcb_image_create_native(
-		                xcb.conn.get(), width, height, XCB_IMAGE_FORMAT_Z_PIXMAP,
-		                xcb.screens[0]->root_depth, shmem.addr(), width * height * 4, nullptr))
-		{
-		}
+	void update(unsigned int x, unsigned int y) {
+		auto image_c = xcb_shm_get_image_unchecked(
+		               conn_.get(),
+		               conn_.first_screen()->root,
+		               x, y,
+		               image->width,
+		               image->height,
+		               ~0, XCB_IMAGE_FORMAT_Z_PIXMAP,
+		               shmem_->seg(), 0);
 
-		void update(xcb &xcb) {
-			auto image_c = xcb_shm_get_image_unchecked(
-			               xcb.conn.get(),
-			               xcb.screens[0]->root,
-			               0, 0,
-			               image->width,
-			               image->height,
-			               ~0, XCB_IMAGE_FORMAT_Z_PIXMAP, shmem.seg(), 0);
+		xcb_shm_get_image_reply(conn_.get(), image_c, nullptr);
+	}
 
-			xcb_shm_get_image_reply(xcb.conn.get(), image_c, nullptr);
-		}
+	uint8_t *data() {
+		return image->data;
+	}
 
-		uint8_t *data() {
-			return image->data;
-		}
+	uint32_t size() {
+		return image->size;
+	}
 
-		uint32_t size() {
-			return image->size;
-		}
-
-		~shared_image() {
-			// fails with "free(): invalid pointer"
-			//xcb_image_destroy(image);
-		}
-	};
+	~shared_image() {
+		// fails with "free(): invalid pointer"
+		//xcb_image_destroy(image);
+	}
 };
+
+}
+
 #endif // XCB_HPP
