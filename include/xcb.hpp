@@ -181,6 +181,11 @@ class shared_image
 	shared_memory *shmem_;
 	xcb_image_t *image;
 public:
+	struct buffer {
+	    uint8_t *data;
+		size_t size;
+	};
+
 	shared_image(shared_memory &shmem, unsigned int width, unsigned int height)
 	: shmem_(&shmem),
 	image(xcb_image_create_native(
@@ -194,25 +199,23 @@ public:
 	{
 	}
 
-	void update(unsigned int x, unsigned int y) {
+	buffer get(int16_t x, int16_t y, uint16_t w, uint16_t h) {
 		auto image_c = xcb_shm_get_image_unchecked(
 		               conn_.get(),
 		               conn_.first_screen()->root,
 		               x, y,
-		               image->width,
-		               image->height,
+		               w, h,
 		               ~0, XCB_IMAGE_FORMAT_Z_PIXMAP,
 		               shmem_->seg(), 0);
 
-		xcb_shm_get_image_reply(conn_.get(), image_c, nullptr);
-	}
+		auto image_r = xcb_shm_get_image_reply(conn_.get(), image_c, nullptr);
 
-	uint8_t *data() {
-		return image->data;
-	}
+		//printf("%d * %d | x: %d y: %d size: %d\n\n",w,h,x,y,image_r->size);
 
-	uint32_t size() {
-		return image->size;
+		return {
+			image->data,
+			image_r->size,
+		};
 	}
 
 	~shared_image() {
