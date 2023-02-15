@@ -123,7 +123,7 @@ gamma_state::gamma_state(display_server &xorg, std::vector<config::screen> scree
 		if (temp_model.mode == config::screen::mode::MANUAL)
 			temp = temp_model.val;
 
-		_screens.emplace_back(brt, temp);
+		_screens.push_back({brt, temp});
 	}
 }
 
