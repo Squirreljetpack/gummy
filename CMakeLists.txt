@@ -15,6 +15,11 @@ endif()
 
 add_compile_definitions(VERSION="${PROJECT_VERSION}")
 
+set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
+
+add_library(json INTERFACE)
+target_include_directories(json INTERFACE include/thirdparty/nlohmann)
+
 add_subdirectory(src/gummyd)
 add_subdirectory(src/gummy)
 
