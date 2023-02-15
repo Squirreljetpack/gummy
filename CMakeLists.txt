@@ -2,16 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 project(gummy VERSION 0.4 LANGUAGES CXX)
 
 include(GNUInstallDirs)
-
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
-
-add_compile_options("$<$<CONFIG:RELEASE>:-W;-Wall;-O3;-pedantic>")
-add_compile_options("$<$<CONFIG:DEBUG>:-W;-Wall;-pedantic>")
-
-if(NOT CMAKE_BUILD_TYPE)
-	set(CMAKE_BUILD_TYPE Debug)
-endif()
+include(CPack)
 
 add_compile_definitions(VERSION="${PROJECT_VERSION}")
 
@@ -50,4 +41,4 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS YES)
 #set(CPACK_DEBIAN_PACKAGE_DEPENDS "libxext-dev libxcb-randr0-dev libsdbus-c++-dev")
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 
-include(CPack)
+
