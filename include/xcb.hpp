@@ -135,21 +135,19 @@ public:
 		throw_if(err, "xcb_randr_get_screen_resources_current");
 
 		xcb_randr_output_t *outputs = xcb_randr_get_screen_resources_current_outputs(res_r.get());
-		const size_t num_outputs    = xcb_randr_get_screen_resources_current_outputs_length(res_r.get());
 		std::vector<output> ret;
 
-		for (size_t i = 0; i < num_outputs; ++i) {
+		for (size_t i = 0; i < res_r.get()->num_outputs; ++i) {
 			auto output_c = xcb_randr_get_output_info(conn.get(), outputs[i], XCB_CURRENT_TIME);
 			auto output_r = c_unique_ptr<xcb_randr_get_output_info_reply_t>(xcb_randr_get_output_info_reply(conn.get(), output_c, &err));
 			throw_if(err, "xcb_randr_get_output_info");
 
 			auto crtc_info_c = xcb_randr_get_crtc_info(conn.get(), output_r->crtc, XCB_CURRENT_TIME);
-			auto gamma_c     = xcb_randr_get_crtc_gamma_size(conn.get(), output_r->crtc);
-
 			auto crtc_info_r = c_unique_ptr<xcb_randr_get_crtc_info_reply_t>(xcb_randr_get_crtc_info_reply(conn.get(), crtc_info_c, nullptr));
 			if (!crtc_info_r)
 				continue;
 
+			auto gamma_c = xcb_randr_get_crtc_gamma_size(conn.get(), output_r->crtc);
 			auto gamma_r = c_unique_ptr<xcb_randr_get_crtc_gamma_size_reply_t>(xcb_randr_get_crtc_gamma_size_reply(conn.get(), gamma_c, &err));
 			throw_if(err, "xcb_randr_get_crtc_gamma_size");
 
