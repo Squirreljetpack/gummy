@@ -14,7 +14,12 @@ set(SOURCES
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
-target_link_libraries(${PROJECT_NAME} PRIVATE config json CLI11)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE
+	nlohmann_json::nlohmann_json
+	CLI11
+	config)
+
 target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR})
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)

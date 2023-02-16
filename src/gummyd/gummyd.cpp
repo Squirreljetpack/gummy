@@ -18,8 +18,8 @@
 
 #include <syslog.h>
 
+#include "nlohmann/json.hpp"
 #include "config.hpp"
-#include "json.hpp"
 #include "file.hpp"
 #include "utils.hpp"
 #include "display.hpp"
@@ -27,6 +27,7 @@
 #include "gamma.hpp"
 #include "core.hpp"
 #include "dbus.hpp"
+#include "log.hpp"
 
 using namespace fushko;
 

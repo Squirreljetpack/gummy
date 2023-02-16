@@ -1,4 +1,4 @@
-project(gummyd LANGUAGES CXX)
+﻿project(gummyd LANGUAGES CXX)
 
 set(HEADERS
 	${INCLUDE_DIR}/core.hpp
@@ -38,7 +38,7 @@ add_library(channel INTERFACE ${INCLUDE_DIR}/channel.hpp)
 target_link_libraries(channel INTERFACE -latomic)
 
 set(LIBS
-	json
+	nlohmann_json::nlohmann_json
 	config
 	xcb
 	channel
@@ -51,6 +51,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR})
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE CMAKE_DEBUG)
+endif()
 
 if(NOT UDEV_DIR)
 	set(UDEV_DIR /usr/lib/udev/rules.d)
