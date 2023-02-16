@@ -18,8 +18,8 @@
 
 #include <fstream>
 
+#include "nlohmann/json.hpp"
 #include "config.hpp"
-#include "json.hpp"
 #include "file.hpp"
 
 using nlohmann::json;
