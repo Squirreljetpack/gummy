@@ -1,8 +1,5 @@
 project(gummy LANGUAGES CXX)
 
-add_library(CLI11 INTERFACE)
-target_include_directories(CLI11 INTERFACE ${INCLUDE_DIR}/thirdparty/CLI)
-
 set(HEADERS
 	${INCLUDE_DIR}/config.hpp
 	${INCLUDE_DIR}/file.hpp
@@ -15,9 +12,14 @@ set(SOURCES
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
+FetchContent_Declare(cli11
+	GIT_REPOSITORY https://github.com/CLIUtils/CLI11
+	GIT_TAG 291c58789c031208f08f4f261a858b5b7083e8e2) #v2.3.2
+FetchContent_MakeAvailable(cli11)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
 	nlohmann_json::nlohmann_json
-	CLI11
+	CLI11::CLI11
 	config)
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR})

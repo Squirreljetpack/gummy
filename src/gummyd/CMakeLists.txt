@@ -39,10 +39,10 @@ target_link_libraries(channel INTERFACE -latomic)
 
 set(LIBS
 	nlohmann_json::nlohmann_json
+	SDBusCpp::sdbus-c++
 	config
 	xcb
 	channel
-	SDBusCpp::sdbus-c++
 	${LIBUDEV}
 )
 

@@ -5,8 +5,6 @@ include(GNUInstallDirs)
 include(CPack)
 include(FetchContent)
 
-add_compile_definitions(VERSION="${PROJECT_VERSION}")
-
 set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz)
@@ -16,6 +14,7 @@ add_library(config STATIC src/gummyd/config.cpp include/config.hpp include/file.
 target_include_directories(config PRIVATE ${INCLUDE_DIR})
 target_link_libraries(config PRIVATE nlohmann_json::nlohmann_json)
 
+add_compile_definitions(VERSION="${PROJECT_VERSION}")
 add_subdirectory(src/gummyd)
 add_subdirectory(src/gummy)
 
