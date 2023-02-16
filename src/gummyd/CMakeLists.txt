@@ -35,6 +35,7 @@ add_library(xcb INTERFACE ${INCLUDE_DIR}/xcb.hpp)
 target_link_libraries(xcb INTERFACE ${LIBXCB} ${LIBXCB-RANDR} ${LIBXCB-SHM} ${LIBXCB-IMAGE})
 
 add_library(channel INTERFACE ${INCLUDE_DIR}/channel.hpp)
+target_compile_features(channel INTERFACE cxx_std_20)
 target_link_libraries(channel INTERFACE -latomic)
 
 set(LIBS
