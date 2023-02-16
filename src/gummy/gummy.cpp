@@ -21,8 +21,8 @@
 #include <unistd.h>
 
 #include "CLI11.hpp"
-#include "json.hpp"
 #include "config.hpp"
+#include "json.hpp"
 #include "utils.hpp"
 #include "file.hpp"
 

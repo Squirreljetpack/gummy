@@ -22,7 +22,7 @@
 #include <string>
 #include <limits>
 
-#include "json.hpp"
+#include "json_fwd.hpp"
 
 namespace constants {
 extern const char* config_filename;
