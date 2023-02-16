@@ -1,8 +1,6 @@
 project(gummyd LANGUAGES CXX)
 
 set(HEADERS
-	${INCLUDE_DIR}/channel.hpp
-	${INCLUDE_DIR}/config.hpp
 	${INCLUDE_DIR}/core.hpp
 	${INCLUDE_DIR}/dbus.hpp
 	${INCLUDE_DIR}/display.hpp
@@ -13,7 +11,6 @@ set(HEADERS
 	${INCLUDE_DIR}/sysfs.hpp
 	${INCLUDE_DIR}/time.hpp
 	${INCLUDE_DIR}/utils.hpp
-	${INCLUDE_DIR}/xcb.hpp
 )
 
 set(SOURCES
@@ -22,32 +19,31 @@ set(SOURCES
 	gamma.cpp
 	sysfs_devices.cpp
 	core.cpp
-	config.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
 find_package(sdbus-c++ REQUIRED)
-find_library(UDEV_LIB "udev" REQUIRED)
+find_library(LIBUDEV "udev" REQUIRED)
 
-find_library(XCB_LIB "xcb" REQUIRED)
-find_library(XCB_RANDR_LIB "xcb-randr" REQUIRED)
-find_library(XCB_SHM_LIB "xcb-shm" REQUIRED)
-find_library(XCB_IMAGE_LIB "xcb-image" REQUIRED)
+find_library(LIBXCB "xcb" REQUIRED)
+find_library(LIBXCB-RANDR "xcb-randr" REQUIRED)
+find_library(LIBXCB-SHM "xcb-shm" REQUIRED)
+find_library(LIBXCB-IMAGE "xcb-image" REQUIRED)
 
-set(XCB_LIBS
-	${XCB_LIB}
-	${XCB_RANDR_LIB}
-	${XCB_SHM_LIB}
-	${XCB_IMAGE_LIB}
-)
+add_library(xcb INTERFACE ${INCLUDE_DIR}/xcb.hpp)
+target_link_libraries(xcb INTERFACE ${LIBXCB} ${LIBXCB-RANDR} ${LIBXCB-SHM} ${LIBXCB-IMAGE})
+
+add_library(channel INTERFACE ${INCLUDE_DIR}/channel.hpp)
+target_link_libraries(channel INTERFACE -latomic)
 
 set(LIBS
-	-latomic
 	json
+	config
+	xcb
+	channel
 	SDBusCpp::sdbus-c++
-	${XCB_LIBS}
-	${UDEV_LIB}
+	${LIBUDEV}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBS})

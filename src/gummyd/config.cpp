@@ -17,8 +17,9 @@
 */
 
 #include <fstream>
+
+#include "json.hpp"
 #include "config.hpp"
-#include "syslog.h"
 #include "file.hpp"
 
 using nlohmann::json;

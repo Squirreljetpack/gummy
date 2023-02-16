@@ -26,7 +26,6 @@
 #include "utils.hpp"
 #include "file.hpp"
 
-using std::cout;
 using namespace constants;
 
 void start()
