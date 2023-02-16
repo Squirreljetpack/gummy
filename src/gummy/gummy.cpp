@@ -20,9 +20,9 @@
 #include <regex>
 #include <unistd.h>
 
+#include "nlohmann/json.hpp"
 #include "CLI11.hpp"
 #include "config.hpp"
-#include "json.hpp"
 #include "utils.hpp"
 #include "file.hpp"
 
