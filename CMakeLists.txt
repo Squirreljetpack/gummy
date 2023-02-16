@@ -11,6 +11,10 @@ set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 add_library(json INTERFACE)
 target_include_directories(json INTERFACE include/thirdparty/nlohmann)
 
+add_library(config STATIC src/gummyd/config.cpp include/config.hpp include/file.hpp)
+target_include_directories(config PRIVATE ${INCLUDE_DIR})
+target_link_libraries(config PRIVATE json)
+
 add_subdirectory(src/gummyd)
 add_subdirectory(src/gummy)
 

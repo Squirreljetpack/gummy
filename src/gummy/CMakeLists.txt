@@ -1,5 +1,8 @@
 project(gummy LANGUAGES CXX)
 
+add_library(CLI11 INTERFACE)
+target_include_directories(CLI11 INTERFACE ${INCLUDE_DIR}/thirdparty/CLI)
+
 set(HEADERS
 	${INCLUDE_DIR}/config.hpp
 	${INCLUDE_DIR}/file.hpp
@@ -8,14 +11,10 @@ set(HEADERS
 
 set(SOURCES
 	gummy.cpp
-	../gummyd/config.cpp
 )
 
-add_library(CLI11 INTERFACE)
-target_include_directories(CLI11 INTERFACE ${INCLUDE_DIR}/thirdparty/CLI)
-
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
-target_link_libraries(${PROJECT_NAME} PRIVATE json CLI11)
+target_link_libraries(${PROJECT_NAME} PRIVATE config json CLI11)
 target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR})
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
