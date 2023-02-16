@@ -19,6 +19,7 @@
 #include <syslog.h>
 
 #include "config.hpp"
+#include "json.hpp"
 #include "file.hpp"
 #include "utils.hpp"
 #include "display.hpp"
