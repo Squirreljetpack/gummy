@@ -180,7 +180,7 @@ void time_server(channel<time_data> &ch, struct config::time conf, std::stop_tok
 		}
 
 		const std::chrono::seconds time_to_next(std::abs(tw.time_to_next()));
-		LOG_FMT_("[time_server] sleeping until next event in: {0} ({0:%H}h)\n", std::chrono::duration_cast<std::chrono::minutes>(time_to_next));
+		LOG_FMT_("[time_server] [{}] sleeping until next event in: {} (~{})\n", timestamp_fmt(std::time(nullptr)), std::chrono::duration_cast<std::chrono::minutes>(time_to_next), std::chrono::duration_cast<std::chrono::hours>(time_to_next));
 
 		jthread_wait_until(time_to_next, stoken);
 
@@ -234,7 +234,7 @@ void time_client(channel<time_data> &ch, config::screen::model model, std::funct
 
 		for (int step = 0; step < 2; ++step) {
 			const time_target target = calc_time_target(step, data, model);
-			LOG_FMT_("[time_client] easing from {} to {} (duration: {})...\n", cur, target.val, std::chrono::milliseconds(target.duration_ms));
+			LOG_FMT_("[time_client] easing from {} to {} (duration: {})...\n", cur, target.val, std::chrono::duration_cast<std::chrono::minutes>(std::chrono::milliseconds(target.duration_ms)));
 			cur = easing::animate(cur, target.val, target.duration_ms, easing::ease, model_fn, interrupt);
 		}
 		prev = data;
