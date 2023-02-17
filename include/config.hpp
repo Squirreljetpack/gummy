@@ -21,8 +21,7 @@
 
 #include <string>
 #include <limits>
-
-#include "nlohmann/json_fwd.hpp"
+#include <nlohmann/json_fwd.hpp>
 
 namespace constants {
 extern const char* config_filename;
@@ -48,12 +47,18 @@ class config {
 	void from_json(nlohmann::json data);
 	nlohmann::json to_json() const;
 
-	std::string filepath;
+	std::string filepath_;
 public:
 
 	struct screen {
 
-		enum mode {
+		enum class model_id {
+			BACKLIGHT,
+			BRIGHTNESS,
+			TEMPERATURE
+		};
+
+		enum class mode {
 			UNINITIALIZED = std::numeric_limits<int>::min(),
 			MANUAL = 0,
 			SCREENSHOT,
@@ -68,17 +73,12 @@ public:
 			int max;
 
 			model() :
-			mode(UNINITIALIZED),
+			mode(mode::UNINITIALIZED),
 			val(std::numeric_limits<int>::min()),
 			min(std::numeric_limits<int>::min()),
 			max(std::numeric_limits<int>::min()) {};
 		};
 
-		enum model_idx {
-			BACKLIGHT,
-			BRIGHTNESS,
-			TEMPERATURE
-		};
 		std::array<model, 3> models;
 
 		screen();

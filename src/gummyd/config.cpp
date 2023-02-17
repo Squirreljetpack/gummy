@@ -28,16 +28,15 @@ namespace constants {
 const char *config_filename = "gummyconf.json";
 const char *fifo_filepath   = "/tmp/gummy.fifo";
 const char *flock_filepath  = "/tmp/gummy.lock";
-
-constexpr int brt_steps_min  = 200;
-constexpr int brt_steps_max  = 1000;
-constexpr int temp_k_min     = 1000;
-constexpr int temp_k_max     = 6500;
+const int brt_steps_min  = 200;
+const int brt_steps_max  = 1000;
+const int temp_k_min     = 1000;
+const int temp_k_max     = 6500;
 }
 
 void config::defaults()
 {
-	filepath = xdg_config_filepath(constants::config_filename);
+	filepath_ = xdg_config_filepath(constants::config_filename);
 
 	time.start               = "06:00";
 	time.end                 = "16:00";
@@ -54,53 +53,61 @@ void config::defaults()
 
 config::screen::screen()
 {
-	using namespace constants;
+	using enum config::screen::model_id;
+	auto &backlight   = models[size_t(BACKLIGHT)];
+	auto &brightness  = models[size_t(BRIGHTNESS)];
+	auto &temperature = models[size_t(TEMPERATURE)];
 
-	auto &backlight = models[BACKLIGHT];
-	backlight.mode = MANUAL;
-	backlight.val  = brt_steps_max;
-	backlight.min  = 500;
-	backlight.max  = brt_steps_max;
-
-	auto &brightness = models[BRIGHTNESS];
-	brightness.mode = MANUAL;
-	brightness.val  = brt_steps_max;
-	brightness.min  = 500;
-	brightness.max  = brt_steps_max;
-
-	auto &temperature = models[TEMPERATURE];
+	using enum config::screen::mode;
+	backlight.mode   = MANUAL;
+	brightness.mode  = MANUAL;
 	temperature.mode = MANUAL;
-	temperature.val  = temp_k_max;
-	temperature.min  = 3400;
+
+	using namespace constants;
+	backlight.min    = 350;
+	backlight.max    = brt_steps_max;
+	backlight.val    = brt_steps_max;
+
+	brightness.min   = 350;
+	brightness.max   = brt_steps_max;
+	brightness.val   = brt_steps_max;
+
+	temperature.min  = 3200;
 	temperature.max  = temp_k_max;
+	temperature.val  = temp_k_max;
 }
 
 config::screen::screen(json in)
 {
-	auto &backlight = models[BACKLIGHT];
-	backlight.mode = in["backlight"]["mode"];
-	backlight.val  = in["backlight"]["val"];
-	backlight.min  = in["backlight"]["min"];
-	backlight.max  = in["backlight"]["max"];
+	using enum config::screen::model_id;
 
-	auto &brightness = models[BRIGHTNESS];
-	brightness.mode = in["brightness"]["mode"];
-	brightness.val  = in["brightness"]["val"];
-	brightness.min  = in["brightness"]["min"];
-	brightness.max  = in["brightness"]["max"];
+	for (size_t i = 0; i < models.size(); ++i) {
 
-	auto &temperature = models[TEMPERATURE];
-	temperature.mode = in["temperature"]["mode"];
-	temperature.val  = in["temperature"]["val"];
-	temperature.min  = in["temperature"]["min"];
-	temperature.max  = in["temperature"]["max"];
+		const std::string key = [i] {
+			switch (model_id(i)) {
+			case BACKLIGHT:
+				return "backlight";
+			case BRIGHTNESS:
+				return "brightness";
+			case TEMPERATURE:
+				return "temperature";
+			}
+			return "error: more models than keys";
+		}();
+
+		models[i].mode = in[key]["mode"];
+		models[i].val  = in[key]["val"];
+		models[i].min  = in[key]["min"];
+		models[i].max  = in[key]["max"];
+	}
 }
 
 json config::screen::to_json() const
 {
-	const auto &backlight   = models[BACKLIGHT];
-	const auto &brightness  = models[BRIGHTNESS];
-	const auto &temperature = models[TEMPERATURE];
+	using enum config::screen::model_id;
+	const auto &backlight   = models[size_t(BACKLIGHT)];
+	const auto &brightness  = models[size_t(BRIGHTNESS)];
+	const auto &temperature = models[size_t(TEMPERATURE)];
 
 	return {
 		{"backlight", {
@@ -217,7 +224,7 @@ void config::screen_diff(size_t scr_no)
 
 void config::file_pretty_write() const
 {
-	std::ofstream fs(filepath);
+	std::ofstream fs(filepath_);
 	fs.exceptions(std::fstream::failbit);
 	fs << std::setw(4) << config::to_json();
 }
@@ -226,7 +233,7 @@ void config::file_parse()
 {
 	const std::string data = [&] {
 		try {
-			return file_read(filepath);
+			return file_read(filepath_);
 		} catch (std::system_error &e) {
 			return std::string();
 		}

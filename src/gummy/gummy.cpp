@@ -96,7 +96,7 @@ std::string check_time_format(const std::string &s)
 	return std::string("");
 }
 
-enum {
+enum option_id {
 	VERS,
 	SCREEN_NUM,
 
@@ -127,31 +127,6 @@ enum {
 	ALS_POLL_MS,
 	ALS_ADAPTATION_MS
 };
-
-int perc_to_step(int val) {
-	return remap(val, 0, 100, 0, constants::brt_steps_max);
-}
-
-void setif(nlohmann::json &val, double new_val) {
-	if (config::valid_f64(new_val) && val.is_number_float())
-		val = new_val;
-}
-
-void setif(nlohmann::json &val, int new_val) {
-	if (config::valid_int(new_val) && val.is_number_integer())
-		val = new_val;
-}
-
-void setif(nlohmann::json &val, int new_val, std::function<int(int)> fn) {
-	if (config::valid_int(new_val) && val.is_number_integer())
-		val = fn(new_val);
-}
-
-void setif(nlohmann::json &val, std::string new_val)
-{
-	if (val.is_string() && !new_val.empty())
-		val = new_val;
-}
 
 const std::array<std::array<std::string, 2>, 23> options {{
 {"-v, --version", "Print version and exit"},
@@ -184,6 +159,31 @@ const std::array<std::array<std::string, 2>, 23> options {{
 {"--als-poll-ms", "Time interval between each sensor reading."},
 {"--als-adaptation-ms", "Adaptation speed in milliseconds."},
 }};
+
+int perc_to_step(int val) {
+	return remap(val, 0, 100, 0, constants::brt_steps_max);
+}
+
+void setif(nlohmann::json &val, double new_val) {
+	if (config::valid_f64(new_val) && val.is_number_float())
+		val = new_val;
+}
+
+void setif(nlohmann::json &val, int new_val) {
+	if (config::valid_int(new_val) && val.is_number_integer())
+		val = new_val;
+}
+
+void setif(nlohmann::json &val, int new_val, std::function<int(int)> fn) {
+	if (config::valid_int(new_val) && val.is_number_integer())
+		val = fn(new_val);
+}
+
+void setif(nlohmann::json &val, std::string new_val)
+{
+	if (val.is_string() && !new_val.empty())
+		val = new_val;
+}
 
 int interface(int argc, char **argv)
 {
@@ -279,27 +279,28 @@ int interface(int argc, char **argv)
 
 		auto &scr = config_json["screens"][idx];
 
-		setif(scr["backlight"]["mode"], backlight.mode);
+		setif(scr["backlight"]["mode"], int(backlight.mode));
 		setif(scr["backlight"]["val"], backlight.val, perc_to_step);
 		setif(scr["backlight"]["min"], backlight.min, perc_to_step);
 		setif(scr["backlight"]["max"], backlight.max, perc_to_step);
 
-		setif(scr["brightness"]["mode"], brightness.mode);
+		setif(scr["brightness"]["mode"], int(brightness.mode));
 		setif(scr["brightness"]["val"], brightness.val, perc_to_step);
 		setif(scr["brightness"]["min"], brightness.min, perc_to_step);
 		setif(scr["brightness"]["max"], brightness.max, perc_to_step);
 
-		setif(scr["temperature"]["mode"], temperature.mode);
+		setif(scr["temperature"]["mode"], int(temperature.mode));
 		setif(scr["temperature"]["val"], temperature.val);
 		setif(scr["temperature"]["min"], temperature.min);
 		setif(scr["temperature"]["max"], temperature.max);
 
+		using enum config::screen::mode;
 		if (config::valid_int(backlight.val))
-			scr["backlight"]["mode"] = config::screen::mode::MANUAL;
+			scr["backlight"]["mode"] = MANUAL;
 		if (config::valid_int(brightness.val))
-			scr["brightness"]["mode"] = config::screen::mode::MANUAL;
+			scr["brightness"]["mode"] = MANUAL;
 		if (config::valid_int(temperature.val))
-			scr["temperature"]["mode"] = config::screen::mode::MANUAL;
+			scr["temperature"]["mode"] = MANUAL;
 	};
 
 	if (scr_idx > -1) {

@@ -26,16 +26,16 @@
 
 class gamma_state {
 	struct values {
-		int brightness;
-		int temperature;
+		int brightness = constants::brt_steps_max;
+		int temperature = 6500;
 	};
 	display_server *dsp_;
-	std::vector<values> _screens;
+	std::vector<values> screens_;
 
 	static values sanitize(values);
 	void set(size_t screen_idx, values);
 public:
-	gamma_state(display_server &xorg, std::vector<config::screen> screen_conf);
+	gamma_state(display_server &dsp);
 	void set_brightness(size_t screen_idx, int val);
 	void set_temperature(size_t screen_idx, int val);
 	void refresh(std::stop_token stoken);
