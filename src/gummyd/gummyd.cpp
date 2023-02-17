@@ -16,22 +16,24 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <syslog.h>
+//#include <syslog.h>
 
-#include "nlohmann/json.hpp"
-#include "config.hpp"
+#include <nlohmann/json.hpp>
+
+#include "core.hpp"
+
+#include "dbus.hpp"
 #include "file.hpp"
 #include "utils.hpp"
+
+#include "config.hpp"
 #include "display.hpp"
-#include "sysfs_devices.hpp"
 #include "gamma.hpp"
-#include "core.hpp"
-#include "dbus.hpp"
-#include "log.hpp"
+#include "sysfs_devices.hpp"
 
 using namespace fushko;
 
-void start(display_server &dsp, config conf, std::stop_token stoken)
+void run(display_server &dsp, config conf, std::stop_token stoken)
 {
 	assert(dsp.scr_count() == conf.screens.size());
 
@@ -46,12 +48,10 @@ void start(display_server &dsp, config conf, std::stop_token stoken)
 	std::vector<sysfs::backlight> backlights = sysfs::get_backlights();
 	std::vector<sysfs::als> als              = sysfs::get_als();
 
-	//////////////////////////////////////////////////////////////////////
-
 	const size_t screenshot_clients = conf.clients_for(config::screen::mode::SCREENSHOT);
 	const size_t als_clients        = conf.clients_for(config::screen::mode::ALS);
 	const size_t time_clients       = conf.clients_for(config::screen::mode::TIME);
-	printf("screenshot: %zu, als: %zu, time: %zu\n", screenshot_clients, als_clients, time_clients);
+	LOG_FMT_("clients: als: {}, screenlight: {}, time: {}\n", als_clients, screenshot_clients, time_clients);
 
 	channel<double>    als_ch(-1.);
 	channel<time_data> time_ch({-1, -1, -1});
@@ -118,7 +118,6 @@ void start(display_server &dsp, config conf, std::stop_token stoken)
 				break;
 			}
 			case config::screen::TIME: {
-				printf("screen %zu has model %zu on mode TIME\n", idx, model_idx);
 				threads.emplace_back(std::jthread(time_client, std::ref(time_ch), model, fn));
 				break;
 			}
@@ -129,12 +128,13 @@ void start(display_server &dsp, config conf, std::stop_token stoken)
 	for (auto &t : threads)
 		t.join();
 
-	puts("==========================end=============================");
+	LOG_FMT_("{:=^60}\n", "end");
 }
 
 int message_loop()
 {
 	display_server dsp;
+	LOG_FMT_("[display_server] found {} screen(s)\n", dsp.scr_count());
 
 	config conf(dsp.scr_count());
 
@@ -148,7 +148,7 @@ int message_loop()
 	while (true) {
 
 		std::jthread thr([&] (std::stop_token stoken) {
-			start(dsp, conf, stoken);
+			run(dsp, conf, stoken);
 		});
 
 		const std::string data(file_read(constants::fifo_filepath));
@@ -168,7 +168,7 @@ int message_loop()
 		}();
 
 		if (msg.contains("exception")) {
-			printf("%s\n", msg["exception"].get<std::string>().c_str());
+			LOG_ERR_FMT_("{}\n", msg["exception"].get<std::string>());
 			continue;
 		}
 
@@ -179,15 +179,15 @@ int message_loop()
 int main(int argc, char **argv)
 {
 	if (argc > 1 && strcmp(argv[1], "-v") == 0) {
-		puts(VERSION);
-		exit(EXIT_SUCCESS);
+		std::puts(VERSION);
+		std::exit(EXIT_SUCCESS);
 	}
 
-	openlog("gummyd", LOG_PID, LOG_DAEMON);
+	//openlog("gummyd", LOG_FMT_PID, LOG_FMT_DAEMON);
 
 	if (set_flock(constants::flock_filepath) < 0) {
-		syslog(LOG_ERR, "lockfile error");
-		exit(EXIT_FAILURE);
+		LOG_FMT_(stderr, "set_flock error");
+		std::exit(EXIT_FAILURE);
 	}
 
 	make_fifo(constants::fifo_filepath);

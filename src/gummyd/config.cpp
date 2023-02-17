@@ -17,8 +17,8 @@
 */
 
 #include <fstream>
+#include <nlohmann/json.hpp>
 
-#include "nlohmann/json.hpp"
 #include "config.hpp"
 #include "file.hpp"
 

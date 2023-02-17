@@ -81,10 +81,6 @@ inline time_window::time_window(std::time_t reference, std::string start, std::s
 	    std::stoi(end.substr(3, 2)),
 	    seconds);
 
-	printf("ref: %s\n", timestamp_fmt(_reference).c_str());
-	printf("srt: %s\n", timestamp_fmt(_start).c_str());
-	printf("end: %s\n", timestamp_fmt(_end).c_str());
-
 	if (_start > _end) {
 		throw std::logic_error("invalid timestamp range");
 	}
@@ -94,9 +90,6 @@ inline void time_window::shift_dates()
 {
 	_start = add_day(_start);
 	_end   = add_day(_end);
-
-	printf("new srt: %s\n", timestamp_fmt(_start).c_str());
-	printf("new end: %s\n", timestamp_fmt(_end).c_str());
 }
 
 inline bool time_window::in_range() const

@@ -1,4 +1,5 @@
 ﻿project(gummyd LANGUAGES CXX)
+include(CMakePrintHelpers)
 
 set(HEADERS
 	${INCLUDE_DIR}/core.hpp
@@ -41,6 +42,7 @@ target_link_libraries(channel INTERFACE -latomic)
 set(LIBS
 	nlohmann_json::nlohmann_json
 	SDBusCpp::sdbus-c++
+	fmt::fmt
 	config
 	xcb
 	channel
@@ -53,9 +55,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR})
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-	target_compile_definitions(${PROJECT_NAME} PRIVATE CMAKE_DEBUG)
-endif()
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+	VERSION="${MAIN_VERSION}"
+	$<$<CONFIG:Debug>:CMAKE_DEBUG>
+)
 
 if(NOT UDEV_DIR)
 	set(UDEV_DIR /usr/lib/udev/rules.d)

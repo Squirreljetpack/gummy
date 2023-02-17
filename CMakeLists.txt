@@ -2,19 +2,22 @@ cmake_minimum_required(VERSION 3.14)
 project(gummy VERSION 0.4 LANGUAGES CXX)
 
 include(GNUInstallDirs)
-include(CPack)
 include(FetchContent)
+include(CPack)
 
 set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz)
+FetchContent_Declare(fmt  URL https://github.com/fmtlib/fmt/releases/download/9.1.0/fmt-9.1.0.zip)
+
 FetchContent_MakeAvailable(json)
+FetchContent_MakeAvailable(fmt)
 
 add_library(config STATIC src/gummyd/config.cpp include/config.hpp include/file.hpp)
 target_include_directories(config PRIVATE ${INCLUDE_DIR})
 target_link_libraries(config PRIVATE nlohmann_json::nlohmann_json)
 
-add_compile_definitions(VERSION="${PROJECT_VERSION}")
+set(MAIN_VERSION "${PROJECT_VERSION}")
 add_subdirectory(src/gummyd)
 add_subdirectory(src/gummy)
 

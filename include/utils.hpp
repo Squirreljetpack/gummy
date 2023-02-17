@@ -24,6 +24,8 @@
 #include <thread>
 #include <condition_variable>
 
+#include <fmt/core.h>
+
 // scale value in a [0, 1] range
 inline double invlerp(double val, double min, double max)
 {
@@ -56,13 +58,13 @@ inline double remap_to_idx(int val, int min, int max, size_t arr_sz)
 	return remap(val, min, max, 0, arr_sz - 1);
 }
 
-inline void jthread_wait_until(int ms, std::stop_token stoken)
+inline void jthread_wait_until(std::chrono::milliseconds ms, std::stop_token stoken)
 {
 	using namespace std::chrono;
 	std::mutex mutex;
 	std::unique_lock lock(mutex);
 	std::condition_variable_any()
-	        .wait_until(lock, stoken, system_clock::now() + milliseconds(ms), [&] { return stoken.stop_requested(); });
+	        .wait_until(lock, stoken, system_clock::now() + ms, [&] { return stoken.stop_requested(); });
 }
 
 template <class T, auto fn>
@@ -79,4 +81,16 @@ template <class T>
 using c_unique_ptr = std::unique_ptr<T, c_deleter<T>>;
 //using c_unique_ptr = std::unique_ptr<T, deleter<T, std::free>>;
 
-#endif // UTILS_H
+#ifdef CMAKE_DEBUG
+    #define LOG_(str)         fmt::print(str);
+    #define LOG_ERR_(str, ...) fmt::print(stderr, str);
+    #define LOG_FMT_(str, ...) fmt::print(str, __VA_ARGS__);
+    #define LOG_ERR_FMT_(str, ...) fmt::print(stderr, str, __VA_ARGS__);
+#else
+    #define LOG_(str)
+    #define LOG_ERR_(str, ...)
+    #define LOG_FMT_(str, ...)
+    #define LOG_ERR_FMT_(str, ...)
+#endif
+
+#endif // UTILS_HPP

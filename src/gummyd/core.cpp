@@ -16,8 +16,11 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <fmt/chrono.h>
+
 #include "core.hpp"
 #include "easing.hpp"
+#include "utils.hpp"
 
 using namespace fushko;
 
@@ -51,11 +54,11 @@ void brightness_server(display_server &dsp, size_t screen_idx, channel<int> &ch,
 
 		if (delta > 8) {
 			delta = 0;
-			printf("[brightness_server] sending %d\n", cur);
+			LOG_FMT_("[brightness_server] sending: {}\n", cur);
 			ch.send(cur);
 		}
 
-		jthread_wait_until(conf.poll_ms, stoken);
+		jthread_wait_until(std::chrono::milliseconds(conf.poll_ms), stoken);
 
 		if (stoken.stop_requested()) {
 			ch.send(-1);
@@ -79,7 +82,7 @@ void brightness_client(channel<int> &ch, config::screen::model model, std::funct
 
 		const int brt = ch.recv(prev_brt);
 
-		printf("[brightness client] received %d.\n", brt);
+		LOG_FMT_("[brightness client] received {}.\n", brt);
 
 		if (brt < 0) {
 			return;
@@ -91,7 +94,7 @@ void brightness_client(channel<int> &ch, config::screen::model model, std::funct
 			return ch.read() != brt;
 		};
 
-		printf("[brightness client] easing from %d to %d...\n", val, target);
+		LOG_FMT_("[brightness client] easing from {} to {}...\n", val, target);
 		val = easing::animate(val, target, adaptation_ms, easing::ease_out_expo, model_fn, interrupt);
 		prev_brt = brt;
 	}
@@ -110,14 +113,12 @@ void als_server(sysfs::als &als, channel<double> &ch, struct config::als conf, s
 		// the human eye's perception of light intensity is roughly logarithmic
 		cur = std::log10(std::max(lux * conf.scale, 1.));
 
-		//printf("[als] cur: %f\n", cur);
-
 		if (std::abs(prev - cur) > 0.01) {
-			printf("[als] sending: %f\n", cur);
+			LOG_FMT_("[als] sending: {}\n", cur);
 			ch.send(cur);
 		}
 
-		jthread_wait_until(conf.poll_ms, stoken);
+		jthread_wait_until(std::chrono::milliseconds(conf.poll_ms), stoken);
 
 		if (stoken.stop_requested()) {
 			ch.send(-1);
@@ -137,7 +138,7 @@ void als_client(channel<double> &ch, config::screen::model model, std::function<
 
 		const double brt = ch.recv(prev_brt);
 
-		printf("[als client] received %f (prev: %f).\n", brt, prev_brt);
+		LOG_FMT_("[als client] received {} (prev: {}).\n", brt, prev_brt);
 
 		if (brt < 0) {
 			return;
@@ -149,7 +150,7 @@ void als_client(channel<double> &ch, config::screen::model model, std::function<
 			return ch.read() != brt;
 		};
 
-		printf("[als client] easing from %d to %d...\n", val, target);
+		LOG_FMT_("[als client] easing from {} to {}...\n", val, target);
 		val = easing::animate(val, target, adaptation_ms, easing::ease_out_expo, model_fn, interrupt);
 		prev_brt = brt;
 	}
@@ -165,7 +166,7 @@ void time_server(channel<time_data> &ch, struct config::time conf, std::stop_tok
 
 		const int in_range = tw.in_range();
 
-		printf("[time_server] writing: %d\n", in_range);
+		LOG_FMT_("[time_server] in range: {}\n", in_range);
 
 		ch.send({
 		    tw.time_since_last(),
@@ -173,17 +174,19 @@ void time_server(channel<time_data> &ch, struct config::time conf, std::stop_tok
 		    tw.in_range(),
 		});
 
-		if (!in_range && tw.reference() > tw.start())
-			    tw.shift_dates();
+		if (!in_range && tw.reference() > tw.start()) {
+			LOG_("[time_server] adding 1 day to time range\n");
+			tw.shift_dates();
+		}
 
-		const int time_to_next_ms = std::abs(tw.time_to_next()) * 1000;
-		//printf("time to next event: %d s\n", time_to_next_ms / 1000);
+		const std::chrono::seconds time_to_next(std::abs(tw.time_to_next()));
+		LOG_FMT_("[time_server] sleeping until next event in: {0} ({0:%H}h)\n", std::chrono::duration_cast<std::chrono::minutes>(time_to_next));
 
-		jthread_wait_until(time_to_next_ms, stoken);
+		jthread_wait_until(time_to_next, stoken);
 
 		if (stoken.stop_requested()) {
 			ch.send({-1, -1, -1});
-			puts("[time_server] exit");
+			LOG_("[time_server] exit\n");
 			return;
 		}
 	}
@@ -205,10 +208,6 @@ time_target calc_time_target(bool step, time_data data, config::screen::model mo
 
 	const int duration_ms = std::max(((data.adaptation_s - delta_s) * 1000), min_duration_ms);
 
-	printf("in_range: %ld\n", data.in_range);
-	printf("target: %d\n", target);
-	printf("duration_ms: %d\n", duration_ms);
-
 	if (!step)
 		return { target, min_duration_ms };
 	else
@@ -223,7 +222,7 @@ void time_client(channel<time_data> &ch, config::screen::model model, std::funct
 
 	while (true) {
 
-		puts("[time_client] reading...");
+		LOG_("[time_client] reading...\n");
 		const time_data data = ch.recv(prev);
 
 		if (data.in_range < 0)
@@ -235,12 +234,9 @@ void time_client(channel<time_data> &ch, config::screen::model model, std::funct
 
 		for (int step = 0; step < 2; ++step) {
 			const time_target target = calc_time_target(step, data, model);
-			printf("[time_client] animating from %d to %d (duration: %d ms)..\n", cur, target.val, target.duration_ms);
+			LOG_FMT_("[time_client] easing from {} to {} (duration: {:%M} min)...\n", cur, target.val, std::chrono::milliseconds(target.duration_ms));
 			cur = easing::animate(cur, target.val, target.duration_ms, easing::ease, model_fn, interrupt);
 		}
 		prev = data;
 	}
 }
-
-
-

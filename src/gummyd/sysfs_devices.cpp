@@ -17,7 +17,6 @@
 */
 
 #include <filesystem>
-#include <syslog.h>
 #include <libudev.h>
 
 #include "sysfs_devices.hpp"
