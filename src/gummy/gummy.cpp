@@ -20,10 +20,10 @@
 #include <regex>
 #include <unistd.h>
 
-#include "nlohmann/json.hpp"
-#include "CLI/App.hpp"
-#include "CLI/Formatter.hpp"
-#include "CLI/Config.hpp"
+#include <nlohmann/json.hpp>
+#include <CLI/App.hpp>
+#include <CLI/Formatter.hpp>
+#include <CLI/Config.hpp>
 
 #include "config.hpp"
 #include "utils.hpp"
@@ -268,7 +268,7 @@ int interface(int argc, char **argv)
 	}();
 
 	if (config_json.contains("exception")) {
-		printf("%s\n", config_json["exception"].get<std::string>().c_str());
+		LOG_ERR_FMT_("{}\n", config_json["exception"].get<std::string>());
 		return EXIT_FAILURE;
 	}
 

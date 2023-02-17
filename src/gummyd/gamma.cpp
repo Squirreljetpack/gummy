@@ -21,7 +21,6 @@
 #include "gamma.hpp"
 #include "config.hpp"
 #include "utils.hpp"
-#include "channel.hpp"
 #include "display.hpp"
 
 using namespace constants;
@@ -173,7 +172,7 @@ void gamma_state::refresh(std::stop_token stoken)
 			set(i, std::atomic_ref(_screens[i]).load());
 		}
 
-		jthread_wait_until(10000, stoken);
+		jthread_wait_until(std::chrono::milliseconds(10000), stoken);
 
 		if (stoken.stop_requested()) {
 			return;
