@@ -186,7 +186,7 @@ int main(int argc, char **argv)
 	//openlog("gummyd", LOG_FMT_PID, LOG_FMT_DAEMON);
 
 	if (set_flock(constants::flock_filepath) < 0) {
-		LOG_FMT_(stderr, "set_flock error. Already running?\n");
+		LOG_ERR_("set_flock error. Already running?\n");
 		std::exit(EXIT_FAILURE);
 	}
 
