@@ -25,6 +25,7 @@
 #include <condition_variable>
 
 #include <fmt/core.h>
+#include <fmt/chrono.h>
 
 // scale value in a [0, 1] range
 inline double invlerp(double val, double min, double max)

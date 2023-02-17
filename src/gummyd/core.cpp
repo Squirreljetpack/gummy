@@ -234,7 +234,7 @@ void time_client(channel<time_data> &ch, config::screen::model model, std::funct
 
 		for (int step = 0; step < 2; ++step) {
 			const time_target target = calc_time_target(step, data, model);
-			LOG_FMT_("[time_client] easing from {} to {} (duration: {:%M} min)...\n", cur, target.val, std::chrono::milliseconds(target.duration_ms));
+			LOG_FMT_("[time_client] easing from {} to {} (duration: {})...\n", cur, target.val, std::chrono::milliseconds(target.duration_ms));
 			cur = easing::animate(cur, target.val, target.duration_ms, easing::ease, model_fn, interrupt);
 		}
 		prev = data;
