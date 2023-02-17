@@ -47,33 +47,40 @@ double ease_in_out_quad(double t) {
 
 inline int animate(int start, int end, int duration_ms, std::function<double(double t)> easing, std::function<void(int)> fn, std::function<bool()> interrupt)
 {
+	if (start == end) {
+		fn(end);
+		return end;
+	}
+
+	using namespace std::chrono;
+
 	int cur = start;
 	int prev;
-	int progress_ms = 0;
+
+	const nanoseconds animation_time((milliseconds(duration_ms)));
+	nanoseconds progress(0);
+
+	const time_point<steady_clock> begin(steady_clock::now());
 
 	while (true) {
-		if (cur == end) {
-			return cur;
-		}
 
 		prev = cur;
-		cur = lerp(start, end, easing(double(progress_ms) / duration_ms));
-		//printf("cur step %d, progress %d/%d\n", cur_step, progress_ms, duration_ms);
+		cur = lerp(start, end, std::min(easing(double(progress.count()) / animation_time.count()), 1.));
 
-		if (prev != cur)
+		if (prev != cur) {
+			LOG_FMT_("cur: {}, progress {}/{}\n", cur, duration_cast<seconds>(progress), duration_cast<seconds>(animation_time));
 			fn(cur);
-
-		if (progress_ms == duration_ms) {
-			return cur;
 		}
 
-		if (interrupt()) {
-			return cur;
+		if (interrupt() || progress.count() >= animation_time.count()) {
+			break;
 		}
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		progress_ms += 1;
+		progress = (steady_clock::now() - begin);
 	}
+
+	LOG_FMT_("elapsed: {}\n", duration_cast<milliseconds>(steady_clock::now() - begin));
+	return cur;
 }
 
 }
