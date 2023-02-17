@@ -13,9 +13,10 @@ FetchContent_Declare(fmt  URL https://github.com/fmtlib/fmt/releases/download/9.
 FetchContent_MakeAvailable(json)
 FetchContent_MakeAvailable(fmt)
 
-add_library(config STATIC src/gummyd/config.cpp include/config.hpp include/file.hpp)
+add_library(config SHARED src/gummyd/config.cpp include/config.hpp include/file.hpp)
 target_include_directories(config PRIVATE ${INCLUDE_DIR})
 target_link_libraries(config PRIVATE nlohmann_json::nlohmann_json)
+target_compile_features(config PRIVATE cxx_std_20)
 
 set(MAIN_VERSION "${PROJECT_VERSION}")
 add_subdirectory(src/gummyd)

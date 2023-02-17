@@ -2,16 +2,17 @@
 include(CMakePrintHelpers)
 
 set(HEADERS
-	${INCLUDE_DIR}/core.hpp
 	${INCLUDE_DIR}/dbus.hpp
-	${INCLUDE_DIR}/display.hpp
 	${INCLUDE_DIR}/easing.hpp
 	${INCLUDE_DIR}/file.hpp
+	${INCLUDE_DIR}/sysfs.hpp
+	${INCLUDE_DIR}/utils.hpp
+	${INCLUDE_DIR}/time.hpp
+
+	${INCLUDE_DIR}/display.hpp
 	${INCLUDE_DIR}/gamma.hpp
 	${INCLUDE_DIR}/sysfs_devices.hpp
-	${INCLUDE_DIR}/sysfs.hpp
-	${INCLUDE_DIR}/time.hpp
-	${INCLUDE_DIR}/utils.hpp
+	${INCLUDE_DIR}/core.hpp
 )
 
 set(SOURCES

@@ -25,6 +25,11 @@
 
 using namespace constants;
 
+gamma_state::gamma_state(display_server &dsp)
+:	dsp_(&dsp),
+    screens_(dsp.scr_count())
+{}
+
 // Color ramp by Ingo Thies.
 // From Redshift: https://github.com/jonls/redshift/blob/master/README-colorramp
 std::tuple<double, double, double> kelvin_to_rgb(int val)
@@ -102,30 +107,6 @@ double calc_brt_mult(int step, size_t ramp_sz)
 	return (double(step) / brt_steps_max) * ramp_step;
 }
 
-gamma_state::gamma_state(display_server &xorg, std::vector<config::screen> screens_conf)
-{
-	dsp_ = &xorg;
-
-	_screens.reserve(xorg.scr_count());
-
-	for (size_t i = 0; i < xorg.scr_count(); ++i) {
-
-		int brt  = brt_steps_max;
-		int temp = temp_k_max;
-
-		const auto &brt_model  = screens_conf[i].models[config::screen::model_idx::BRIGHTNESS];
-		const auto &temp_model = screens_conf[i].models[config::screen::model_idx::TEMPERATURE];
-
-		if (brt_model.mode == config::screen::mode::MANUAL)
-			brt = brt_model.val;
-
-		if (temp_model.mode == config::screen::mode::MANUAL)
-			temp = temp_model.val;
-
-		_screens.push_back({brt, temp});
-	}
-}
-
 /**
  * The gamma ramp is a set of unsigned 16-bit values for each of the three color channels.
  * Ramp size varies on different systems.
@@ -169,10 +150,10 @@ void gamma_state::refresh(std::stop_token stoken)
 	while (true) {
 
 		for (size_t i = 0; i < dsp_->scr_count(); ++i) {
-			set(i, std::atomic_ref(_screens[i]).load());
+			set(i, std::atomic_ref(screens_[i]).load());
 		}
 
-		jthread_wait_until(std::chrono::milliseconds(10000), stoken);
+		jthread_wait_until(std::chrono::seconds(10), stoken);
 
 		if (stoken.stop_requested()) {
 			return;
@@ -182,20 +163,20 @@ void gamma_state::refresh(std::stop_token stoken)
 
 void gamma_state::set_brightness(size_t idx, int val)
 {
-	values values = std::atomic_ref(_screens[idx]).load();
+	values values = std::atomic_ref(screens_[idx]).load();
 	values.brightness = val;
 
-	std::atomic_ref(_screens[idx]).store(values);
+	std::atomic_ref(screens_[idx]).store(values);
 
 	set(idx, values);
 }
 
 void gamma_state::set_temperature(size_t idx, int val)
 {
-	values values = std::atomic_ref(_screens[idx]).load();
+	values values = std::atomic_ref(screens_[idx]).load();
 	values.temperature = val;
 
-	std::atomic_ref(_screens[idx]).store(values);
+	std::atomic_ref(screens_[idx]).store(values);
 
 	set(idx, values);
 }

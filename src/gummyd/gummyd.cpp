@@ -37,7 +37,7 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 {
 	assert(dsp.scr_count() == conf.screens.size());
 
-	gamma_state gamma_state(dsp, config(dsp.scr_count()).screens);
+	gamma_state gamma_state(dsp);
 
 	std::vector<std::jthread> threads;
 
@@ -82,42 +82,42 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 
 			const auto &model = conf.screens[idx].models[model_idx];
 
-			using std::placeholders::_1;
-			using model_name = config::screen::model_idx;
-
 			// dummy function
 			std::function<void(int)> fn = [] ([[maybe_unused]] int val) { };
 
-			switch (model_idx) {
-			case model_name::BACKLIGHT:
+			switch (config::screen::model_id(model_idx)) {
+			using enum config::screen::model_id;
+			using std::placeholders::_1;
+			case BACKLIGHT:
 			    if (idx < backlights.size())
 					fn = std::bind(&sysfs::backlight::set_step, &backlights[idx], _1);
 				break;
-			case model_name::BRIGHTNESS:
+			case BRIGHTNESS:
 				fn = std::bind(&gamma_state::set_brightness, &gamma_state, idx, _1);
 				break;
-			case model_name::TEMPERATURE:
+			case TEMPERATURE:
 				fn = std::bind(&gamma_state::set_temperature, &gamma_state, idx, _1);
 				break;
 			}
 
 			switch (model.mode) {
-			case config::screen::UNINITIALIZED: {
+			using enum config::screen::mode;
+			case UNINITIALIZED: {
 				throw std::runtime_error("invalid model state");
 			}
-			case config::screen::MANUAL: {
+			case MANUAL: {
 				fn(model.val);
 				break;
 			}
-			case config::screen::ALS: {
+			case ALS: {
 				threads.emplace_back(std::jthread(als_client, std::ref(als_ch), model, fn, conf.als.adaptation_ms));
 				break;
 			}
-			case config::screen::SCREENSHOT: {
+			case SCREENSHOT: {
 				threads.emplace_back(std::jthread(brightness_client, std::ref(brt_channels.back()), model, fn, conf.screenshot.adaptation_ms));
 				break;
 			}
-			case config::screen::TIME: {
+			case TIME: {
 				threads.emplace_back(std::jthread(time_client, std::ref(time_ch), model, fn));
 				break;
 			}
