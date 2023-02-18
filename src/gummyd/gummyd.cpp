@@ -47,14 +47,13 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 	channel<double>    als_ch(-1.);
 	channel<time_data> time_ch({-1, -1, -1});
 	std::vector<channel<int>> brt_channels;
+	brt_channels.reserve(screenshot_clients);
 
 	if (time_clients > 0) {
 		threads.emplace_back([&] {
 			time_server(time_ch, conf.time, stoken);
 		});
 	}
-
-	brt_channels.reserve(screenshot_clients);
 
 	std::vector<sysfs::backlight> backlights = sysfs::get_backlights();
 	std::vector<sysfs::als> als = sysfs::get_als();
@@ -122,7 +121,12 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 	}
 
 	threads.emplace_back([&] {
-		gamma_state.refresh(stoken);
+		while (true) {
+			gamma_state.refresh();
+			jthread_wait_until(std::chrono::seconds(10), stoken);
+			if (stoken.stop_requested())
+				return;
+		}
 	});
 
 	for (auto &t : threads)

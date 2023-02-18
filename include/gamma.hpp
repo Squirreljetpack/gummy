@@ -19,8 +19,6 @@
 #ifndef GAMMA_HPP
 #define GAMMA_HPP
 
-#include <stop_token>
-
 #include "display.hpp"
 #include "config.hpp"
 
@@ -38,7 +36,7 @@ public:
 	gamma_state(display_server &dsp);
 	void set_brightness(size_t screen_idx, int val);
 	void set_temperature(size_t screen_idx, int val);
-	void refresh(std::stop_token stoken);
+	void refresh();
 };
 
 #endif // GAMMA_HPP
