@@ -48,6 +48,7 @@ class lock_file {
 	std::string filepath_;
 	int fd_;
 	int fnctl_op_;
+	flock fl_;
 public:
 	lock_file(std::string filepath)
 	: filepath_(filepath),
@@ -57,18 +58,19 @@ public:
 			throw std::runtime_error("open() error");
 		}
 
-		flock fl;
-		fl.l_type   = F_WRLCK;
-		fl.l_whence = SEEK_SET;
-		fl.l_start  = 0;
-		fl.l_len    = 1;
-		fnctl_op_   = fcntl(fd_, F_SETLK, &fl);
+		fl_.l_type   = F_WRLCK;
+		fl_.l_whence = SEEK_SET;
+		fl_.l_start  = 0;
+		fl_.l_len    = 1;
+		fnctl_op_    = fcntl(fd_, F_SETLK, &fl_);
 
 		if (fnctl_op_ < 0) {
 			throw std::runtime_error("set_flock error. Already running?\n");
 		}
 	}
 	~lock_file() {
+		if (fnctl_op_ > 0)
+			fcntl(fd_, F_UNLCK, &fl_);
 		close(fd_);
 		std::filesystem::remove(filepath_);
 	}
