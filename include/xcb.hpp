@@ -199,7 +199,7 @@ public:
 	}
 
 	buffer get(int16_t x, int16_t y, uint16_t w, uint16_t h) noexcept {
-		auto image_c = xcb_shm_get_image_unchecked(
+		auto image_c = xcb_shm_get_image(
 		               conn_.get(),
 		               conn_.first_screen()->root,
 		               x, y,
@@ -207,10 +207,12 @@ public:
 		               ~0, XCB_IMAGE_FORMAT_Z_PIXMAP,
 		               shmem_->seg(), 0);
 
-		auto image_r = xcb_shm_get_image_reply(conn_.get(), image_c, nullptr);
+		xcb_generic_error_t *err;
+
+		auto image_r = xcb_shm_get_image_reply(conn_.get(), image_c, &err);
 
 		if (!image_r) {
-			return { nullptr, 0, };
+			return { nullptr, err->error_code };
 		}
 
 		//LOG_FMT_("{} * {} | x: {} y: {} size: {}\n",w,h,x,y,image_r->size);
