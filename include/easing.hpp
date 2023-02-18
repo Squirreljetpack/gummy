@@ -53,6 +53,7 @@ inline int animate(int start, int end, int duration_ms, std::function<double(dou
 	}
 
 	using namespace std::chrono;
+	using namespace std::chrono_literals;
 
 	int cur = start;
 	int prev;
@@ -76,6 +77,7 @@ inline int animate(int start, int end, int duration_ms, std::function<double(dou
 			break;
 		}
 
+		std::this_thread::sleep_for(1ms);
 		progress = (steady_clock::now() - begin);
 	}
 
