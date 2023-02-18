@@ -45,9 +45,18 @@ void brightness_server(display_server &dsp, size_t screen_idx, channel<int> &ch,
 	while (true) {
 		prev = cur;
 
-		const auto buf_ptr = dsp.screen_data(screen_idx);
+		const auto buf = [&dsp, screen_idx] {
+			for (int tries = 0; tries < 10; ++tries) {
+				const auto ret = dsp.screen_data(screen_idx);
+				if (ret.size > 0)
+					return ret;
+				LOG_FMT_("failed to get screen data, retrying ({})...\n", tries + 1);
+				std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			}
+			throw std::runtime_error("failed to get screen data after 10 tries");
+		}();
 
-		cur = std::clamp(double(image_brightness(buf_ptr.data, buf_ptr.size)) * conf.scale, 0., 255.);
+		cur = std::clamp(double(image_brightness(buf.data, buf.size)) * conf.scale, 0., 255.);
 		delta += std::abs(prev - cur);
 
 		if (delta > 8) {
