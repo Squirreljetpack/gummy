@@ -27,6 +27,7 @@ class gamma_state {
 		int brightness = constants::brt_steps_max;
 		int temperature = 6500;
 	};
+
 	display_server *dsp_;
 	std::vector<values> screens_;
 
@@ -34,6 +35,7 @@ class gamma_state {
 	void set(size_t screen_idx, values);
 public:
 	gamma_state(display_server &dsp);
+	gamma_state(display_server &dsp, std::vector<config::screen> conf);
 	void set_brightness(size_t screen_idx, int val);
 	void set_temperature(size_t screen_idx, int val);
 	void refresh();
