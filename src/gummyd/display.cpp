@@ -22,7 +22,7 @@ display_server::display_server()
 : xcb_conn_(),
   randr_(),
   randr_outputs_(randr_.outputs(xcb_conn_, xcb_conn_.first_screen())),
-  shmem_(xcb_conn_, xcb::screen_size(xcb_conn_.first_screen())),
+  shmem_(xcb::screen_size(xcb_conn_.first_screen())),
   shimg_(shmem_, xcb_conn_.first_screen()->width_in_pixels, xcb_conn_.first_screen()->height_in_pixels)
 {
 }

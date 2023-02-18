@@ -87,30 +87,34 @@ public:
 };
 
 class shared_memory {
-    xcb_shm_segment_info_t shminfo;
+	xcb::connection conn_;
+	xcb_shm_segment_info_t shminfo_;
 public:
-	shared_memory(const connection &conn, size_t size) {
-		shminfo.shmseg  = xcb_generate_id(conn.get());
-		shminfo.shmid   = shmget(IPC_PRIVATE, size, IPC_CREAT | 0600);
-		shminfo.shmaddr = reinterpret_cast<uint8_t*>(shmat(shminfo.shmid, nullptr, 0));
-		xcb_shm_attach(conn.get(), shminfo.shmseg, shminfo.shmid, 0);
+	shared_memory(size_t size) {
+		shminfo_.shmseg  = xcb_generate_id(conn_.get());
+		shminfo_.shmid   = shmget(IPC_PRIVATE, size, IPC_CREAT | 0600);
+		shminfo_.shmaddr = reinterpret_cast<uint8_t*>(shmat(shminfo_.shmid, nullptr, 0));
+
+		auto req = xcb_shm_attach_checked(conn_.get(), shminfo_.shmseg, shminfo_.shmid, 0);
+		throw_if(xcb_request_check(conn_.get(), req), "xcb_shm_attach_checked");
 	}
 
 	unsigned int seg() {
-		return shminfo.shmseg;
+		return shminfo_.shmseg;
 	}
 
 	unsigned int id() {
-		return shminfo.shmid;
+		return shminfo_.shmid;
 	}
 
 	uint8_t* addr() {
-		return shminfo.shmaddr;
+		return shminfo_.shmaddr;
 	}
 
 	~shared_memory() {
-		shmdt(shminfo.shmaddr);
-		shmctl(shminfo.shmseg, IPC_RMID, 0);
+		xcb_request_check(conn_.get(), xcb_shm_detach_checked(conn_.get(), shminfo_.shmseg));
+		shmdt(shminfo_.shmaddr);
+		shmctl(shminfo_.shmseg, IPC_RMID, 0);
 	}
 };
 
