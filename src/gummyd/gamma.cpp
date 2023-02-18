@@ -145,19 +145,10 @@ gamma_state::values gamma_state::sanitize(values vals) {
 	};
 }
 
-void gamma_state::refresh(std::stop_token stoken)
+void gamma_state::refresh()
 {
-	while (true) {
-
-		for (size_t i = 0; i < dsp_->scr_count(); ++i) {
-			set(i, std::atomic_ref(screens_[i]).load());
-		}
-
-		jthread_wait_until(std::chrono::seconds(10), stoken);
-
-		if (stoken.stop_requested()) {
-			return;
-		}
+	for (size_t i = 0; i < screens_.size(); ++i) {
+		set(i, std::atomic_ref(screens_[i]).load());
 	}
 }
 
