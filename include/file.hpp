@@ -21,6 +21,7 @@
 
 #include <string>
 #include <fstream>
+#include <filesystem>
 #include <sstream>
 
 #include <unistd.h>
@@ -34,12 +35,12 @@ public:
 	named_pipe(std::string filepath) : filepath_(filepath) {
 		fd_ = mkfifo(filepath.c_str(), S_IFIFO | 0640);
 		if (fd_ < 0) {
-			throw std::runtime_error("mkfifo error");
+			//LOG_FMT_("named_pipe: mkfifo error");
 		}
 	}
 	~named_pipe() {
 		close(fd_);
-		unlink(filepath_.c_str());
+		std::filesystem::remove(filepath_);
 	}
 };
 
@@ -69,10 +70,7 @@ public:
 	}
 	~lock_file() {
 		close(fd_);
-
-		if (fnctl_op_ > -1) {
-			unlink(filepath_.c_str());
-		}
+		std::filesystem::remove(filepath_);
 	}
 };
 
