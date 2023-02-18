@@ -37,30 +37,16 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 {
 	assert(dsp.scr_count() == conf.screens.size());
 
-	gamma_state gamma_state(dsp);
-
-	std::vector<std::jthread> threads;
-
-	threads.emplace_back([&] {
-		gamma_state.refresh(stoken);
-	});
-
-	std::vector<sysfs::backlight> backlights = sysfs::get_backlights();
-	std::vector<sysfs::als> als              = sysfs::get_als();
-
 	const size_t screenshot_clients = conf.clients_for(config::screen::mode::SCREENSHOT);
 	const size_t als_clients        = conf.clients_for(config::screen::mode::ALS);
 	const size_t time_clients       = conf.clients_for(config::screen::mode::TIME);
 	LOG_FMT_("clients: als: {}, screenlight: {}, time: {}\n", als_clients, screenshot_clients, time_clients);
 
+	std::vector<std::jthread> threads;
+
 	channel<double>    als_ch(-1.);
 	channel<time_data> time_ch({-1, -1, -1});
-
-	if (als_clients > 0 && !als.empty()) {
-		threads.emplace_back([&] {
-			als_server(als[0], als_ch, conf.als, stoken);
-		});
-	}
+	std::vector<channel<int>> brt_channels;
 
 	if (time_clients > 0) {
 		threads.emplace_back([&] {
@@ -68,8 +54,18 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 		});
 	}
 
-	std::vector<channel<int>> brt_channels;
 	brt_channels.reserve(screenshot_clients);
+
+	std::vector<sysfs::backlight> backlights = sysfs::get_backlights();
+	std::vector<sysfs::als> als = sysfs::get_als();
+
+	if (als_clients > 0 && !als.empty()) {
+		threads.emplace_back([&] {
+			als_server(als[0], als_ch, conf.als, stoken);
+		});
+	}
+
+	gamma_state gamma_state(dsp);
 
 	for (size_t idx = 0; idx < conf.screens.size(); ++idx) {
 
@@ -124,6 +120,10 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 			}
 		}
 	}
+
+	threads.emplace_back([&] {
+		gamma_state.refresh(stoken);
+	});
 
 	for (auto &t : threads)
 		t.join();
