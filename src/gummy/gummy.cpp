@@ -1,4 +1,4 @@
-/**
+﻿/**
 * gummy
 * Copyright (C) 2023  Francesco Fusco
 *
@@ -96,17 +96,6 @@ std::string check_time_format(const std::string &s)
 	return "";
 }
 
-std::string range_error(const std::string &s, int min, int max)
-{
-	const int val = std::stoi(s);
-
-	if (!(val >= min && val <= max)) {
-		return fmt::format("Value {} not in range [{} - {}]", val, min, max);
-	}
-
-	return "";
-}
-
 enum option_id {
 	VERS,
 	SCREEN_NUM,
@@ -173,44 +162,59 @@ const std::array<std::array<std::string, 2>, option_count> options {{
 {"--als-adaptation-ms", "Adaptation speed in milliseconds."},
 }};
 
-int perc_to_step(int val) {
+const std::function<int(int)> perc_to_step = [] (int val) {
 	if (val >= 0) {
 		return remap(std::clamp(val, 0, 100), 0, 100, 0, constants::brt_steps_max);
 	} else {
 		return -remap(std::clamp(std::abs(val), 0, 100), 0, 100, 0, constants::brt_steps_max);
 	}
-}
+};
 
-void setif(nlohmann::json &val, double new_val) {
-	if (config::valid_f64(new_val) && val.is_number_float())
+template <class T>
+void setif(nlohmann::json &val, T new_val) {
+	if (config::valid_num(new_val)) {
 		val = new_val;
-}
-
-void setif(nlohmann::json &val, int new_val) {
-	if (config::valid_int(new_val) && val.is_number_integer())
-		val = new_val;
-}
-
-void setif(nlohmann::json &val, int new_val, std::function<int(int)> fn) {
-	if (config::valid_int(new_val) && val.is_number_integer())
-		val = fn(new_val);
-}
-
-void setif(nlohmann::json &val, int new_val, std::function<int(int)> fn, bool relative, int min, int max) {
-
-	if (!relative) {
-		setif(val, new_val, fn);
-		return;
 	}
-
-	val = std::clamp(val.get<int>() + fn(new_val), min, max);
 }
 
-void setif(nlohmann::json &val, std::string new_val)
-{
+template <class T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, int> = 0>
+void setif(nlohmann::json &val, T new_val, bool relative, T min, T max, std::function<T(T)> fn = [](T x){return x;}) {
+
+    if (!(config::valid_num(new_val))) {
+	    return;
+    }
+
+    if (relative) {
+	    val = std::clamp(val.get<T>() + fn(new_val), min, max);
+    } else {
+        val = fn(new_val);
+	}
+}
+
+void setif(nlohmann::json &val, std::string new_val) {
 	if (val.is_string() && !new_val.empty())
 		val = new_val;
 }
+
+template <class T>
+std::string check_range(const std::string &s, T min, T max) {
+	const T val = std::is_integral<T>::value ? std::stoi(s) : std::stod(s);
+	if (!(val >= min && val <= max)) {
+		return fmt::format("Value {} not in range [{} - {}]", val, min, max);
+	}
+	return "";
+}
+
+std::array<bool, option_count> relative_flags {};
+
+template <class T>
+std::string range_or_relative(const std::string &s, option_id opt_id, T min, T max) {
+	if (s.starts_with("+") || s.starts_with("-")) {
+		relative_flags[opt_id] = true;
+		return std::string("");
+	}
+	return check_range(s, min, max);
+};
 
 int interface(int argc, char **argv)
 {
@@ -228,18 +232,11 @@ int interface(int argc, char **argv)
 	int scr_idx = -1;
 	app.add_option(options[SCREEN_NUM][0], scr_idx, options[SCREEN_NUM][1])->check(CLI::Range(0, 99));
 
-	std::array<bool, option_count> relative {};
-
-	const auto range_or_relative = [&relative] (const std::string &s, option_id opt_id, int min, int max) {
-		if (s.starts_with("+") || s.starts_with("-")) {
-			relative[opt_id] = true;
-			return std::string("");
-		}
-		return range_error(s, min, max);
-	};
-
-	const std::string brt_range  = fmt::format("INT in [{} - {}]", 0, 100);
-	const std::string temp_range = fmt::format("INT in [{} - {}]", temp_k_min, temp_k_max);
+	constexpr std::string_view range_fmt   = "INT in [{} - {}]";
+	constexpr std::string_view range_fmt_f = "FLOAT in [{} - {}]";
+	const std::string scale_range = fmt::format(range_fmt_f, 0.0, 10.0);
+	const std::string brt_range   = fmt::format(range_fmt, 0, 100);
+	const std::string temp_range  = fmt::format(range_fmt, temp_k_min, temp_k_max);
 
 	const std::string grp_bl("Screen backlight settings");
 	config::screen::model backlight;
@@ -257,7 +254,6 @@ int interface(int argc, char **argv)
 
 	const std::string grp_temp("Screen temperature settings");
 	config::screen::model temperature;
-
 	app.add_option(options[TEMP_MODE][0], temperature.mode, options[TEMP_MODE][1])->check(CLI::Range(0, 3))->group(grp_temp);
 	app.add_option(options[TEMP_KELV][0], temperature.val, options[TEMP_KELV][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, TEMP_KELV, temp_k_min, temp_k_max); }, temp_range))->group(grp_temp);
 	app.add_option(options[TEMP_MIN][0], temperature.min, options[TEMP_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, TEMP_MIN, temp_k_min, temp_k_max); }, temp_range))->group(grp_temp);
@@ -265,13 +261,13 @@ int interface(int argc, char **argv)
 
 	const std::string grp_als("ALS mode settings");
 	struct config::als als;
-	app.add_option(options[ALS_SCALE][0], als.scale, options[ALS_SCALE][1])->check(CLI::Range(0., 10.))->group(grp_als);
+	app.add_option(options[ALS_SCALE][0], als.scale, options[ALS_SCALE][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, ALS_SCALE, 0., 10.); }, scale_range))->group(grp_als);
 	app.add_option(options[ALS_POLL_MS][0], als.poll_ms, options[ALS_POLL_MS][1])->check(CLI::Range(1, 10000 * 60 * 60))->group(grp_als);
 	app.add_option(options[ALS_ADAPTATION_MS][0], als.adaptation_ms, options[ALS_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_als);
 
 	const std::string grp_ss("Screenshot mode settings");
 	struct config::screenshot screenshot;
-	app.add_option(options[SCREENSHOT_SCALE][0], screenshot.scale, options[SCREENSHOT_SCALE][1])->check(CLI::Range(0., 10.))->group(grp_ss);
+	app.add_option(options[SCREENSHOT_SCALE][0], screenshot.scale, options[SCREENSHOT_SCALE][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, SCREENSHOT_SCALE, 0., 10.); }, scale_range))->group(grp_ss);
 	app.add_option(options[SCREENSHOT_POLL_MS][0], screenshot.poll_ms, options[SCREENSHOT_POLL_MS][1])->check(CLI::Range(1, 10000))->group(grp_ss);
 	app.add_option(options[SCREENSHOT_ADAPTATION_MS][0], screenshot.adaptation_ms, options[SCREENSHOT_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_ss);
 
@@ -320,26 +316,26 @@ int interface(int argc, char **argv)
 		auto &scr = config_json["screens"][idx];
 
 		setif(scr["backlight"]["mode"], int(backlight.mode));
-		setif(scr["backlight"]["val"], backlight.val, perc_to_step, relative[BACKLIGHT_PERC], 0, brt_steps_max);
-		setif(scr["backlight"]["min"], backlight.min, perc_to_step, relative[BACKLIGHT_MIN], 0, brt_steps_max);
-		setif(scr["backlight"]["max"], backlight.max, perc_to_step, relative[BACKLIGHT_MAX], 0, brt_steps_max);
+		setif(scr["backlight"]["val"], backlight.val, relative_flags[BACKLIGHT_PERC], 0, brt_steps_max, perc_to_step);
+		setif(scr["backlight"]["min"], backlight.min, relative_flags[BACKLIGHT_MIN], 0, brt_steps_max, perc_to_step);
+		setif(scr["backlight"]["max"], backlight.max, relative_flags[BACKLIGHT_MAX], 0, brt_steps_max, perc_to_step);
 
 		setif(scr["brightness"]["mode"], int(brightness.mode));
-		setif(scr["brightness"]["val"], brightness.val, perc_to_step, relative[BRT_PERC], 0, brt_steps_max);
-		setif(scr["brightness"]["min"], brightness.min, perc_to_step, relative[BRT_MIN], 0, brt_steps_max);
-		setif(scr["brightness"]["max"], brightness.max, perc_to_step, relative[BRT_MAX], 0, brt_steps_max);
+		setif(scr["brightness"]["val"], brightness.val, relative_flags[BRT_PERC], 0, brt_steps_max, perc_to_step);
+		setif(scr["brightness"]["min"], brightness.min, relative_flags[BRT_MIN], 0, brt_steps_max, perc_to_step);
+		setif(scr["brightness"]["max"], brightness.max, relative_flags[BRT_MAX], 0, brt_steps_max, perc_to_step);
 
 		setif(scr["temperature"]["mode"], int(temperature.mode));
-		setif(scr["temperature"]["val"], temperature.val, [](int x){return x;}, relative[TEMP_KELV], temp_k_min, temp_k_max);
-		setif(scr["temperature"]["min"], temperature.min, [](int x){return x;}, relative[TEMP_MIN], temp_k_min, temp_k_max);
-		setif(scr["temperature"]["max"], temperature.max, [](int x){return x;}, relative[TEMP_MAX], temp_k_min, temp_k_max);
+		setif(scr["temperature"]["val"], temperature.val, relative_flags[TEMP_KELV], temp_k_min, temp_k_max);
+		setif(scr["temperature"]["min"], temperature.min, relative_flags[TEMP_MIN], temp_k_min, temp_k_max);
+		setif(scr["temperature"]["max"], temperature.max, relative_flags[TEMP_MAX], temp_k_min, temp_k_max);
 
 		using enum config::screen::mode;
-		if (config::valid_int(backlight.val))
+		if (config::valid_num(backlight.val))
 			scr["backlight"]["mode"] = MANUAL;
-		if (config::valid_int(brightness.val))
+		if (config::valid_num(brightness.val))
 			scr["brightness"]["mode"] = MANUAL;
-		if (config::valid_int(temperature.val))
+		if (config::valid_num(temperature.val))
 			scr["temperature"]["mode"] = MANUAL;
 	};
 
@@ -354,11 +350,11 @@ int interface(int argc, char **argv)
 	setif(config_json["time"]["end"], time.end);
 	setif(config_json["time"]["adaptation_minutes"], time.adaptation_minutes);
 
-	setif(config_json["screenshot"]["scale"], screenshot.scale);
+	setif(config_json["screenshot"]["scale"], screenshot.scale, relative_flags[SCREENSHOT_SCALE], 0., 10.);
 	setif(config_json["screenshot"]["poll_ms"], screenshot.poll_ms);
 	setif(config_json["screenshot"]["adaptation_ms"], screenshot.adaptation_ms);
 
-	setif(config_json["als"]["scale"], als.scale);
+	setif(config_json["als"]["scale"], als.scale, relative_flags[ALS_SCALE], 0., 10.);
 	setif(config_json["als"]["poll_ms"], als.poll_ms);
 	setif(config_json["als"]["adaptation_ms"], als.adaptation_ms);
 

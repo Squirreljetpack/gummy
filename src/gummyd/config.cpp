@@ -269,10 +269,10 @@ size_t config::clients_for(config::screen::mode mode, size_t screen_index)
 	return c;
 }
 
-bool config::valid_f64(double val) {
-	return val > std::numeric_limits<double>::min();
+bool config::valid_num(double val) {
+	return val > std::numeric_limits<int>::min();
 }
 
-bool config::valid_int(int val) {
+bool config::valid_num(int val) {
 	return val > std::numeric_limits<int>::min();
 }
