@@ -198,7 +198,7 @@ public:
 	{
 	}
 
-	buffer get(int16_t x, int16_t y, uint16_t w, uint16_t h) {
+	buffer get(int16_t x, int16_t y, uint16_t w, uint16_t h) noexcept {
 		auto image_c = xcb_shm_get_image_unchecked(
 		               conn_.get(),
 		               conn_.first_screen()->root,
@@ -210,7 +210,7 @@ public:
 		auto image_r = xcb_shm_get_image_reply(conn_.get(), image_c, nullptr);
 
 		if (!image_r) {
-			throw std::runtime_error("xcb_shm_get_image_reply");
+			return { nullptr, 0, };
 		}
 
 		//LOG_FMT_("{} * {} | x: {} y: {} size: {}\n",w,h,x,y,image_r->size);

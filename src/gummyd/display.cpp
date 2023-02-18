@@ -27,10 +27,9 @@ display_server::display_server()
 {
 }
 
-std::pair<uint8_t*, size_t> display_server::screen_data(int scr_idx) {
+xcb::shared_image::buffer display_server::screen_data(int scr_idx) {
 	const auto o = randr_outputs_[scr_idx];
-	const auto img = shimg_.get(o.x, o.y, o.width, o.height);
-	return std::make_pair(img.data, img.size);
+	return shimg_.get(o.x, o.y, o.width, o.height);
 }
 
 void display_server::set_gamma_ramp(int scr_idx, const std::vector<uint16_t> &ramps) {
