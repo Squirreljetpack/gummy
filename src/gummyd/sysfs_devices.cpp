@@ -24,13 +24,13 @@
 #include "utils.hpp"
 
 const struct {
-    struct {
-	    std::string path    = "/sys/class/backlight";
+	struct {
+		std::string path    = "/sys/class/backlight";
 		std::string brt     = "brightness";
 		std::string max_brt = "max_brightness";
 	} backlight;
 	struct {
-	    std::string path      = "/sys/bus/iio/devices";
+		std::string path      = "/sys/bus/iio/devices";
 		std::string name      = "iio:device";
 		std::string lux_scale = "in_illuminance_scale";
 		std::array<std::string, 2> lux_filenames = {
