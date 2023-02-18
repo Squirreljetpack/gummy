@@ -79,7 +79,7 @@ public:
 		return screens_[0];
 	}
 
-	bool extension_present(std::string name) {
+	bool extension_present(std::string name) const {
 		auto query_c = xcb_query_extension(addr_, name.size(), name.c_str());
 		auto query_r = c_unique_ptr<xcb_query_extension_reply_t>(xcb_query_extension_reply(addr_, query_c, nullptr));
 		return query_r && query_r->present;
