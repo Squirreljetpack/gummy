@@ -25,18 +25,14 @@
 using namespace fushko;
 
 // [0, 255]
-int image_brightness(std::pair<uint8_t*, size_t> buf, int bytes_per_pixel = 4, int stride = 1024)
+int image_brightness(uint8_t *buf, size_t sz, int bytes_per_pixel = 4, int stride = 1024)
 {
-	uint8_t *arr      = buf.first;
-	const uint64_t sz = buf.second;
-
-	std::array<uint64_t, 3> rgb {0, 0, 0};
+	std::array<uint64_t, 3> rgb {};
 	for (uint64_t i = 0, inc = stride * bytes_per_pixel; i < sz; i += inc) {
-		rgb[0] += arr[i + 2];
-		rgb[1] += arr[i + 1];
-		rgb[2] += arr[i];
+		rgb[0] += buf[i + 2];
+		rgb[1] += buf[i + 1];
+		rgb[2] += buf[i];
 	}
-
 	return ((rgb[0] * 0.2126) + (rgb[1] * 0.7152) + (rgb[2] * 0.0722)) * stride / (sz / bytes_per_pixel);
 }
 
@@ -49,7 +45,9 @@ void brightness_server(display_server &dsp, size_t screen_idx, channel<int> &ch,
 	while (true) {
 		prev = cur;
 
-		cur = std::clamp(double(image_brightness(dsp.screen_data(screen_idx))) * conf.scale, 0., 255.);
+		const auto buf_ptr = dsp.screen_data(screen_idx);
+
+		cur = std::clamp(double(image_brightness(buf_ptr.data, buf_ptr.size)) * conf.scale, 0., 255.);
 		delta += std::abs(prev - cur);
 
 		if (delta > 8) {
