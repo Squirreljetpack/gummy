@@ -209,7 +209,11 @@ public:
 
 		auto image_r = xcb_shm_get_image_reply(conn_.get(), image_c, nullptr);
 
-		//printf("%d * %d | x: %d y: %d size: %d\n\n",w,h,x,y,image_r->size);
+		if (!image_r) {
+			throw std::runtime_error("xcb_shm_get_image_reply");
+		}
+
+		//LOG_FMT_("{} * {} | x: {} y: {} size: {}\n",w,h,x,y,image_r->size);
 
 		return {
 			image->data,
