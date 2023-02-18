@@ -33,7 +33,7 @@ public:
 	display_server();
 	std::pair<uint8_t*, size_t> screen_data(int scr_idx);
 	void    set_gamma_ramp(int scr_idx, const std::vector<uint16_t> &ramps);
-	size_t  ramp_size(int scr_idx);
+	size_t  ramp_size(int scr_idx) const;
 	size_t  scr_count() const;
 };
 
