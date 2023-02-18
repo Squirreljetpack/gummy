@@ -33,13 +33,15 @@ using namespace constants;
 
 void start()
 {
-	if (set_flock(flock_filepath) < 0) {
+	try {
+		lock_file flock(flock_filepath);
+	} catch (std::runtime_error &e) {
 		std::puts("already started");
 		std::exit(EXIT_SUCCESS);
 	}
 
 	std::puts("starting gummy");
-	pid_t pid = fork();
+	const pid_t pid = fork();
 
 	if (pid < 0) {
 		std::puts("fork() failed");
@@ -59,22 +61,23 @@ void start()
 
 void stop()
 {
-	if (set_flock(flock_filepath) == 0) {
+	try {
+		lock_file flock(flock_filepath);
 		std::puts("already stopped");
-		std::exit(EXIT_SUCCESS);
+	} catch (std::runtime_error &e) {
+		file_write(constants::fifo_filepath, "stop");
+		std::puts("gummy stopped");
 	}
 
-	file_write(constants::fifo_filepath, "stop");
-
-	std::puts("gummy stopped");
 	std::exit(EXIT_SUCCESS);
 }
 
 void status()
 {
-	if (set_flock(flock_filepath) == 0) {
+	try {
+		lock_file flock(flock_filepath);
 		std::puts("not running");
-	} else {
+	} catch (std::runtime_error &e) {
 		std::puts("running");
 	}
 
@@ -287,9 +290,12 @@ int interface(int argc, char **argv)
 		return app.exit(e);
 	}
 
-	if (set_flock(flock_filepath) == 0) {
+	try {
+		lock_file flock(flock_filepath);
 		std::puts("gummy is not running.\nType: `gummy start`\n");
 		std::exit(EXIT_SUCCESS);
+	} catch (std::runtime_error &e) {
+		LOG_("updating config...\n");
 	}
 
 	nlohmann::json config_json = [&] {
@@ -358,6 +364,7 @@ int interface(int argc, char **argv)
 	setif(config_json["als"]["poll_ms"], als.poll_ms);
 	setif(config_json["als"]["adaptation_ms"], als.adaptation_ms);
 
+	LOG_("writing...\n");
 	file_write(constants::fifo_filepath, config_json.dump());
 
 	return EXIT_SUCCESS;

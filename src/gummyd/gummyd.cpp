@@ -142,6 +142,8 @@ int message_loop()
 
 	config conf(dsp.scr_count());
 
+	named_pipe pipe(constants::fifo_filepath);
+
 	const auto proxy = sdbus_on_system_sleep([] (sdbus::Signal &sig) {
 	    bool sleep;
 	    sig >> sleep;
@@ -158,7 +160,7 @@ int message_loop()
 		const std::string data(file_read(constants::fifo_filepath));
 
 		if (data == "stop")
-			return EXIT_SUCCESS;
+			break;
 
 		if (data == "reset")
 			continue;
@@ -178,6 +180,8 @@ int message_loop()
 
 		conf = config(msg, dsp.scr_count());
 	}
+
+	return EXIT_SUCCESS;
 }
 
 int main(int argc, char **argv)
@@ -187,14 +191,8 @@ int main(int argc, char **argv)
 		std::exit(EXIT_SUCCESS);
 	}
 
+	lock_file flock(constants::flock_filepath);
 	//openlog("gummyd", LOG_FMT_PID, LOG_FMT_DAEMON);
-
-	if (set_flock(constants::flock_filepath) < 0) {
-		LOG_ERR_("set_flock error. Already running?\n");
-		std::exit(EXIT_FAILURE);
-	}
-
-	make_fifo(constants::fifo_filepath);
 
 	return message_loop();
 }

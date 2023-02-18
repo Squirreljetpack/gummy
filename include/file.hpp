@@ -23,29 +23,58 @@
 #include <fstream>
 #include <sstream>
 
+#include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 
-inline int set_flock(std::string filepath)
-{
-	const int fd = open(filepath.c_str(), O_WRONLY | O_CREAT, 0640);
+class named_pipe {
+	int fd_;
+	std::string filepath_;
+public:
+	named_pipe(std::string filepath) : filepath_(filepath) {
+		fd_ = mkfifo(filepath.c_str(), S_IFIFO | 0640);
+		if (fd_ < 0) {
+			throw std::runtime_error("mkfifo error");
+		}
+	}
+	~named_pipe() {
+		close(fd_);
+		unlink(filepath_.c_str());
+	}
+};
 
-	if (fd < 0)
-		return fd;
+class lock_file {
+	std::string filepath_;
+	int fd_;
+	int fnctl_op_;
+public:
+	lock_file(std::string filepath)
+	: filepath_(filepath),
+	  fd_(open(filepath.c_str(), O_WRONLY | O_CREAT, 0640)) {
 
-	flock fl;
-	fl.l_type   = F_WRLCK;
-	fl.l_whence = SEEK_SET;
-	fl.l_start  = 0;
-	fl.l_len    = 1;
+		if (fd_ < 0) {
+			throw std::runtime_error("open() error");
+		}
 
-	return fcntl(fd, F_SETLK, &fl);
-}
+		flock fl;
+		fl.l_type   = F_WRLCK;
+		fl.l_whence = SEEK_SET;
+		fl.l_start  = 0;
+		fl.l_len    = 1;
+		fnctl_op_   = fcntl(fd_, F_SETLK, &fl);
 
-inline int make_fifo(std::string filepath)
-{
-	return mkfifo(filepath.c_str(), S_IFIFO | 0640);
-}
+		if (fnctl_op_ < 0) {
+			throw std::runtime_error("set_flock error. Already running?\n");
+		}
+	}
+	~lock_file() {
+		close(fd_);
+
+		if (fnctl_op_ > -1) {
+			unlink(filepath_.c_str());
+		}
+	}
+};
 
 inline std::string file_read(std::string filepath)
 {
