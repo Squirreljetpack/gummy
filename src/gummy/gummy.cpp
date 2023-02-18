@@ -93,7 +93,18 @@ std::string check_time_format(const std::string &s)
 	if (std::stoi(s.substr(3, 2)) > 59)
 		return err;
 
-	return std::string("");
+	return "";
+}
+
+std::string range_error(const std::string &s, int min, int max)
+{
+	const int val = std::stoi(s);
+
+	if (!(val >= min && val <= max)) {
+		return fmt::format("Value {} not in range [{} - {}]", val, min, max);
+	}
+
+	return "";
 }
 
 enum option_id {
@@ -128,7 +139,9 @@ enum option_id {
 	ALS_ADAPTATION_MS
 };
 
-const std::array<std::array<std::string, 2>, 23> options {{
+constexpr int option_count = 23;
+
+const std::array<std::array<std::string, 2>, option_count> options {{
 {"-v, --version", "Print version and exit"},
 {"-s,--screen", "Index on which to apply screen-related settings. If omitted, any changes will be applied on all screens."},
 
@@ -161,7 +174,11 @@ const std::array<std::array<std::string, 2>, 23> options {{
 }};
 
 int perc_to_step(int val) {
-	return remap(val, 0, 100, 0, constants::brt_steps_max);
+	if (val >= 0) {
+		return remap(std::clamp(val, 0, 100), 0, 100, 0, constants::brt_steps_max);
+	} else {
+		return -remap(std::clamp(std::abs(val), 0, 100), 0, 100, 0, constants::brt_steps_max);
+	}
 }
 
 void setif(nlohmann::json &val, double new_val) {
@@ -177,6 +194,16 @@ void setif(nlohmann::json &val, int new_val) {
 void setif(nlohmann::json &val, int new_val, std::function<int(int)> fn) {
 	if (config::valid_int(new_val) && val.is_number_integer())
 		val = fn(new_val);
+}
+
+void setif(nlohmann::json &val, int new_val, std::function<int(int)> fn, bool relative, int min, int max) {
+
+	if (!relative) {
+		setif(val, new_val, fn);
+		return;
+	}
+
+	val = std::clamp(val.get<int>() + fn(new_val), min, max);
 }
 
 void setif(nlohmann::json &val, std::string new_val)
@@ -201,27 +228,40 @@ int interface(int argc, char **argv)
 	int scr_idx = -1;
 	app.add_option(options[SCREEN_NUM][0], scr_idx, options[SCREEN_NUM][1])->check(CLI::Range(0, 99));
 
+	std::array<bool, option_count> relative {};
+
+	const auto range_or_relative = [&relative] (const std::string &s, option_id opt_id, int min, int max) {
+		if (s.starts_with("+") || s.starts_with("-")) {
+			relative[opt_id] = true;
+			return std::string("");
+		}
+		return range_error(s, min, max);
+	};
+
+	const std::string brt_range  = fmt::format("INT in [{} - {}]", 0, 100);
+	const std::string temp_range = fmt::format("INT in [{} - {}]", temp_k_min, temp_k_max);
+
 	const std::string grp_bl("Screen backlight settings");
 	config::screen::model backlight;
 	app.add_option(options[BACKLIGHT_MODE][0], backlight.mode, options[BACKLIGHT_MODE][1])->check(CLI::Range(0, 3))->group(grp_bl);
-	app.add_option(options[BACKLIGHT_PERC][0], backlight.val, options[BACKLIGHT_PERC][1])->check(CLI::Range(0, 100))->group(grp_bl);
-	app.add_option(options[BACKLIGHT_MIN][0], backlight.min, options[BACKLIGHT_MIN][1])->check(CLI::Range(0, 100))->group(grp_bl);
-	app.add_option(options[BACKLIGHT_MAX][0], backlight.max, options[BACKLIGHT_MAX][1])->check(CLI::Range(0, 100))->group(grp_bl);
+	app.add_option(options[BACKLIGHT_PERC][0], backlight.val, options[BACKLIGHT_PERC][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BACKLIGHT_PERC, 0, 100); }, brt_range))->group(grp_bl);
+	app.add_option(options[BACKLIGHT_MIN][0], backlight.min, options[BACKLIGHT_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BACKLIGHT_MIN, 0, 100); }, brt_range))->group(grp_bl);
+	app.add_option(options[BACKLIGHT_MAX][0], backlight.max, options[BACKLIGHT_MAX][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BACKLIGHT_MAX, 0, 100); }, brt_range))->group(grp_bl);
 
 	const std::string grp_brt("Screen brightness settings");
 	config::screen::model brightness;
 	app.add_option(options[BRT_MODE][0], brightness.mode, options[BRT_MODE][1])->check(CLI::Range(0, 3))->group(grp_brt);
-	app.add_option(options[BRT_PERC][0], brightness.val, options[BRT_PERC][1])->check(CLI::Range(0, 100))->group(grp_brt);
-	app.add_option(options[BRT_MIN][0], brightness.min, options[BRT_MIN][1])->check(CLI::Range(0, 100))->group(grp_brt);
-	app.add_option(options[BRT_MAX][0], brightness.max, options[BRT_MAX][1])->check(CLI::Range(0, 100))->group(grp_brt);
+	app.add_option(options[BRT_PERC][0], brightness.val, options[BRT_PERC][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BRT_PERC, 0, 100); }, brt_range))->group(grp_brt);
+	app.add_option(options[BRT_MIN][0], brightness.min, options[BRT_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BRT_MIN, 0, 100); }, brt_range))->group(grp_brt);
+	app.add_option(options[BRT_MAX][0], brightness.max, options[BRT_MAX][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BRT_MAX, 0, 100); }, brt_range))->group(grp_brt);
 
 	const std::string grp_temp("Screen temperature settings");
 	config::screen::model temperature;
 
 	app.add_option(options[TEMP_MODE][0], temperature.mode, options[TEMP_MODE][1])->check(CLI::Range(0, 3))->group(grp_temp);
-	app.add_option(options[TEMP_KELV][0], temperature.val, options[TEMP_KELV][1])->check(CLI::Range(temp_k_min, temp_k_max))->group(grp_temp);
-	app.add_option(options[TEMP_MIN][0], temperature.min, options[TEMP_MIN][1])->check(CLI::Range(temp_k_min, temp_k_max))->group(grp_temp);
-	app.add_option(options[TEMP_MAX][0], temperature.max, options[TEMP_MAX][1])->check(CLI::Range(temp_k_min, temp_k_max))->group(grp_temp);
+	app.add_option(options[TEMP_KELV][0], temperature.val, options[TEMP_KELV][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, TEMP_KELV, temp_k_min, temp_k_max); }, temp_range))->group(grp_temp);
+	app.add_option(options[TEMP_MIN][0], temperature.min, options[TEMP_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, TEMP_MIN, temp_k_min, temp_k_max); }, temp_range))->group(grp_temp);
+	app.add_option(options[TEMP_MAX][0], temperature.max, options[TEMP_MAX][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, TEMP_MAX, temp_k_min, temp_k_max); }, temp_range))->group(grp_temp);
 
 	const std::string grp_als("ALS mode settings");
 	struct config::als als;
@@ -280,19 +320,19 @@ int interface(int argc, char **argv)
 		auto &scr = config_json["screens"][idx];
 
 		setif(scr["backlight"]["mode"], int(backlight.mode));
-		setif(scr["backlight"]["val"], backlight.val, perc_to_step);
-		setif(scr["backlight"]["min"], backlight.min, perc_to_step);
-		setif(scr["backlight"]["max"], backlight.max, perc_to_step);
+		setif(scr["backlight"]["val"], backlight.val, perc_to_step, relative[BACKLIGHT_PERC], 0, brt_steps_max);
+		setif(scr["backlight"]["min"], backlight.min, perc_to_step, relative[BACKLIGHT_MIN], 0, brt_steps_max);
+		setif(scr["backlight"]["max"], backlight.max, perc_to_step, relative[BACKLIGHT_MAX], 0, brt_steps_max);
 
 		setif(scr["brightness"]["mode"], int(brightness.mode));
-		setif(scr["brightness"]["val"], brightness.val, perc_to_step);
-		setif(scr["brightness"]["min"], brightness.min, perc_to_step);
-		setif(scr["brightness"]["max"], brightness.max, perc_to_step);
+		setif(scr["brightness"]["val"], brightness.val, perc_to_step, relative[BRT_PERC], 0, brt_steps_max);
+		setif(scr["brightness"]["min"], brightness.min, perc_to_step, relative[BRT_MIN], 0, brt_steps_max);
+		setif(scr["brightness"]["max"], brightness.max, perc_to_step, relative[BRT_MAX], 0, brt_steps_max);
 
 		setif(scr["temperature"]["mode"], int(temperature.mode));
-		setif(scr["temperature"]["val"], temperature.val);
-		setif(scr["temperature"]["min"], temperature.min);
-		setif(scr["temperature"]["max"], temperature.max);
+		setif(scr["temperature"]["val"], temperature.val, [](int x){return x;}, relative[TEMP_KELV], temp_k_min, temp_k_max);
+		setif(scr["temperature"]["min"], temperature.min, [](int x){return x;}, relative[TEMP_MIN], temp_k_min, temp_k_max);
+		setif(scr["temperature"]["max"], temperature.max, [](int x){return x;}, relative[TEMP_MAX], temp_k_min, temp_k_max);
 
 		using enum config::screen::mode;
 		if (config::valid_int(backlight.val))
