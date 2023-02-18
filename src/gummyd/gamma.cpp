@@ -30,6 +30,25 @@ gamma_state::gamma_state(display_server &dsp)
     screens_(dsp.scr_count())
 {}
 
+gamma_state::gamma_state(display_server &dsp, std::vector<config::screen> conf)
+:	dsp_(&dsp),
+    screens_(dsp.scr_count())
+{
+	for (size_t i = 0; i < conf.size(); ++i) {
+		using enum config::screen::mode;
+		using enum config::screen::model_id;
+		const auto &brt_model  = conf[i].models[size_t(BRIGHTNESS)];
+		const auto &temp_model = conf[i].models[size_t(TEMPERATURE)];
+		if (brt_model.mode == MANUAL) {
+			screens_[i].brightness = brt_model.val;
+		}
+		if (temp_model.mode == MANUAL) {
+			screens_[i].temperature = temp_model.val;
+		}
+	}
+
+}
+
 // Color ramp by Ingo Thies.
 // From Redshift: https://github.com/jonls/redshift/blob/master/README-colorramp
 std::tuple<double, double, double> kelvin_to_rgb(int val)

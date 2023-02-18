@@ -64,7 +64,7 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 		});
 	}
 
-	gamma_state gamma_state(dsp);
+	gamma_state gamma_state(dsp, conf.screens);
 
 	for (size_t idx = 0; idx < conf.screens.size(); ++idx) {
 
@@ -122,8 +122,8 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 
 	threads.emplace_back([&] {
 		while (true) {
-			gamma_state.refresh();
 			jthread_wait_until(std::chrono::seconds(10), stoken);
+			gamma_state.refresh();
 			if (stoken.stop_requested())
 				return;
 		}
