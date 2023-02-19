@@ -1,4 +1,6 @@
-﻿find_package(sdbus-c++ REQUIRED)
+﻿project(gummyd LANGUAGES CXX)
+
+find_package(sdbus-c++ REQUIRED)
 find_library(LIBUDEV "udev" REQUIRED)
 
 # file
@@ -17,11 +19,6 @@ add_library(channel INTERFACE channel.hpp)
 target_compile_features(channel INTERFACE cxx_std_20)
 target_link_libraries(channel INTERFACE -latomic)
 
-# udev
-find_library(LIBUDEV "udev" REQUIRED)
-add_library(udev INTERFACE udev.hpp)
-target_link_libraries(udev INTERFACE ${LIBUDEV})
-
 # time
 add_library(time INTERFACE time.hpp)
 
@@ -32,5 +29,15 @@ target_link_libraries(sdbus-util INTERFACE SDBusCpp::sdbus-c++)
 
 # easing
 add_library(easing INTERFACE easing.hpp)
+
+# udev
+find_library(LIBUDEV "udev" REQUIRED)
+add_library(udev INTERFACE udev.hpp)
+target_link_libraries(udev INTERFACE ${LIBUDEV})
+set(GUMMYD_UDEV_RULE "${CMAKE_CURRENT_SOURCE_DIR}/data/udev/99-gummy.rules")
+if(NOT UDEV_RULES_DIR)
+    set(UDEV_RULES_DIR /usr/lib/udev/rules.d)
+endif()
+install(FILES ${GUMMYD_UDEV_RULE} DESTINATION "${UDEV_RULES_DIR}")
 
 add_subdirectory(gummyd)
