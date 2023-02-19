@@ -80,7 +80,7 @@ int brt_target_als(int als_brt, int min, int max, int offset)
 	return std::clamp(als_brt + offset_step, min, max);
 }
 
-void brightness_client(channel<int> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
+void brightness_client(const channel<int> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
 {
 	int val = model.max;
 	int prev_brt = -1;
@@ -136,7 +136,7 @@ void als_server(sysfs::als &als, channel<double> &ch, struct config::als conf, s
 	}
 }
 
-void als_client(channel<double> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
+void als_client(const channel<double> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
 {
 	int val = model.max;
 	double prev_brt = -1;
@@ -221,7 +221,7 @@ time_target calc_time_target(bool step, time_data data, config::screen::model mo
 		return { data.in_range ? model.max : model.min, duration_ms };
 }
 
-void time_client(channel<time_data> &ch, config::screen::model model, std::function<void(int)> model_fn)
+void time_client(const channel<time_data> &ch, config::screen::model model, std::function<void(int)> model_fn)
 {
 	int cur = model.max;
 
