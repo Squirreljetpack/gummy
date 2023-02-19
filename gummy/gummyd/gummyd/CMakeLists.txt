@@ -1,7 +1,4 @@
-﻿project(gummyd LANGUAGES CXX)
-add_executable(${PROJECT_NAME})
-
-set(SOURCES
+﻿set(SOURCES
 	gamma.cpp
 	gamma.hpp
 	display.cpp
@@ -27,6 +24,7 @@ set(LIBS
 	easing
 )
 
+add_executable(${PROJECT_NAME})
 target_sources(${PROJECT_NAME} PRIVATE ${SOURCES})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBS})
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/gummy/")
@@ -38,9 +36,4 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 	$<$<CONFIG:Debug>:CMAKE_DEBUG>
 )
 
-if(NOT UDEV_RULES_DIR)
-	set(UDEV_RULES_DIR /usr/lib/udev/rules.d)
-endif()
-
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_LIBEXECDIR}")
-install(FILES data/99-gummy.rules DESTINATION "${UDEV_RULES_DIR}")
