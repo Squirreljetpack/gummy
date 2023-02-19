@@ -16,8 +16,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef DBUS_HPP
-#define DBUS_HPP
+#ifndef SDBUS_UTIL_HPP
+#define SDBUS_UTIL_HPP
 
 #include <sdbus-c++/IProxy.h>
 

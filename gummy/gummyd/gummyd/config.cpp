@@ -19,8 +19,8 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 
-#include "config.hpp"
-#include "file.hpp"
+#include <gummyd/config.hpp>
+#include <gummyd/file.hpp>
 
 using nlohmann::json;
 
