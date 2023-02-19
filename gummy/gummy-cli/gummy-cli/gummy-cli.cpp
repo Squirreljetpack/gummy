@@ -25,9 +25,9 @@
 #include <CLI/Formatter.hpp>
 #include <CLI/Config.hpp>
 
-#include "config.hpp"
-#include "utils.hpp"
-#include "file.hpp"
+#include <gummyd/config.hpp>
+#include <gummyd/utils.hpp>
+#include <gummyd/file.hpp>
 
 using namespace constants;
 

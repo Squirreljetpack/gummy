@@ -17,19 +17,17 @@
 */
 
 //#include <syslog.h>
-
 #include <nlohmann/json.hpp>
 
-#include "core.hpp"
-
-#include "dbus.hpp"
-#include "file.hpp"
-#include "utils.hpp"
-
-#include "config.hpp"
-#include "display.hpp"
-#include "gamma.hpp"
-#include "sysfs_devices.hpp"
+#include <gummyd/file.hpp>
+#include <gummyd/utils.hpp>
+#include <gummyd/sdbus-util.hpp>
+#include <gummyd/channel.hpp>
+#include <gummyd/core.hpp>
+#include <gummyd/config.hpp>
+#include <gummyd/display.hpp>
+#include <gummyd/gamma.hpp>
+#include <gummyd/sysfs_devices.hpp>
 
 using namespace fushko;
 

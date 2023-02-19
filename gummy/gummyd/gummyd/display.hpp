@@ -20,7 +20,7 @@
 #define DISPLAY_HPP
 
 #include <vector>
-#include "xcb.hpp"
+#include <gummyd/xcb.hpp>
 
 class display_server
 {

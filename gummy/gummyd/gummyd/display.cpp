@@ -16,7 +16,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "display.hpp"
+#include <gummyd/display.hpp>
 
 display_server::display_server()
 : xcb_conn_(),

@@ -19,9 +19,9 @@
 #include <filesystem>
 #include <libudev.h>
 
-#include "sysfs_devices.hpp"
-#include "config.hpp"
-#include "utils.hpp"
+#include <gummyd/utils.hpp>
+#include <gummyd/sysfs_devices.hpp>
+#include <gummyd/config.hpp>
 
 const struct {
 	struct {

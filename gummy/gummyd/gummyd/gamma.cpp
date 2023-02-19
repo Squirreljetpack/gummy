@@ -18,10 +18,10 @@
 
 #include <array>
 
-#include "gamma.hpp"
-#include "config.hpp"
-#include "utils.hpp"
-#include "display.hpp"
+#include <gummyd/utils.hpp>
+#include <gummyd/gamma.hpp>
+#include <gummyd/config.hpp>
+#include <gummyd/display.hpp>
 
 using namespace constants;
 

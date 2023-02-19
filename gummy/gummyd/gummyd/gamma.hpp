@@ -16,39 +16,29 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef SYSFS_DEVICES_HPP
-#define SYSFS_DEVICES_HPP
+#ifndef GAMMA_HPP
+#define GAMMA_HPP
 
-#include <vector>
-#include "sysfs.hpp"
+#include <gummyd/display.hpp>
+#include <gummyd/config.hpp>
 
-namespace sysfs {
+class gamma_state {
+	struct values {
+		int brightness = constants::brt_steps_max;
+		int temperature = 6500;
+	};
 
-class backlight {
-    udev_context  _udev;
-	sysfs::device _dev;
-	int _val;
-	int _max;
+	display_server *dsp_;
+	std::vector<values> screens_;
+
+	static values sanitize(values);
+	void set(size_t screen_idx, values);
 public:
-	backlight(std::string path);
-	int val() const;
-	int max() const;
-	int step() const;
-	void set_step(int);
+	gamma_state(display_server &dsp);
+	gamma_state(display_server &dsp, std::vector<config::screen> conf);
+	void set_brightness(size_t screen_idx, int val);
+	void set_temperature(size_t screen_idx, int val);
+	void refresh();
 };
 
-class als {
-    udev_context  _udev;
-	sysfs::device _dev;
-	std::string   _lux_filename;
-	double        _lux_scale;
-public:
-	als(std::string path);
-	double read_lux();
-};
-
-std::vector<backlight> get_backlights();
-std::vector<als>       get_als();
-}
-
-#endif // SYSFS_DEVICES_HPP
+#endif // GAMMA_HPP

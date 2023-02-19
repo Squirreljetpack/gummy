@@ -18,9 +18,10 @@
 
 #include <fmt/chrono.h>
 
-#include "core.hpp"
-#include "easing.hpp"
-#include "utils.hpp"
+#include <gummyd/time.hpp>
+#include <gummyd/easing.hpp>
+#include <gummyd/utils.hpp>
+#include <gummyd/core.hpp>
 
 using namespace fushko;
 

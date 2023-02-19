@@ -22,11 +22,10 @@
 #include <functional>
 #include <stop_token>
 
-#include "display.hpp"
-#include "channel.hpp"
-#include "sysfs_devices.hpp"
-#include "time.hpp"
-#include "config.hpp"
+#include <gummyd/channel.hpp>
+#include <gummyd/display.hpp>
+#include <gummyd/config.hpp>
+#include <gummyd/sysfs_devices.hpp>
 
 void brightness_server(display_server &dsp, size_t screen_idx, fushko::channel<int> &ch, struct config::screenshot conf, std::stop_token stoken);
 void brightness_client(const fushko::channel<int> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms);
