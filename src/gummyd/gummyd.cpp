@@ -70,7 +70,7 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 
 		if (conf.clients_for(config::screen::mode::SCREENSHOT, idx) > 0) {
 			brt_channels.emplace_back(-1);
-			threads.emplace_back(std::jthread(brightness_server, std::ref(dsp), idx, std::ref(brt_channels.back()), conf.screenshot, stoken));
+			threads.emplace_back(brightness_server, std::ref(dsp), idx, std::ref(brt_channels.back()), conf.screenshot, stoken);
 		}
 
 		for (size_t model_idx = 0; model_idx < conf.screens[idx].models.size(); ++model_idx) {
@@ -105,15 +105,15 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 				break;
 			}
 			case ALS: {
-				threads.emplace_back(std::jthread(als_client, std::ref(als_ch), model, fn, conf.als.adaptation_ms));
+				threads.emplace_back(als_client, std::ref(als_ch), model, fn, conf.als.adaptation_ms);
 				break;
 			}
 			case SCREENSHOT: {
-				threads.emplace_back(std::jthread(brightness_client, std::ref(brt_channels.back()), model, fn, conf.screenshot.adaptation_ms));
+				threads.emplace_back(brightness_client, std::ref(brt_channels.back()), model, fn, conf.screenshot.adaptation_ms);
 				break;
 			}
 			case TIME: {
-				threads.emplace_back(std::jthread(time_client, std::ref(time_ch), model, fn));
+				threads.emplace_back(time_client, std::ref(time_ch), model, fn);
 				break;
 			}
 			}
