@@ -95,10 +95,10 @@ config::screen::screen(json in)
 			return "error: more models than keys";
 		}();
 
-		models[i].mode = in[key]["mode"];
-		models[i].val  = in[key]["val"];
-		models[i].min  = in[key]["min"];
-		models[i].max  = in[key]["max"];
+		models[i].mode = config::screen::mode(in[key]["mode"].get<int>());
+		models[i].val  = in[key]["val"].get<int>();
+		models[i].min  = in[key]["min"].get<int>();
+		models[i].max  = in[key]["max"].get<int>();
 	}
 }
 
@@ -161,17 +161,17 @@ void config::from_json(json in)
 		screens.emplace_back(s);
 	}
 
-	time.start               = in["time"]["start"];
-	time.end                 = in["time"]["end"];
-	time.adaptation_minutes  = in["time"]["adaptation_minutes"];
+	time.start               = in["time"]["start"].get<std::string>();
+	time.end                 = in["time"]["end"].get<std::string>();
+	time.adaptation_minutes  = in["time"]["adaptation_minutes"].get<int>();
 
-	screenshot.scale         = in["screenshot"]["scale"];
-	screenshot.poll_ms       = in["screenshot"]["poll_ms"];
-	screenshot.adaptation_ms = in["screenshot"]["adaptation_ms"];
+	screenshot.scale         = in["screenshot"]["scale"].get<double>();
+	screenshot.poll_ms       = in["screenshot"]["poll_ms"].get<int>();
+	screenshot.adaptation_ms = in["screenshot"]["adaptation_ms"].get<int>();
 
-	als.scale                = in["als"]["scale"];
-	als.poll_ms              = in["als"]["poll_ms"];
-	als.adaptation_ms        = in["als"]["adaptation_ms"];
+	als.scale                = in["als"]["scale"].get<double>();
+	als.poll_ms              = in["als"]["poll_ms"].get<int>();
+	als.adaptation_ms        = in["als"]["adaptation_ms"].get<int>();
 }
 
 json config::to_json() const
