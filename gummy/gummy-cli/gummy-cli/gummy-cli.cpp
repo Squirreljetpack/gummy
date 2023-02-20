@@ -36,7 +36,7 @@ void start() {
 
 void stop() {
     if (libgummyd::daemon_stop()) {
-        std::puts("libgummyd stopped");;
+        std::puts("gummy stopped");;
     } else {
         std::puts("already stopped");
     }
@@ -191,7 +191,7 @@ std::string range_or_relative(const std::string &s, option_id opt_id, T min, T m
 
 int interface(int argc, char **argv)
 {
-    CLI::App app("Screen manager for X11.", "libgummyd");
+    CLI::App app("Screen manager for X11.", "gummy");
 
 	app.add_subcommand("start", "Start the background process.")->callback(start);
 	app.add_subcommand("stop", "Stop the background process.")->callback(stop);
@@ -286,7 +286,7 @@ int interface(int argc, char **argv)
 	}
 
     if (!libgummyd::daemon_is_running()) {
-        std::puts("libgummyd is not running.\nType: `libgummyd start`\n");
+        std::puts("gummy is not running.\nType: `gummy start`");
         std::exit(EXIT_SUCCESS);
     }
 
