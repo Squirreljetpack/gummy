@@ -29,14 +29,14 @@
 #include <gummyd/utils.hpp>
 
 void start() {
-    if (!gummy::api::daemon_start())
+    if (!libgummyd::daemon_start())
         std::puts("already started");
     std::exit(EXIT_SUCCESS);
 }
 
 void stop() {
-    if (gummy::api::daemon_stop()) {
-        std::puts("gummy stopped");;
+    if (libgummyd::daemon_stop()) {
+        std::puts("libgummyd stopped");;
     } else {
         std::puts("already stopped");
     }
@@ -44,7 +44,7 @@ void stop() {
 }
 
 void status() {
-    if (gummy::api::daemon_is_running()) {
+    if (libgummyd::daemon_is_running()) {
         std::puts("running");
     } else {
         std::puts("not running");
@@ -106,17 +106,17 @@ const std::array<std::array<std::string, 2>, option_count> options {{
 {"-s,--screen", "Index on which to apply screen-related settings. If omitted, any changes will be applied on all screens."},
 
 {"-B,--backlight-mode", "Backlight mode. 0 = manual, 1 = screenshot, 2 = ALS (if available), 3 = time range"},
-{"-b,--backlight-val", "Set backlight percentage."},
+{"-b,--backlight", "Set backlight brightness percentage."},
 {"--backlight-min", "Set minimum backlight (for non-manual modes)"},
 {"--backlight-max", "Set maximum backlight (for non-manual modes)"},
 
 {"-P,--brightness-mode", "Brightness mode. 0 = manual, 1 = screenshot, 2 = ALS (if available), 3 = time range"},
-{"-p,--brightness-val", "Set pixel brightness percentage."},
+{"-p,--brightness", "Set pixel brightness percentage."},
 {"--brightness-min", "Set minimum brightness (for non-manual modes)"},
 {"--brightness-max", "Set maximum brightness (for non-manual modes)"},
 
 {"-T,--temperature-mode", "Temperature mode. 0 = manual, 1 = screenshot, 2 = ALS (if available), 3 = time range"},
-{"-t,--temperature-val", "Set pixel temperature in kelvins."},
+{"-t,--temperature", "Set pixel temperature in kelvins."},
 {"--temperature-min", "Set minimum temperature (for non-manual modes)"},
 {"--temperature-max", "Set maximum temperature (for non-manual modes)"},
 
@@ -134,7 +134,7 @@ const std::array<std::array<std::string, 2>, option_count> options {{
 }};
 
 const std::function<int(int)> brightness_perc_to_step = [] (int val) {
-    const auto [min, max] = gummy::api::brightness_range();
+    const auto [min, max] = libgummyd::brightness_range();
 
 	if (val >= 0) {
         return remap(std::clamp(val, 0, 100), 0, 100, min, max);
@@ -145,7 +145,7 @@ const std::function<int(int)> brightness_perc_to_step = [] (int val) {
 
 template <class T>
 void setif(nlohmann::json &val, T new_val) {
-    if ((gummy::api::config_is_valid(new_val))) {
+    if ((libgummyd::config_is_valid(new_val))) {
 		val = new_val;
 	}
 }
@@ -153,7 +153,7 @@ void setif(nlohmann::json &val, T new_val) {
 template <class T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, int> = 0>
 void setif(nlohmann::json &val, T new_val, bool relative, T min, T max, std::function<T(T)> fn = [](T x){return x;}) {
 
-    if (!(gummy::api::config_is_valid(new_val))) {
+    if (!(libgummyd::config_is_valid(new_val))) {
 	    return;
     }
 
@@ -191,7 +191,7 @@ std::string range_or_relative(const std::string &s, option_id opt_id, T min, T m
 
 int interface(int argc, char **argv)
 {
-	CLI::App app("Screen manager for X11.", "gummy");
+    CLI::App app("Screen manager for X11.", "libgummyd");
 
 	app.add_subcommand("start", "Start the background process.")->callback(start);
 	app.add_subcommand("stop", "Stop the background process.")->callback(stop);
@@ -208,9 +208,9 @@ int interface(int argc, char **argv)
     constexpr std::string_view range_fmt   = "INT in [{} - {}]";
     constexpr std::string_view range_fmt_f = "FLOAT in [{} - {}]";
 
-    const std::pair<int, int> brt_range  = gummy::api::brightness_range();
-    const std::pair<int, int> temp_range = gummy::api::temperature_range();
-    const int invalid_val                = gummy::api::config_invalid_val();
+    const std::pair<int, int> brt_range  = libgummyd::brightness_range();
+    const std::pair<int, int> temp_range = libgummyd::temperature_range();
+    const int invalid_val                = libgummyd::config_invalid_val();
 
     const std::string cli_brt_range_str  = fmt::format(range_fmt, 0, 100);
     const std::string temp_range_str     = fmt::format(range_fmt, temp_range.first, temp_range.second);
@@ -285,15 +285,15 @@ int interface(int argc, char **argv)
 		return app.exit(e);
 	}
 
-    if (!gummy::api::daemon_is_running()) {
-        std::puts("gummy is not running.\nType: `gummy start`\n");
+    if (!libgummyd::daemon_is_running()) {
+        std::puts("libgummyd is not running.\nType: `libgummyd start`\n");
         std::exit(EXIT_SUCCESS);
     }
 
     LOG_("getting config...\n");
     nlohmann::json config_json = [&] {
         try {
-            return gummy::api::config_get_current();
+            return libgummyd::config_get_current();
         } catch (nlohmann::json::exception &e) {
             return nlohmann::json {{"error", e.what()}};
         }
@@ -329,11 +329,11 @@ int interface(int argc, char **argv)
         setif(scr["temperature"]["min"], models.temperature[2], relative_flags[TEMP_MIN], temp_range.first, temp_range.second);
         setif(scr["temperature"]["max"], models.temperature[3], relative_flags[TEMP_MAX], temp_range.first, temp_range.second);
 
-        if (gummy::api::config_is_valid(models.backlight[1]))
+        if (libgummyd::config_is_valid(models.backlight[1]))
             scr["backlight"]["mode"] = 0;
-        if (gummy::api::config_is_valid(models.brightness[1]))
+        if (libgummyd::config_is_valid(models.brightness[1]))
             scr["brightness"]["mode"] = 0;
-        if (gummy::api::config_is_valid(models.temperature[1]))
+        if (libgummyd::config_is_valid(models.temperature[1]))
             scr["temperature"]["mode"] = 0;
 	};
 
@@ -361,7 +361,7 @@ int interface(int argc, char **argv)
 	setif(config_json["als"]["adaptation_ms"], als.adaptation_ms);
 
     LOG_("writing to daemon...\n");
-    gummy::api::daemon_send(config_json.dump());
+    libgummyd::daemon_send(config_json.dump());
 
 	return EXIT_SUCCESS;
 }

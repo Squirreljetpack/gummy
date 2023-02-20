@@ -40,9 +40,13 @@ endif()
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/data/udev/99-gummy.rules" DESTINATION "${UDEV_RULES_DIR}")
 
 # API
-add_library(libgummyd STATIC gummyd/api.cpp gummyd/api.hpp)
+add_library(libgummyd STATIC)
+target_sources(libgummyd
+    PRIVATE gummyd/api.cpp
+    PUBLIC  gummyd/api.hpp
+)
 set_target_properties(libgummyd PROPERTIES PREFIX "")
-target_include_directories(libgummyd PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/gummyd")
+target_include_directories(libgummyd PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(libgummyd PRIVATE
     fmt::fmt
     nlohmann_json::nlohmann_json
