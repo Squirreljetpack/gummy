@@ -22,6 +22,7 @@
 #include <gummyd/easing.hpp>
 #include <gummyd/utils.hpp>
 #include <gummyd/core.hpp>
+#include <gummyd/constants.hpp>
 
 using namespace fushko;
 
@@ -37,7 +38,7 @@ int image_brightness(uint8_t *buf, size_t sz, int bytes_per_pixel = 4, int strid
 	return ((rgb[0] * 0.2126) + (rgb[1] * 0.7152) + (rgb[2] * 0.0722)) * stride / (sz / bytes_per_pixel);
 }
 
-void brightness_server(display_server &dsp, size_t screen_idx, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken)
+void gummy::brightness_server(display_server &dsp, size_t screen_idx, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken)
 {
 	int cur = constants::brt_steps_max;
 	int prev;
@@ -75,13 +76,7 @@ void brightness_server(display_server &dsp, size_t screen_idx, channel<int> &ch,
 	}
 }
 
-int brt_target_als(int als_brt, int min, int max, int offset)
-{
-	const int offset_step = offset * constants::brt_steps_max / max;
-	return std::clamp(als_brt + offset_step, min, max);
-}
-
-void brightness_client(const channel<int> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
+void gummy::brightness_client(const channel<int> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
 {
 	int val = model.max;
 	int prev_brt = -1;
@@ -108,7 +103,7 @@ void brightness_client(const channel<int> &ch, config::screen::model model, std:
 	}
 }
 
-void als_server(sysfs::als &als, channel<double> &ch, struct config::als conf, std::stop_token stoken)
+void gummy::als_server(const als &als, channel<double> &ch, struct config::als conf, std::stop_token stoken)
 {
 	double prev = -1;
 	double cur;
@@ -137,7 +132,7 @@ void als_server(sysfs::als &als, channel<double> &ch, struct config::als conf, s
 	}
 }
 
-void als_client(const channel<double> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
+void gummy::als_client(const channel<double> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
 {
 	int val = model.max;
 	double prev_brt = -1;
@@ -164,7 +159,7 @@ void als_client(const channel<double> &ch, config::screen::model model, std::fun
 	}
 }
 
-void time_server(channel<time_data> &ch, struct config::time conf, std::stop_token stoken)
+void gummy::time_server(channel<time_data> &ch, struct config::time conf, std::stop_token stoken)
 {
 	time_window tw(std::time(nullptr), conf.start, conf.end, -(conf.adaptation_minutes * 60));
 
@@ -200,7 +195,7 @@ void time_server(channel<time_data> &ch, struct config::time conf, std::stop_tok
 	}
 }
 
-time_target calc_time_target(bool step, time_data data, config::screen::model model)
+gummy::time_target calc_time_target(bool step, gummy::time_data data, gummy::config::screen::model model)
 {
 	const std::time_t delta_s = std::min(std::abs(data.time_since_last_event), data.adaptation_s);
 
@@ -222,7 +217,7 @@ time_target calc_time_target(bool step, time_data data, config::screen::model mo
 		return { data.in_range ? model.max : model.min, duration_ms };
 }
 
-void time_client(const channel<time_data> &ch, config::screen::model model, std::function<void(int)> model_fn)
+void gummy::time_client(const channel<time_data> &ch, config::screen::model model, std::function<void(int)> model_fn)
 {
 	int cur = model.max;
 

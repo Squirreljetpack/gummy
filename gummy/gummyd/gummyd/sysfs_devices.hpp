@@ -22,10 +22,10 @@
 #include <vector>
 #include <gummyd/udev.hpp>
 
-namespace sysfs {
+namespace gummy {
 
 class backlight {
-    udev_context  _udev;
+    sysfs::udev_context _udev;
 	sysfs::device _dev;
 	int _val;
 	int _max;
@@ -38,13 +38,13 @@ public:
 };
 
 class als {
-    udev_context  _udev;
+    sysfs::udev_context _udev;
 	sysfs::device _dev;
 	std::string   _lux_filename;
 	double        _lux_scale;
 public:
 	als(std::string path);
-	double read_lux();
+    double read_lux() const;
 };
 
 std::vector<backlight> get_backlights();

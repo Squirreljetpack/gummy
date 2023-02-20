@@ -20,22 +20,9 @@
 #define CONFIG_HPP
 
 #include <string>
-#include <limits>
 #include <nlohmann/json_fwd.hpp>
 
-namespace constants {
-extern const char* config_filename;
-extern const char* fifo_filepath;
-extern const char* flock_filepath;
-
-extern const int brt_steps_min;
-extern const int brt_steps_max;
-extern const int temp_steps_min;
-extern const int temp_steps_max;
-extern const int temp_k_min;
-extern const int temp_k_max;
-}
-
+namespace gummy {
 class config {
 
 	void defaults();
@@ -50,6 +37,24 @@ class config {
 	std::string filepath_;
 public:
 
+    struct time {
+        std::string start;
+        std::string end;
+        int adaptation_minutes;
+    } time;
+
+    struct screenshot {
+        double scale;
+        int poll_ms;
+        int adaptation_ms;
+    } screenshot;
+
+    struct als {
+        double scale;
+        int poll_ms;
+        int adaptation_ms;
+    } als;
+
 	struct screen {
 
 		enum class model_id {
@@ -59,8 +64,7 @@ public:
 		};
 
 		enum class mode {
-			UNINITIALIZED = std::numeric_limits<int>::min(),
-			MANUAL = 0,
+            MANUAL,
 			SCREENSHOT,
 			ALS,
 			TIME,
@@ -71,12 +75,6 @@ public:
 			int val;
 			int min;
 			int max;
-
-			model() :
-			mode(mode::UNINITIALIZED),
-			val(std::numeric_limits<int>::min()),
-			min(std::numeric_limits<int>::min()),
-			max(std::numeric_limits<int>::min()) {};
 		};
 
 		std::array<model, 3> models;
@@ -87,46 +85,11 @@ public:
 	};
 	std::vector<screen> screens;
 
-	struct time {
-		std::string start;
-		std::string end;
-		int adaptation_minutes;
-
-		time() :
-		start(""),
-		end(""),
-		adaptation_minutes(std::numeric_limits<int>::min()) {};
-	} time;
-
-	struct screenshot {
-		double scale;
-		int poll_ms;
-		int adaptation_ms;
-
-		screenshot() :
-		scale(std::numeric_limits<int>::min()),
-		poll_ms(std::numeric_limits<int>::min()),
-		adaptation_ms(std::numeric_limits<int>::min()) {};
-	} screenshot;
-
-	struct als {
-	    double scale;
-		int poll_ms;
-		int adaptation_ms;
-
-		als() :
-		scale(std::numeric_limits<int>::min()),
-		poll_ms(std::numeric_limits<int>::min()),
-		adaptation_ms(std::numeric_limits<int>::min()) {};
-	} als;
-
 	config(size_t scr_no);
 	config(nlohmann::json data, size_t scr_no);
 	size_t clients_for(config::screen::mode);
 	size_t clients_for(config::screen::mode, size_t screen_index);
-
-	static bool valid_num(double val);
-	static bool valid_num(int val);
 };
+}
 
 #endif // CONFIG_HPP

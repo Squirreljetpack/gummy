@@ -22,8 +22,9 @@
 #include <gummyd/gamma.hpp>
 #include <gummyd/config.hpp>
 #include <gummyd/display.hpp>
+#include <gummyd/constants.hpp>
 
-using namespace constants;
+using namespace gummy;
 
 gamma_state::gamma_state(display_server &dsp)
 :	dsp_(&dsp),
@@ -112,18 +113,18 @@ std::tuple<double, double, double> kelvin_to_rgb(int val)
 		{1.00000000, 1.00000000, 1.00000000},
 	}};
 
-	const double idx_lerp = remap_to_idx(val, temp_k_min, temp_k_max, ingo_thies_table.size());
+    const double idx_lerp = remap_to_idx(val, constants::temp_k_min, constants::temp_k_max, ingo_thies_table.size());
 	const size_t idx = std::floor(idx_lerp);
 	const double r = lerp(ingo_thies_table[idx][0], ingo_thies_table[idx + 1][0], mant(idx_lerp));
 	const double g = lerp(ingo_thies_table[idx][1], ingo_thies_table[idx + 1][1], mant(idx_lerp));
 	const double b = lerp(ingo_thies_table[idx][2], ingo_thies_table[idx + 1][2], mant(idx_lerp));
-	return std::make_tuple(r, g, b);
+    return {r, g, b};
 }
 
 double calc_brt_mult(int step, size_t ramp_sz)
 {
 	const int ramp_step = (UINT16_MAX + 1) / ramp_sz;
-	return (double(step) / brt_steps_max) * ramp_step;
+    return (double(step) / constants::brt_steps_max) * ramp_step;
 }
 
 /**
@@ -158,6 +159,7 @@ void gamma_state::set(size_t screen_index, values vals)
 }
 
 gamma_state::values gamma_state::sanitize(values vals) {
+    using namespace constants;
 	return {
 		std::clamp(vals.brightness, brt_steps_min, brt_steps_max),
 		std::clamp(vals.temperature, temp_k_min, temp_k_max)

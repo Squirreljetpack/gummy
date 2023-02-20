@@ -1,4 +1,7 @@
-﻿set(SOURCES
+﻿add_executable(${PROJECT_NAME})
+
+target_sources(${PROJECT_NAME}
+	PRIVATE
 	gamma.cpp
 	gamma.hpp
 	display.cpp
@@ -9,10 +12,11 @@
 	core.hpp
 	config.cpp
 	config.hpp
+    constants.hpp
 	gummyd.cpp
 )
 
-set(LIBS
+target_link_libraries(${PROJECT_NAME} PRIVATE
 	nlohmann_json::nlohmann_json
 	fmt::fmt
 	sdbus-util
@@ -24,9 +28,6 @@ set(LIBS
 	easing
 )
 
-add_executable(${PROJECT_NAME})
-target_sources(${PROJECT_NAME} PRIVATE ${SOURCES})
-target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBS})
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/gummy/")
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/gummy/gummyd")
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)

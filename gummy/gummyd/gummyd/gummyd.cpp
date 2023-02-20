@@ -28,8 +28,10 @@
 #include <gummyd/display.hpp>
 #include <gummyd/gamma.hpp>
 #include <gummyd/sysfs_devices.hpp>
+#include <gummyd/constants.hpp>
 
 using namespace fushko;
+using namespace gummy;
 
 void run(display_server &dsp, config conf, std::stop_token stoken)
 {
@@ -53,8 +55,8 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 		});
 	}
 
-	std::vector<sysfs::backlight> backlights = sysfs::get_backlights();
-	std::vector<sysfs::als> als = sysfs::get_als();
+    std::vector<backlight> backlights = get_backlights();
+    std::vector<als> als = get_als();
 
 	if (als_clients > 0 && !als.empty()) {
 		threads.emplace_back([&] {
@@ -83,7 +85,7 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 			using std::placeholders::_1;
 			case BACKLIGHT:
 			    if (idx < backlights.size())
-					fn = std::bind(&sysfs::backlight::set_step, &backlights[idx], _1);
+                    fn = std::bind(&backlight::set_step, &backlights[idx], _1);
 				break;
 			case BRIGHTNESS:
 				fn = std::bind(&gamma_state::set_brightness, &gamma_state, idx, _1);
@@ -95,25 +97,18 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 
 			switch (model.mode) {
 			using enum config::screen::mode;
-			case UNINITIALIZED: {
-				throw std::runtime_error("invalid model state");
-			}
-			case MANUAL: {
+            case MANUAL:
 				fn(model.val);
 				break;
-			}
-			case ALS: {
+            case ALS:
 				threads.emplace_back(als_client, std::ref(als_ch), model, fn, conf.als.adaptation_ms);
 				break;
-			}
-			case SCREENSHOT: {
+            case SCREENSHOT:
 				threads.emplace_back(brightness_client, std::ref(brt_channels.back()), model, fn, conf.screenshot.adaptation_ms);
 				break;
-			}
-			case TIME: {
+            case TIME:
 				threads.emplace_back(time_client, std::ref(time_ch), model, fn);
 				break;
-			}
 			}
 		}
 	}
@@ -142,7 +137,7 @@ int message_loop()
 
 	named_pipe pipe(constants::fifo_filepath);
 
-	const auto proxy = sdbus_on_system_sleep([] (sdbus::Signal &sig) {
+    const auto proxy = sdbus_util::on_system_sleep([] (sdbus::Signal &sig) {
 	    bool sleep;
 	    sig >> sleep;
 	    if (!sleep)
@@ -167,12 +162,12 @@ int message_loop()
 			try {
 				return nlohmann::json::parse(data);
 			} catch (nlohmann::json::exception &e) {
-				return nlohmann::json({"exception", e.what()});
+                return nlohmann::json {{"error", e.what()}};
 			}
 		}();
 
-		if (msg.contains("exception")) {
-			LOG_ERR_FMT_("{}\n", msg["exception"].get<std::string>());
+        if (msg.contains("error")) {
+            LOG_ERR_FMT_("{}\n", msg["error"].get<std::string>());
 			continue;
 		}
 

@@ -18,6 +18,8 @@
 
 #include <gummyd/display.hpp>
 
+using namespace gummy;
+
 display_server::display_server()
 : xcb_conn_(),
   randr_(),
