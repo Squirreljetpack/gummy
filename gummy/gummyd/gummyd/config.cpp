@@ -21,22 +21,14 @@
 
 #include <gummyd/config.hpp>
 #include <gummyd/file.hpp>
+#include <gummyd/constants.hpp>
 
 using nlohmann::json;
-
-namespace constants {
-const char *config_filename = "gummyconf.json";
-const char *fifo_filepath   = "/tmp/gummy.fifo";
-const char *flock_filepath  = "/tmp/gummy.lock";
-const int brt_steps_min  = 200;
-const int brt_steps_max  = 1000;
-const int temp_k_min     = 1000;
-const int temp_k_max     = 6500;
-}
+using namespace gummy;
 
 void config::defaults()
 {
-	filepath_ = xdg_config_filepath(constants::config_filename);
+    filepath_ = xdg_config_filepath(constants::config_filename);
 
 	time.start               = "06:00";
 	time.end                 = "16:00";
@@ -267,12 +259,4 @@ size_t config::clients_for(config::screen::mode mode, size_t screen_index)
 		if (model.mode == mode)
 			++c;
 	return c;
-}
-
-bool config::valid_num(double val) {
-	return val > std::numeric_limits<int>::min();
-}
-
-bool config::valid_num(int val) {
-	return val > std::numeric_limits<int>::min();
 }

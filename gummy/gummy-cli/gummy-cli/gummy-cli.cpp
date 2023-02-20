@@ -25,62 +25,30 @@
 #include <CLI/Formatter.hpp>
 #include <CLI/Config.hpp>
 
-#include <gummyd/config.hpp>
+#include <gummyd/api.hpp>
 #include <gummyd/utils.hpp>
-#include <gummyd/file.hpp>
 
-using namespace constants;
-
-void start()
-{
-	try {
-		lock_file flock(flock_filepath);
-	} catch (std::runtime_error &e) {
-		std::puts("already started");
-		std::exit(EXIT_SUCCESS);
-	}
-
-	std::puts("starting gummy");
-	const pid_t pid = fork();
-
-	if (pid < 0) {
-		std::puts("fork() failed");
-		std::exit(EXIT_FAILURE);
-	}
-
-	// parent
-	if (pid > 0) {
-		std::exit(EXIT_SUCCESS);
-	}
-
-	execl(CMAKE_INSTALL_DAEMON_PATH, "", nullptr);
-
-	std::puts("failed to start gummyd");
-	std::exit(EXIT_FAILURE);
+void start() {
+    if (!gummy::api::daemon_start())
+        std::puts("already started");
+    std::exit(EXIT_SUCCESS);
 }
 
-void stop()
-{
-	try {
-		lock_file flock(flock_filepath);
-		std::puts("already stopped");
-	} catch (std::runtime_error &e) {
-		file_write(constants::fifo_filepath, "stop");
-		std::puts("gummy stopped");
-	}
-
+void stop() {
+    if (gummy::api::daemon_stop()) {
+        std::puts("gummy stopped");;
+    } else {
+        std::puts("already stopped");
+    }
 	std::exit(EXIT_SUCCESS);
 }
 
-void status()
-{
-	try {
-		lock_file flock(flock_filepath);
-		std::puts("not running");
-	} catch (std::runtime_error &e) {
-		std::puts("running");
-	}
-
+void status() {
+    if (gummy::api::daemon_is_running()) {
+        std::puts("running");
+    } else {
+        std::puts("not running");
+    }
 	std::exit(EXIT_SUCCESS);
 }
 
@@ -154,7 +122,7 @@ const std::array<std::array<std::string, 2>, option_count> options {{
 
 {"-y,--time-start", "Starting time in 24h format, for example `06:00`."},
 {"-u,--time-end", "End time in 24h format, for example `16:30`."},
-{"-i,--time-adaptation-min", "Adaptation speed in minutes.\nFor example, if this is set to 30 minutes, time-based values start easing into their min. value 30 minutes before the end time."},
+{"-i,--time-adaptation-min", "Adaptation speed in minutes.\nFor example, if this is set to 30 minutes, time-based models start easing into their min. value 30 minutes before the end time."},
 
 {"--screenshot-scale", "Screenshot brightness multiplier. Useful for calibration."},
 {"--screenshot-poll-ms", "Time interval between each screenshot."},
@@ -165,17 +133,19 @@ const std::array<std::array<std::string, 2>, option_count> options {{
 {"--als-adaptation-ms", "Adaptation speed in milliseconds."},
 }};
 
-const std::function<int(int)> perc_to_step = [] (int val) {
+const std::function<int(int)> brightness_perc_to_step = [] (int val) {
+    const auto [min, max] = gummy::api::brightness_range();
+
 	if (val >= 0) {
-		return remap(std::clamp(val, 0, 100), 0, 100, 0, constants::brt_steps_max);
+        return remap(std::clamp(val, 0, 100), 0, 100, min, max);
 	} else {
-		return -remap(std::clamp(std::abs(val), 0, 100), 0, 100, 0, constants::brt_steps_max);
+        return -remap(std::clamp(std::abs(val), 0, 100), 0, 100, min, max);
 	}
 };
 
 template <class T>
 void setif(nlohmann::json &val, T new_val) {
-	if (config::valid_num(new_val)) {
+    if ((gummy::api::config_is_valid(new_val))) {
 		val = new_val;
 	}
 }
@@ -183,7 +153,7 @@ void setif(nlohmann::json &val, T new_val) {
 template <class T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, int> = 0>
 void setif(nlohmann::json &val, T new_val, bool relative, T min, T max, std::function<T(T)> fn = [](T x){return x;}) {
 
-    if (!(config::valid_num(new_val))) {
+    if (!(gummy::api::config_is_valid(new_val))) {
 	    return;
     }
 
@@ -235,51 +205,76 @@ int interface(int argc, char **argv)
 	int scr_idx = -1;
 	app.add_option(options[SCREEN_NUM][0], scr_idx, options[SCREEN_NUM][1])->check(CLI::Range(0, 99));
 
-	constexpr std::string_view range_fmt   = "INT in [{} - {}]";
-	constexpr std::string_view range_fmt_f = "FLOAT in [{} - {}]";
-	const std::string scale_range = fmt::format(range_fmt_f, 0.0, 10.0);
-	const std::string brt_range   = fmt::format(range_fmt, 0, 100);
-	const std::string temp_range  = fmt::format(range_fmt, temp_k_min, temp_k_max);
+    constexpr std::string_view range_fmt   = "INT in [{} - {}]";
+    constexpr std::string_view range_fmt_f = "FLOAT in [{} - {}]";
+
+    const std::pair<int, int> brt_range  = gummy::api::brightness_range();
+    const std::pair<int, int> temp_range = gummy::api::temperature_range();
+    const int invalid_val                = gummy::api::config_invalid_val();
+
+    const std::string cli_brt_range_str  = fmt::format(range_fmt, 0, 100);
+    const std::string temp_range_str     = fmt::format(range_fmt, temp_range.first, temp_range.second);
+    const std::string scale_range        = fmt::format(range_fmt_f, 0.0, 10.0);
+
+    struct {
+        std::array<int, 4> backlight;
+        std::array<int, 4> brightness;
+        std::array<int, 4> temperature;
+    } models;
+
+    models.backlight.fill(invalid_val);
+    models.brightness.fill(invalid_val);
+    models.temperature.fill(invalid_val);
 
 	const std::string grp_bl("Screen backlight settings");
-	config::screen::model backlight;
-	app.add_option(options[BACKLIGHT_MODE][0], backlight.mode, options[BACKLIGHT_MODE][1])->check(CLI::Range(0, 3))->group(grp_bl);
-	app.add_option(options[BACKLIGHT_PERC][0], backlight.val, options[BACKLIGHT_PERC][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BACKLIGHT_PERC, 0, 100); }, brt_range))->group(grp_bl);
-	app.add_option(options[BACKLIGHT_MIN][0], backlight.min, options[BACKLIGHT_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BACKLIGHT_MIN, 0, 100); }, brt_range))->group(grp_bl);
-	app.add_option(options[BACKLIGHT_MAX][0], backlight.max, options[BACKLIGHT_MAX][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BACKLIGHT_MAX, 0, 100); }, brt_range))->group(grp_bl);
+    app.add_option(options[BACKLIGHT_MODE][0], models.backlight[0], options[BACKLIGHT_MODE][1])->check(CLI::Range(0, 3))->group(grp_bl);
+    app.add_option(options[BACKLIGHT_PERC][0], models.backlight[1], options[BACKLIGHT_PERC][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BACKLIGHT_PERC, 0, 100); }, cli_brt_range_str))->group(grp_bl);
+    app.add_option(options[BACKLIGHT_MIN][0], models.backlight[2], options[BACKLIGHT_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BACKLIGHT_MIN, 0, 100); }, cli_brt_range_str))->group(grp_bl);
+    app.add_option(options[BACKLIGHT_MAX][0], models.backlight[3], options[BACKLIGHT_MAX][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BACKLIGHT_MAX, 0, 100); }, cli_brt_range_str))->group(grp_bl);
 
-	const std::string grp_brt("Screen brightness settings");
-	config::screen::model brightness;
-	app.add_option(options[BRT_MODE][0], brightness.mode, options[BRT_MODE][1])->check(CLI::Range(0, 3))->group(grp_brt);
-	app.add_option(options[BRT_PERC][0], brightness.val, options[BRT_PERC][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BRT_PERC, 0, 100); }, brt_range))->group(grp_brt);
-	app.add_option(options[BRT_MIN][0], brightness.min, options[BRT_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BRT_MIN, 0, 100); }, brt_range))->group(grp_brt);
-	app.add_option(options[BRT_MAX][0], brightness.max, options[BRT_MAX][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BRT_MAX, 0, 100); }, brt_range))->group(grp_brt);
+    const std::string grp_brt("Screen brightness settings");
+    app.add_option(options[BRT_MODE][0], models.brightness[0], options[BRT_MODE][1])->check(CLI::Range(0, 3))->group(grp_brt);
+    app.add_option(options[BRT_PERC][0], models.brightness[1], options[BRT_PERC][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BRT_PERC, 0, 100); }, cli_brt_range_str))->group(grp_brt);
+    app.add_option(options[BRT_MIN][0], models.brightness[2], options[BRT_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BRT_MIN, 0, 100); }, cli_brt_range_str))->group(grp_brt);
+    app.add_option(options[BRT_MAX][0], models.brightness[3], options[BRT_MAX][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, BRT_MAX, 0, 100); }, cli_brt_range_str))->group(grp_brt);
 
 	const std::string grp_temp("Screen temperature settings");
-	config::screen::model temperature;
-	app.add_option(options[TEMP_MODE][0], temperature.mode, options[TEMP_MODE][1])->check(CLI::Range(0, 3))->group(grp_temp);
-	app.add_option(options[TEMP_KELV][0], temperature.val, options[TEMP_KELV][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, TEMP_KELV, temp_k_min, temp_k_max); }, temp_range))->group(grp_temp);
-	app.add_option(options[TEMP_MIN][0], temperature.min, options[TEMP_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, TEMP_MIN, temp_k_min, temp_k_max); }, temp_range))->group(grp_temp);
-	app.add_option(options[TEMP_MAX][0], temperature.max, options[TEMP_MAX][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, TEMP_MAX, temp_k_min, temp_k_max); }, temp_range))->group(grp_temp);
+    app.add_option(options[TEMP_MODE][0], models.temperature[0], options[TEMP_MODE][1])->check(CLI::Range(0, 3))->group(grp_temp);
+    app.add_option(options[TEMP_KELV][0], models.temperature[1], options[TEMP_KELV][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, TEMP_KELV, temp_range.first, temp_range.second); }, temp_range_str))->group(grp_temp);
+    app.add_option(options[TEMP_MIN][0], models.temperature[2], options[TEMP_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, TEMP_MIN, temp_range.first, temp_range.second); }, temp_range_str))->group(grp_temp);
+    app.add_option(options[TEMP_MAX][0], models.temperature[3], options[TEMP_MAX][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, TEMP_MAX, temp_range.first, temp_range.second); }, temp_range_str))->group(grp_temp);
+
+    struct sensor {
+    double scale;
+    int    poll_ms;
+    int    adaptation_ms;
+    };
+    struct service {
+    std::string start = "";
+    std::string end = "";
+    int adaptation_minutes;
+    };
+
+    sensor  als { double(invalid_val), invalid_val, invalid_val };
+    sensor  screenshot { double(invalid_val), invalid_val, invalid_val };
+    service time {"", "", invalid_val};
 
 	const std::string grp_als("ALS mode settings");
-	struct config::als als;
 	app.add_option(options[ALS_SCALE][0], als.scale, options[ALS_SCALE][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, ALS_SCALE, 0., 10.); }, scale_range))->group(grp_als);
 	app.add_option(options[ALS_POLL_MS][0], als.poll_ms, options[ALS_POLL_MS][1])->check(CLI::Range(1, 10000 * 60 * 60))->group(grp_als);
 	app.add_option(options[ALS_ADAPTATION_MS][0], als.adaptation_ms, options[ALS_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_als);
 
-	const std::string grp_ss("Screenshot mode settings");
-	struct config::screenshot screenshot;
+    const std::string grp_ss("Screenshot mode settings");
 	app.add_option(options[SCREENSHOT_SCALE][0], screenshot.scale, options[SCREENSHOT_SCALE][1])->check(CLI::Validator([&] (const std::string &s) { return range_or_relative(s, SCREENSHOT_SCALE, 0., 10.); }, scale_range))->group(grp_ss);
 	app.add_option(options[SCREENSHOT_POLL_MS][0], screenshot.poll_ms, options[SCREENSHOT_POLL_MS][1])->check(CLI::Range(1, 10000))->group(grp_ss);
 	app.add_option(options[SCREENSHOT_ADAPTATION_MS][0], screenshot.adaptation_ms, options[SCREENSHOT_ADAPTATION_MS][1])->check(CLI::Range(1, 10000))->group(grp_ss);
 
 	const std::string grp_time("Time range mode settings");
-	struct config::time time;
 	app.add_option(options[TIME_START][0], time.start, options[TIME_START][1])->check(check_time_format)->group(grp_time);
 	app.add_option(options[TIME_END][0], time.end, options[TIME_END][1])->check(check_time_format)->group(grp_time);
 	app.add_option(options[TIME_ADAPTATION_MS][0], time.adaptation_minutes, options[TIME_ADAPTATION_MS][1])->check(CLI::Range(1, 60 * 12))->group(grp_time);
 
+    LOG_("parsing options...\n");
 	try {
 		if (argc == 1) {
 			app.parse("-h");
@@ -290,61 +285,59 @@ int interface(int argc, char **argv)
 		return app.exit(e);
 	}
 
-	try {
-		lock_file flock(flock_filepath);
-		std::puts("gummy is not running.\nType: `gummy start`\n");
-		std::exit(EXIT_SUCCESS);
-	} catch (std::runtime_error &e) {
-		LOG_("updating config...\n");
-	}
+    if (!gummy::api::daemon_is_running()) {
+        std::puts("gummy is not running.\nType: `gummy start`\n");
+        std::exit(EXIT_SUCCESS);
+    }
 
-	nlohmann::json config_json = [&] {
-		std::ifstream ifs(xdg_config_filepath(constants::config_filename));
-		nlohmann::json j;
-		try {
-			ifs >> j;
-		} catch (nlohmann::json::exception &e) {
-			return nlohmann::json({"exception", e.what()});
-		}
-		return j;
-	}();
+    LOG_("getting config...\n");
+    nlohmann::json config_json = [&] {
+        try {
+            return gummy::api::config_get_current();
+        } catch (nlohmann::json::exception &e) {
+            return nlohmann::json {{"error", e.what()}};
+        }
+    }();
 
-	if (config_json.contains("exception")) {
-		LOG_ERR_FMT_("{}\n", config_json["exception"].get<std::string>());
+    if (config_json.contains("error")) {
+        LOG_ERR_FMT_("error while retrieving config:\n{}\n", config_json["error"].get<std::string>());
 		return EXIT_FAILURE;
 	}
 
+    LOG_("updating config...\n");
 	const auto update_screen_conf = [&] (size_t idx) {
 
 		if (idx > config_json["screens"].size() - 1)
 			return;
 
-		auto &scr = config_json["screens"][idx];
+        LOG_FMT_("updating screen {}...\n", idx);
 
-		setif(scr["backlight"]["mode"], int(backlight.mode));
-		setif(scr["backlight"]["val"], backlight.val, relative_flags[BACKLIGHT_PERC], 0, brt_steps_max, perc_to_step);
-		setif(scr["backlight"]["min"], backlight.min, relative_flags[BACKLIGHT_MIN], 0, brt_steps_max, perc_to_step);
-		setif(scr["backlight"]["max"], backlight.max, relative_flags[BACKLIGHT_MAX], 0, brt_steps_max, perc_to_step);
+        auto &scr = config_json["screens"][idx];
 
-		setif(scr["brightness"]["mode"], int(brightness.mode));
-		setif(scr["brightness"]["val"], brightness.val, relative_flags[BRT_PERC], 0, brt_steps_max, perc_to_step);
-		setif(scr["brightness"]["min"], brightness.min, relative_flags[BRT_MIN], 0, brt_steps_max, perc_to_step);
-		setif(scr["brightness"]["max"], brightness.max, relative_flags[BRT_MAX], 0, brt_steps_max, perc_to_step);
+        setif(scr["backlight"]["mode"], models.backlight[0]);
+        setif(scr["backlight"]["val"], models.backlight[1], relative_flags[BACKLIGHT_PERC], brt_range.first, brt_range.second, brightness_perc_to_step);
+        setif(scr["backlight"]["min"], models.backlight[2], relative_flags[BACKLIGHT_MIN], brt_range.first, brt_range.second, brightness_perc_to_step);
+        setif(scr["backlight"]["max"], models.backlight[3], relative_flags[BACKLIGHT_MAX], brt_range.first, brt_range.second, brightness_perc_to_step);
 
-		setif(scr["temperature"]["mode"], int(temperature.mode));
-		setif(scr["temperature"]["val"], temperature.val, relative_flags[TEMP_KELV], temp_k_min, temp_k_max);
-		setif(scr["temperature"]["min"], temperature.min, relative_flags[TEMP_MIN], temp_k_min, temp_k_max);
-		setif(scr["temperature"]["max"], temperature.max, relative_flags[TEMP_MAX], temp_k_min, temp_k_max);
+        setif(scr["brightness"]["mode"], models.brightness[0]);
+        setif(scr["brightness"]["val"], models.brightness[1], relative_flags[BRT_PERC], brt_range.first, brt_range.second, brightness_perc_to_step);
+        setif(scr["brightness"]["min"], models.brightness[2], relative_flags[BRT_MIN], brt_range.first, brt_range.second, brightness_perc_to_step);
+        setif(scr["brightness"]["max"], models.brightness[3], relative_flags[BRT_MAX], brt_range.first, brt_range.second, brightness_perc_to_step);
 
-		using enum config::screen::mode;
-		if (config::valid_num(backlight.val))
-			scr["backlight"]["mode"] = MANUAL;
-		if (config::valid_num(brightness.val))
-			scr["brightness"]["mode"] = MANUAL;
-		if (config::valid_num(temperature.val))
-			scr["temperature"]["mode"] = MANUAL;
+        setif(scr["temperature"]["mode"], models.temperature[0]);
+        setif(scr["temperature"]["val"], models.temperature[1], relative_flags[TEMP_KELV], temp_range.first, temp_range.second);
+        setif(scr["temperature"]["min"], models.temperature[2], relative_flags[TEMP_MIN], temp_range.first, temp_range.second);
+        setif(scr["temperature"]["max"], models.temperature[3], relative_flags[TEMP_MAX], temp_range.first, temp_range.second);
+
+        if (gummy::api::config_is_valid(models.backlight[1]))
+            scr["backlight"]["mode"] = 0;
+        if (gummy::api::config_is_valid(models.brightness[1]))
+            scr["brightness"]["mode"] = 0;
+        if (gummy::api::config_is_valid(models.temperature[1]))
+            scr["temperature"]["mode"] = 0;
 	};
 
+    LOG_("updating screens\n");
 	if (scr_idx > -1) {
 		update_screen_conf(scr_idx);
 	} else {
@@ -352,25 +345,27 @@ int interface(int argc, char **argv)
 			update_screen_conf(i);
 	}
 
+    LOG_("updating time...\n");
 	setif(config_json["time"]["start"], time.start);
 	setif(config_json["time"]["end"], time.end);
 	setif(config_json["time"]["adaptation_minutes"], time.adaptation_minutes);
 
+    LOG_("updating screenshot...\n");
 	setif(config_json["screenshot"]["scale"], screenshot.scale, relative_flags[SCREENSHOT_SCALE], 0., 10.);
 	setif(config_json["screenshot"]["poll_ms"], screenshot.poll_ms);
 	setif(config_json["screenshot"]["adaptation_ms"], screenshot.adaptation_ms);
 
+    LOG_("updating als...\n");
 	setif(config_json["als"]["scale"], als.scale, relative_flags[ALS_SCALE], 0., 10.);
 	setif(config_json["als"]["poll_ms"], als.poll_ms);
 	setif(config_json["als"]["adaptation_ms"], als.adaptation_ms);
 
-	LOG_("writing...\n");
-	file_write(constants::fifo_filepath, config_json.dump());
+    LOG_("writing to daemon...\n");
+    gummy::api::daemon_send(config_json.dump());
 
 	return EXIT_SUCCESS;
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
 	return interface(argc, argv);
 }

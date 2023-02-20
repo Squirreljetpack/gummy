@@ -21,7 +21,10 @@
 
 #include <sdbus-c++/IProxy.h>
 
-inline std::unique_ptr<sdbus::IProxy> dbus_register_signal_handler(
+namespace gummy {
+namespace sdbus_util {
+
+inline std::unique_ptr<sdbus::IProxy> register_signal_handler(
     std::string service,
     std::string obj_path,
     std::string interface,
@@ -33,13 +36,15 @@ inline std::unique_ptr<sdbus::IProxy> dbus_register_signal_handler(
 	return proxy;
 }
 
-inline std::unique_ptr<sdbus::IProxy> sdbus_on_system_sleep(std::function<void(sdbus::Signal &signal)> fn) {
-	return dbus_register_signal_handler(
+inline std::unique_ptr<sdbus::IProxy> on_system_sleep(std::function<void(sdbus::Signal &signal)> fn) {
+    return sdbus_util::register_signal_handler(
 	        "org.freedesktop.login1",
 	        "/org/freedesktop/login1",
 	        "org.freedesktop.login1.Manager",
 	        "PrepareForSleep",
 	        fn);
+}
+}
 }
 
 #endif // DBUS_HPP

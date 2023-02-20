@@ -22,6 +22,9 @@
 #include <gummyd/utils.hpp>
 #include <gummyd/sysfs_devices.hpp>
 #include <gummyd/config.hpp>
+#include <gummyd/constants.hpp>
+
+using namespace gummy;
 
 const struct {
 	struct {
@@ -38,30 +41,30 @@ const struct {
 		    "in_illuminance_raw"
 		};
 	} als;
-} config;
+} conf;
 
-std::vector<sysfs::backlight> sysfs::get_backlights()
+std::vector<backlight> gummy::get_backlights()
 {
 	using namespace std::filesystem;
-	std::vector<sysfs::backlight> vec;
+    std::vector<backlight> vec;
 
-	if (exists(config.backlight.path)) {
-		for (const auto &s : directory_iterator(config.backlight.path))
+    if (exists(conf.backlight.path)) {
+        for (const auto &s : directory_iterator(conf.backlight.path))
 			vec.emplace_back(s.path());
 	}
 
 	return vec;
 }
 
-std::vector<sysfs::als> sysfs::get_als()
+std::vector<als> gummy::get_als()
 {
 	using namespace std::filesystem;
-	std::vector<sysfs::als> vec;
+    std::vector<als> vec;
 
-	if (exists(config.als.path)) {
-		for (const auto &s : directory_iterator(config.als.path)) {
+    if (exists(conf.als.path)) {
+        for (const auto &s : directory_iterator(conf.als.path)) {
 			const auto str = s.path().stem().string();
-			if (str.find(config.als.name) != std::string::npos)
+            if (str.find(conf.als.name) != std::string::npos)
 				vec.emplace_back(s.path());
 		}
 	}
@@ -69,40 +72,40 @@ std::vector<sysfs::als> sysfs::get_als()
 	return vec;
 }
 
-sysfs::backlight::backlight(std::string path)
+backlight::backlight(std::string path)
     : _dev(_udev, path),
-      _val(std::stoi(_dev.get(config.backlight.brt))),
-      _max(std::stoi(_dev.get(config.backlight.max_brt)))
+      _val(std::stoi(_dev.get(conf.backlight.brt))),
+      _max(std::stoi(_dev.get(conf.backlight.max_brt)))
 {
 }
 
-void sysfs::backlight::set_step(int step)
+void backlight::set_step(int step)
 {
 	_val = remap(step, 0, constants::brt_steps_max, 0, _max);
 
-	_dev.set(config.backlight.brt, std::to_string(_val).c_str());
+    _dev.set(conf.backlight.brt, std::to_string(_val).c_str());
 }
 
-int sysfs::backlight::val() const
+int backlight::val() const
 {
 	return _val;
 }
 
-int sysfs::backlight::step() const
+int backlight::step() const
 {
 	return remap(_val, 0, _max, 0, constants::brt_steps_max);
 }
 
-int sysfs::backlight::max() const
+int backlight::max() const
 {
 	return _max;
 }
 
-sysfs::als::als(std::string path)
+als::als(std::string path)
     : _dev(_udev, path),
 	  _lux_scale(1.0)
 {
-	for (const auto &fname : config.als.lux_filenames) {
+    for (const auto &fname : conf.als.lux_filenames) {
 		if (!_dev.get(fname).empty()) {
 			_lux_filename = fname;
 			break;
@@ -114,13 +117,13 @@ sysfs::als::als(std::string path)
 	}
 
 	_lux_scale = [this] {
-		const std::string scale = _dev.get(config.als.lux_scale);
+        const std::string scale = _dev.get(conf.als.lux_scale);
 		return scale.empty() ? 1.0 : std::stod(scale);
 	}();
 }
 
-double sysfs::als::read_lux()
+double als::read_lux() const
 {
-	sysfs::device dev(_udev, _dev.path());
+    const sysfs::device dev(_udev, _dev.path());
 	return std::stod(dev.get(_lux_filename)) * _lux_scale;
 }

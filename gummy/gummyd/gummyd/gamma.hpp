@@ -21,10 +21,12 @@
 
 #include <gummyd/display.hpp>
 #include <gummyd/config.hpp>
+#include <gummyd/constants.hpp>
 
+namespace gummy {
 class gamma_state {
 	struct values {
-		int brightness = constants::brt_steps_max;
+        int brightness = gummy::constants::brt_steps_max;
 		int temperature = 6500;
 	};
 
@@ -35,10 +37,11 @@ class gamma_state {
 	void set(size_t screen_idx, values);
 public:
 	gamma_state(display_server &dsp);
-	gamma_state(display_server &dsp, std::vector<config::screen> conf);
+    gamma_state(display_server &dsp, std::vector<gummy::config::screen> conf);
 	void set_brightness(size_t screen_idx, int val);
 	void set_temperature(size_t screen_idx, int val);
 	void refresh();
 };
+}
 
 #endif // GAMMA_HPP

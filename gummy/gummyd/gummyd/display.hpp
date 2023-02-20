@@ -22,6 +22,7 @@
 #include <vector>
 #include <gummyd/xcb.hpp>
 
+namespace gummy {
 class display_server
 {
     xcb::connection xcb_conn_;
@@ -36,5 +37,6 @@ public:
 	size_t  ramp_size(int scr_idx) const;
 	size_t  scr_count() const;
 };
+}
 
 #endif // EASING_HPP
