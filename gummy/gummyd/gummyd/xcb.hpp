@@ -19,20 +19,13 @@
 #ifndef XCB_HPP
 #define XCB_HPP
 
-#include <stdexcept>
-#include <vector>
-#include <tuple>
-#include <memory>
-
 #include <xcb/xcb.h>
 #include <xcb/randr.h>
 #include <xcb/shm.h>
 #include <xcb/xcb_image.h>
-
 #include <sys/ipc.h>
 #include <sys/shm.h>
-
-#include "utils.hpp"
+#include <gummyd/utils.hpp>
 
 namespace xcb {
 

@@ -27,6 +27,7 @@
 
 #include <gummyd/api.hpp>
 #include <gummyd/utils.hpp>
+#include <gummyd/api.cpp>
 
 void start() {
     if (!libgummyd::daemon_start())

@@ -21,7 +21,6 @@
 
 #include <gummyd/utils.hpp>
 #include <gummyd/sysfs_devices.hpp>
-#include <gummyd/config.hpp>
 #include <gummyd/constants.hpp>
 
 using namespace gummy;

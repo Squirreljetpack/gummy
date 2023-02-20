@@ -22,8 +22,7 @@
 #include <functional>
 #include <chrono>
 #include <thread>
-
-#include "utils.hpp"
+#include <gummyd/utils.hpp>
 
 namespace easing {
 

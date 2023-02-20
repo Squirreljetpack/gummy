@@ -12,6 +12,7 @@ target_sources(${PROJECT_NAME}
 	core.hpp
 	config.cpp
 	config.hpp
+    utils.hpp
     constants.hpp
 	gummyd.cpp
 )

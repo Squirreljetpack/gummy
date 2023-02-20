@@ -20,7 +20,6 @@
 #define API_HPP
 
 #include <nlohmann/json_fwd.hpp>
-#include <string_view>
 
 namespace libgummyd {
     bool daemon_start();
