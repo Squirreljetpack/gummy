@@ -71,27 +71,27 @@ config::screen::screen()
 
 config::screen::screen(json in)
 {
-	using enum config::screen::model_id;
-
 	for (size_t i = 0; i < models.size(); ++i) {
-
-		const std::string key = [i] {
-			switch (model_id(i)) {
-			case BACKLIGHT:
-				return "backlight";
-			case BRIGHTNESS:
-				return "brightness";
-			case TEMPERATURE:
-				return "temperature";
-			}
-			return "error: more models than keys";
-		}();
-
-		models[i].mode = config::screen::mode(in[key]["mode"].get<int>());
+        const std::string key = model_name(model_id(i));
+        models[i].id   = model_id(i);
+        models[i].mode = mode(in[key]["mode"].get<int>());
 		models[i].val  = in[key]["val"].get<int>();
 		models[i].min  = in[key]["min"].get<int>();
 		models[i].max  = in[key]["max"].get<int>();
 	}
+}
+
+std::string config::screen::model_name(model_id id) {
+    using enum config::screen::model_id;
+    switch (id) {
+    case BACKLIGHT:
+        return "backlight";
+    case BRIGHTNESS:
+        return "brightness";
+    case TEMPERATURE:
+        return "temperature";
+    }
+    return "error: more models than keys";
 }
 
 json config::screen::to_json() const
@@ -101,15 +101,15 @@ json config::screen::to_json() const
 	const auto &brightness  = models[size_t(BRIGHTNESS)];
 	const auto &temperature = models[size_t(TEMPERATURE)];
 
-	return {
-		{"backlight", {
+    return {
+        {"backlight", {
 				{"mode", backlight.mode},
 				{"val", backlight.val},
 				{"min", backlight.min},
 				{"max", backlight.max},
 		}},
 
-		{"brightness", {
+        {"brightness", {
 				{"mode", brightness.mode},
 				{"val", brightness.val},
 				{"min", brightness.min},

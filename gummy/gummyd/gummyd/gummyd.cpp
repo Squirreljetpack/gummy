@@ -70,53 +70,105 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 
 		if (conf.clients_for(config::screen::mode::SCREENSHOT, idx) > 0) {
 			brt_channels.emplace_back(-1);
-			threads.emplace_back(brightness_server, std::ref(dsp), idx, std::ref(brt_channels.back()), conf.screenshot, stoken);
+            threads.emplace_back(screenlight_server, std::ref(dsp), idx, std::ref(brt_channels.back()), conf.screenshot, stoken);
 		}
 
-		for (size_t model_idx = 0; model_idx < conf.screens[idx].models.size(); ++model_idx) {
+        const std::string xdg_state_dir = xdg_state_filepath(fmt::format("gummyd/screen-{}", idx));
+
+        for (size_t model_idx = 0; model_idx < conf.screens[idx].models.size(); ++model_idx) {
 
 			const auto &model = conf.screens[idx].models[model_idx];
+            using enum config::screen::model_id;
+            using enum config::screen::mode;
+            using std::placeholders::_1;
 
 			// dummy function
 			std::function<void(int)> fn = [] ([[maybe_unused]] int val) { };
 
 			switch (config::screen::model_id(model_idx)) {
-			using enum config::screen::model_id;
-			using std::placeholders::_1;
 			case BACKLIGHT:
 			    if (idx < backlights.size())
                     fn = std::bind(&backlight::set_step, &backlights[idx], _1);
 				break;
 			case BRIGHTNESS:
-				fn = std::bind(&gamma_state::set_brightness, &gamma_state, idx, _1);
+                fn = std::bind(&gamma_state::set_brightness, &gamma_state, idx, _1);
 				break;
 			case TEMPERATURE:
-				fn = std::bind(&gamma_state::set_temperature, &gamma_state, idx, _1);
+                fn = std::bind(&gamma_state::set_temperature, &gamma_state, idx, _1);
 				break;
-			}
+            }
 
-			switch (model.mode) {
-			using enum config::screen::mode;
+            // if two threads are modifying two different gamma values,
+            // they must both know beforehand the respective gamma values,
+            // in order to avoid screen flickering
+            const int val = [&] {
+                if (model.mode == MANUAL)
+                    return model.val;
+
+                try {
+                    const std::string filepath = fmt::format("{}/{}", xdg_state_dir, config::screen::model_name(model.id));
+                    return std::stoi(file_read(filepath));
+                } catch (std::exception &e) {
+                    return model.max;
+                }
+            }();
+
+            fn(val);
+        }
+
+        for (size_t model_idx = 0; model_idx < conf.screens[idx].models.size(); ++model_idx) {
+
+            const auto &model = conf.screens[idx].models[model_idx];
+
+            using enum config::screen::model_id;
+            using enum config::screen::mode;
+            using std::placeholders::_1;
+
+            const auto model_name = config::screen::model_name(config::screen::model_id(model_idx));
+
+            // dummy function
+            std::function<void(int)> fn = [] ([[maybe_unused]] int val) { };
+
+            switch (config::screen::model_id(model_idx)) {
+
+            case BACKLIGHT:
+                if (idx < backlights.size())
+                    fn = std::bind(&backlight::set_step, &backlights[idx], _1);
+                break;
+            case BRIGHTNESS:
+                fn = std::bind(&gamma_state::apply_brightness, &gamma_state, idx, _1);
+                break;
+            case TEMPERATURE:
+                fn = std::bind(&gamma_state::apply_temperature, &gamma_state, idx, _1);
+                break;
+            }
+
+            switch (model.mode) {
             case MANUAL:
-				fn(model.val);
-				break;
+                LOG_FMT_("{} setting manual value: {}\n", model_name, model.val);
+                fn(model.val);
+                break;
             case ALS:
-				threads.emplace_back(als_client, std::ref(als_ch), model, fn, conf.als.adaptation_ms);
-				break;
+                LOG_FMT_("{} starting als_client...\n", model_name);
+                threads.emplace_back(als_client, std::ref(als_ch), idx, model, fn, conf.als.adaptation_ms);
+                break;
             case SCREENSHOT:
-				threads.emplace_back(brightness_client, std::ref(brt_channels.back()), model, fn, conf.screenshot.adaptation_ms);
-				break;
+                LOG_FMT_("{} starting screenlight_client...\n", model_name);
+                threads.emplace_back(screenlight_client, std::ref(brt_channels.back()), idx, model, fn, conf.screenshot.adaptation_ms);
+                break;
             case TIME:
-				threads.emplace_back(time_client, std::ref(time_ch), model, fn);
-				break;
-			}
-		}
+                LOG_FMT_("{} starting time_client...\n", model_name);
+                threads.emplace_back(time_client, std::ref(time_ch), idx, model, fn);
+                break;
+            }
+        }
 	}
 
 	threads.emplace_back([&] {
 		while (true) {
-			jthread_wait_until(std::chrono::seconds(10), stoken);
-			gamma_state.refresh();
+            jthread_wait_until(std::chrono::seconds(10), stoken);
+            LOG_("refreshing gamma...\n");
+            gamma_state.apply_to_all_screens();
 			if (stoken.stop_requested())
 				return;
 		}
@@ -136,6 +188,9 @@ int message_loop()
 	config conf(dsp.scr_count());
 
 	named_pipe pipe(constants::fifo_filepath);
+
+    std::filesystem::remove_all(xdg_state_filepath("gummyd/"));
+    std::filesystem::create_directories(xdg_state_filepath("gummyd/"));
 
     const auto proxy = sdbus_util::on_system_sleep([] (sdbus::Signal &sig) {
 	    bool sleep;

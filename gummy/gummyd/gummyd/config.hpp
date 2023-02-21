@@ -71,6 +71,7 @@ public:
 		};
 
 		struct model {
+            model_id id;
 			screen::mode mode;
 			int val;
 			int min;
@@ -78,6 +79,7 @@ public:
 		};
 
 		std::array<model, 3> models;
+        static std::string model_name(model_id);
 
 		screen();
 		screen(nlohmann::json data);
