@@ -24,7 +24,7 @@
 #include <gummyd/constants.hpp>
 
 using nlohmann::json;
-using namespace gummy;
+using namespace gummyd;
 
 void config::defaults()
 {

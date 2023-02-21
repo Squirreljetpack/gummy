@@ -24,6 +24,7 @@
 #include <thread>
 #include <gummyd/utils.hpp>
 
+namespace gummyd {
 namespace easing {
 
 // Easing functions adapted from:
@@ -84,6 +85,7 @@ inline int animate(int start, int end, int duration_ms, std::function<double(dou
 	return cur;
 }
 
+}
 }
 
 #endif // EASING_HPP

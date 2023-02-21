@@ -22,7 +22,7 @@
 
 #include <atomic>
 
-namespace fushko {
+namespace gummyd {
 
 template <class T>
 class channel {

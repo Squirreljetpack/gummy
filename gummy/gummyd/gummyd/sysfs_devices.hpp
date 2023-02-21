@@ -22,7 +22,7 @@
 #include <vector>
 #include <gummyd/udev.hpp>
 
-namespace gummy {
+namespace gummyd {
 
 class backlight {
     sysfs::udev_context _udev;

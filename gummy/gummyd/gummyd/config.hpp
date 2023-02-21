@@ -22,7 +22,7 @@
 #include <string>
 #include <nlohmann/json_fwd.hpp>
 
-namespace gummy {
+namespace gummyd {
 class config {
 
 	void defaults();

@@ -29,6 +29,8 @@
 #include <sys/stat.h>
 #include <fmt/core.h>
 
+namespace gummyd {
+
 class named_pipe {
 	int fd_;
 	std::string filepath_;
@@ -131,6 +133,8 @@ inline std::string xdg_state_filepath(std::string filename) {
     }
 
     throw std::runtime_error("HOME env not found!");
+}
+
 }
 
 #endif // FILE_HPP

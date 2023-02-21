@@ -27,6 +27,7 @@
 #include <sys/shm.h>
 #include <gummyd/utils.hpp>
 
+namespace gummyd {
 namespace xcb {
 
 inline void throw_if(xcb_generic_error_t *err, std::string err_str) {
@@ -226,6 +227,7 @@ public:
 	}
 };
 
+}
 }
 
 #endif // XCB_HPP

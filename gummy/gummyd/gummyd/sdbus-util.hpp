@@ -21,7 +21,7 @@
 
 #include <sdbus-c++/IProxy.h>
 
-namespace gummy {
+namespace gummyd {
 namespace sdbus_util {
 
 inline std::unique_ptr<sdbus::IProxy> register_signal_handler(

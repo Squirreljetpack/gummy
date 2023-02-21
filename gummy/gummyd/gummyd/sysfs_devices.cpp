@@ -23,7 +23,7 @@
 #include <gummyd/sysfs_devices.hpp>
 #include <gummyd/constants.hpp>
 
-using namespace gummy;
+using namespace gummyd;
 
 const struct {
 	struct {
@@ -42,7 +42,7 @@ const struct {
 	} als;
 } conf;
 
-std::vector<backlight> gummy::get_backlights()
+std::vector<backlight> gummyd::get_backlights()
 {
 	using namespace std::filesystem;
     std::vector<backlight> vec;
@@ -55,7 +55,7 @@ std::vector<backlight> gummy::get_backlights()
 	return vec;
 }
 
-std::vector<als> gummy::get_als()
+std::vector<als> gummyd::get_als()
 {
 	using namespace std::filesystem;
     std::vector<als> vec;

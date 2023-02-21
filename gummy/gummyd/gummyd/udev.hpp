@@ -21,7 +21,9 @@
 
 #include <string>
 #include <libudev.h>
+#include <systemd/sd-device.h>
 
+namespace gummyd {
 namespace sysfs
 {
 
@@ -66,5 +68,6 @@ public:
 };
 
 };
+}
 
 #endif // SYSFS_HPP

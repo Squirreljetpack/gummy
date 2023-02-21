@@ -19,7 +19,7 @@
 #ifndef CONSTANTS_HPP
 #define CONSTANTS_HPP
 
-namespace gummy {
+namespace gummyd {
 namespace constants {
 constexpr const char *flock_filepath  = "/tmp/gummy.lock";
 constexpr const char *fifo_filepath   = "/tmp/gummy.fifo";
