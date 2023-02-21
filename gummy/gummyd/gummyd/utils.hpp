@@ -27,6 +27,7 @@
 #include <fmt/core.h>
 #include <fmt/chrono.h>
 
+namespace gummyd {
 // scale value in a [0, 1] range
 inline double invlerp(double val, double min, double max)
 {
@@ -81,6 +82,7 @@ struct c_deleter {
 template <class T>
 using c_unique_ptr = std::unique_ptr<T, c_deleter<T>>;
 //using c_unique_ptr = std::unique_ptr<T, deleter<T, std::free>>;
+}
 
 #ifdef CMAKE_DEBUG
     #define LOG_(str)         fmt::print(str);

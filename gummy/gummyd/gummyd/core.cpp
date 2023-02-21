@@ -25,8 +25,6 @@
 #include <gummyd/constants.hpp>
 #include <gummyd/file.hpp>
 
-using namespace fushko;
-
 // [0, 255]
 int image_brightness(uint8_t *buf, size_t sz, int bytes_per_pixel = 4, int stride = 1024)
 {
@@ -39,7 +37,7 @@ int image_brightness(uint8_t *buf, size_t sz, int bytes_per_pixel = 4, int strid
 	return ((rgb[0] * 0.2126) + (rgb[1] * 0.7152) + (rgb[2] * 0.0722)) * stride / (sz / bytes_per_pixel);
 }
 
-void gummy::screenlight_server(display_server &dsp, size_t screen_idx, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken)
+void gummyd::screenlight_server(display_server &dsp, size_t screen_idx, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken)
 {
     int cur = constants::brt_steps_max;
 	int prev;
@@ -77,7 +75,7 @@ void gummy::screenlight_server(display_server &dsp, size_t screen_idx, channel<i
 	}
 }
 
-void gummy::screenlight_client(const channel<int> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
+void gummyd::screenlight_client(const channel<int> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
 {
     const std::string xdg_state_dir = xdg_state_filepath(fmt::format("gummyd/screen-{}", screen_idx));
     const std::string filepath      = fmt::format("{}/{}", xdg_state_dir, config::screen::model_name(model.id));
@@ -117,7 +115,7 @@ void gummy::screenlight_client(const channel<int> &ch, size_t screen_idx, config
     file_write(filepath, fmt::format("{}\n", val));
 }
 
-void gummy::als_server(const als &als, channel<double> &ch, struct config::als conf, std::stop_token stoken)
+void gummyd::als_server(const als &als, channel<double> &ch, struct config::als conf, std::stop_token stoken)
 {
 	double prev = -1;
 	double cur;
@@ -146,7 +144,7 @@ void gummy::als_server(const als &als, channel<double> &ch, struct config::als c
 	}
 }
 
-void gummy::als_client(const channel<double> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
+void gummyd::als_client(const channel<double> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
 {
     const std::string xdg_state_dir = xdg_state_filepath(fmt::format("gummyd/screen-{}", screen_idx));
     const std::string filepath      = fmt::format("{}/{}", xdg_state_dir, config::screen::model_name(model.id));
@@ -178,7 +176,7 @@ void gummy::als_client(const channel<double> &ch, size_t screen_idx, config::scr
     file_write(filepath, fmt::format("{}\n", screen_idx));
 }
 
-void gummy::time_server(channel<time_data> &ch, struct config::time conf, std::stop_token stoken)
+void gummyd::time_server(channel<time_data> &ch, struct config::time conf, std::stop_token stoken)
 {
 	time_window tw(std::time(nullptr), conf.start, conf.end, -(conf.adaptation_minutes * 60));
 
@@ -214,16 +212,16 @@ void gummy::time_server(channel<time_data> &ch, struct config::time conf, std::s
 	}
 }
 
-gummy::time_target calc_time_target(bool step, gummy::time_data data, gummy::config::screen::model model)
+gummyd::time_target calc_time_target(bool step, gummyd::time_data data, gummyd::config::screen::model model)
 {
 	const std::time_t delta_s = std::min(std::abs(data.time_since_last_event), data.adaptation_s);
 
 	const int target = [&] {
 		const double lerp_fac = double(delta_s) / data.adaptation_s;
 		if (data.in_range)
-			return int(lerp(model.min, model.max, lerp_fac));
+            return int(gummyd::lerp(model.min, model.max, lerp_fac));
 		else
-			return int(lerp(model.max, model.min, lerp_fac));
+            return int(gummyd::lerp(model.max, model.min, lerp_fac));
 	}();
 
 	const std::time_t min_duration_ms = 2000;
@@ -236,7 +234,7 @@ gummy::time_target calc_time_target(bool step, gummy::time_data data, gummy::con
 		return { data.in_range ? model.max : model.min, duration_ms };
 }
 
-void gummy::time_client(const channel<time_data> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn)
+void gummyd::time_client(const channel<time_data> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn)
 {
     const std::string xdg_state_dir = xdg_state_filepath(fmt::format("gummyd/screen-{}", screen_idx));
     const std::string filepath      = fmt::format("{}/{}", xdg_state_dir, config::screen::model_name(model.id));

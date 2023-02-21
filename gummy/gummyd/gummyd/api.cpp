@@ -25,7 +25,7 @@
 #include <gummyd/file.hpp>
 #include <gummyd/constants.hpp>
 
-namespace libgummyd {
+namespace gummyd {
 
 bool daemon_start() {
 
@@ -47,7 +47,7 @@ bool daemon_start() {
 
 bool daemon_stop() {
     try {
-        lock_file flock(gummy::constants::flock_filepath);
+        lock_file flock(gummyd::constants::flock_filepath);
         return false;
     } catch (std::runtime_error &e) {
         daemon_send("stop");
@@ -57,7 +57,7 @@ bool daemon_stop() {
 
 bool daemon_is_running() {
     try {
-        lock_file flock(gummy::constants::flock_filepath);
+        lock_file flock(gummyd::constants::flock_filepath);
         return false;
     } catch (std::runtime_error &e) {
         return true;
@@ -65,11 +65,11 @@ bool daemon_is_running() {
 }
 
 void daemon_send(const std::string &s) {
-    file_write(gummy::constants::fifo_filepath, s);
+    file_write(gummyd::constants::fifo_filepath, s);
 }
 
 nlohmann::json config_get_current() {
-    std::ifstream ifs(xdg_config_filepath(gummy::constants::config_filename));
+    std::ifstream ifs(xdg_config_filepath(gummyd::constants::config_filename));
     nlohmann::json ret;
     ifs >> ret;
     return ret;
@@ -92,11 +92,11 @@ bool config_is_valid(std::string val) {
 }
 
 std::pair<int, int> brightness_range() {
-    return {0, gummy::constants::brt_steps_max};
+    return {0, gummyd::constants::brt_steps_max};
 }
 
 std::pair<int, int> temperature_range() {
-    return {gummy::constants::temp_k_min, gummy::constants::temp_k_max};
+    return {gummyd::constants::temp_k_min, gummyd::constants::temp_k_max};
 }
 
 }

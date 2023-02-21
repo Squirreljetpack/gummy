@@ -24,7 +24,7 @@
 #include <gummyd/display.hpp>
 #include <gummyd/constants.hpp>
 
-using namespace gummy;
+using namespace gummyd;
 
 gamma_state::gamma_state(display_server &dsp)
 :	dsp_(&dsp),

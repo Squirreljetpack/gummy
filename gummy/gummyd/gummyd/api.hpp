@@ -21,7 +21,7 @@
 
 #include <nlohmann/json_fwd.hpp>
 
-namespace libgummyd {
+namespace gummyd {
     bool daemon_start();
     bool daemon_stop();
     bool daemon_is_running();

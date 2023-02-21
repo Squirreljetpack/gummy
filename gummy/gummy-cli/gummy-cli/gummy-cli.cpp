@@ -29,13 +29,13 @@
 #include <gummyd/utils.hpp>
 
 void start() {
-    if (!libgummyd::daemon_start())
+    if (!gummyd::daemon_start())
         std::puts("already started");
     std::exit(EXIT_SUCCESS);
 }
 
 void stop() {
-    if (libgummyd::daemon_stop()) {
+    if (gummyd::daemon_stop()) {
         std::puts("gummy stopped");;
     } else {
         std::puts("already stopped");
@@ -44,7 +44,7 @@ void stop() {
 }
 
 void status() {
-    if (libgummyd::daemon_is_running()) {
+    if (gummyd::daemon_is_running()) {
         std::puts("running");
     } else {
         std::puts("not running");
@@ -134,18 +134,18 @@ const std::array<std::array<std::string, 2>, option_count> options {{
 }};
 
 const std::function<int(int)> brightness_perc_to_step = [] (int val) {
-    const auto [min, max] = libgummyd::brightness_range();
+    const auto [min, max] = gummyd::brightness_range();
 
 	if (val >= 0) {
-        return remap(std::clamp(val, 0, 100), 0, 100, min, max);
+        return gummyd::remap(std::clamp(val, 0, 100), 0, 100, min, max);
 	} else {
-        return -remap(std::clamp(std::abs(val), 0, 100), 0, 100, min, max);
+        return -gummyd::remap(std::clamp(std::abs(val), 0, 100), 0, 100, min, max);
 	}
 };
 
 template <class T>
 void setif(nlohmann::json &val, T new_val) {
-    if ((libgummyd::config_is_valid(new_val))) {
+    if ((gummyd::config_is_valid(new_val))) {
 		val = new_val;
 	}
 }
@@ -153,7 +153,7 @@ void setif(nlohmann::json &val, T new_val) {
 template <class T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, int> = 0>
 void setif(nlohmann::json &val, T new_val, bool relative, T min, T max, std::function<T(T)> fn = [](T x){return x;}) {
 
-    if (!(libgummyd::config_is_valid(new_val))) {
+    if (!(gummyd::config_is_valid(new_val))) {
 	    return;
     }
 
@@ -208,9 +208,9 @@ int interface(int argc, char **argv)
     constexpr std::string_view range_fmt   = "INT in [{} - {}]";
     constexpr std::string_view range_fmt_f = "FLOAT in [{} - {}]";
 
-    const std::pair<int, int> brt_range  = libgummyd::brightness_range();
-    const std::pair<int, int> temp_range = libgummyd::temperature_range();
-    const int invalid_val                = libgummyd::config_invalid_val();
+    const std::pair<int, int> brt_range  = gummyd::brightness_range();
+    const std::pair<int, int> temp_range = gummyd::temperature_range();
+    const int invalid_val                = gummyd::config_invalid_val();
 
     const std::string cli_brt_range_str  = fmt::format(range_fmt, 0, 100);
     const std::string temp_range_str     = fmt::format(range_fmt, temp_range.first, temp_range.second);
@@ -285,7 +285,7 @@ int interface(int argc, char **argv)
 		return app.exit(e);
 	}
 
-    if (!libgummyd::daemon_is_running()) {
+    if (!gummyd::daemon_is_running()) {
         std::puts("gummy is not running.\nType: `gummy start`");
         std::exit(EXIT_SUCCESS);
     }
@@ -293,7 +293,7 @@ int interface(int argc, char **argv)
     LOG_("getting config...\n");
     nlohmann::json config_json = [&] {
         try {
-            return libgummyd::config_get_current();
+            return gummyd::config_get_current();
         } catch (nlohmann::json::exception &e) {
             return nlohmann::json {{"error", e.what()}};
         }
@@ -329,11 +329,11 @@ int interface(int argc, char **argv)
         setif(scr["temperature"]["min"], models.temperature[2], relative_flags[TEMP_MIN], temp_range.first, temp_range.second);
         setif(scr["temperature"]["max"], models.temperature[3], relative_flags[TEMP_MAX], temp_range.first, temp_range.second);
 
-        if (libgummyd::config_is_valid(models.backlight[1]))
+        if (gummyd::config_is_valid(models.backlight[1]))
             scr["backlight"]["mode"] = 0;
-        if (libgummyd::config_is_valid(models.brightness[1]))
+        if (gummyd::config_is_valid(models.brightness[1]))
             scr["brightness"]["mode"] = 0;
-        if (libgummyd::config_is_valid(models.temperature[1]))
+        if (gummyd::config_is_valid(models.temperature[1]))
             scr["temperature"]["mode"] = 0;
 	};
 
@@ -361,7 +361,7 @@ int interface(int argc, char **argv)
 	setif(config_json["als"]["adaptation_ms"], als.adaptation_ms);
 
     LOG_("writing to daemon...\n");
-    libgummyd::daemon_send(config_json.dump());
+    gummyd::daemon_send(config_json.dump());
 
 	return EXIT_SUCCESS;
 }

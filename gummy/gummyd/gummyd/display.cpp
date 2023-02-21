@@ -18,7 +18,7 @@
 
 #include <gummyd/display.hpp>
 
-using namespace gummy;
+using namespace gummyd;
 
 display_server::display_server()
 : xcb_conn_(),

@@ -30,8 +30,7 @@
 #include <gummyd/sysfs_devices.hpp>
 #include <gummyd/constants.hpp>
 
-using namespace fushko;
-using namespace gummy;
+using namespace gummyd;
 
 void run(display_server &dsp, config conf, std::stop_token stoken)
 {

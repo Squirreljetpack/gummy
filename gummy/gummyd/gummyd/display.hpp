@@ -22,7 +22,7 @@
 #include <vector>
 #include <gummyd/xcb.hpp>
 
-namespace gummy {
+namespace gummyd {
 class display_server
 {
     xcb::connection xcb_conn_;

@@ -23,6 +23,7 @@
 #include <string>
 #include <stdexcept>
 
+namespace gummyd {
 inline time_t timestamp_modify(std::time_t ts, int h, int m, int s)
 {
 	std::tm tm = *std::localtime(&ts);
@@ -134,5 +135,5 @@ inline std::time_t time_window::start() const {
 inline std::time_t time_window::end() const {
 	return _end;
 }
-
+}
 #endif // TIME_HPP
