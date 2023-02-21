@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <fmt/core.h>
 
 class named_pipe {
 	int fd_;
@@ -108,6 +109,28 @@ inline std::string xdg_config_filepath(std::string filename)
 	ss << home << format << filename;
 
 	return ss.str();
+}
+
+// https://specifications.freedesktop.org/basedir-spec/0.8/ar01s03.html
+// $XDG_STATE_HOME defines the base directory relative to which user-specific state files should be stored.
+// If $XDG_STATE_HOME is either not set or empty, a default equal to $HOME/.local/state should be used.
+// The $XDG_STATE_HOME contains state data that should persist between (application) restarts,
+// but that is not important or portable enough to the user that it should be stored in $XDG_DATA_HOME. It may contain:
+// - actions history (logs, history, recently used files, …)
+// - current state of the application that can be reused on a restart (view, layout, open files, undo history, …)
+inline std::string xdg_state_filepath(std::string filename) {
+
+    constexpr std::array<std::array<std::string_view, 2>, 2> env_vars {{
+        {"XDG_STATE_HOME", ""},
+        {"HOME", "/.local/state"}
+    }};
+
+    for (const auto &var : env_vars) {
+        if (auto env = getenv(var[0].data()))
+            return fmt::format("{}{}/{}", env, var[1], filename);
+    }
+
+    throw std::runtime_error("HOME env not found!");
 }
 
 #endif // FILE_HPP

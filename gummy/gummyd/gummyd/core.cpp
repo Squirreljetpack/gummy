@@ -23,6 +23,7 @@
 #include <gummyd/utils.hpp>
 #include <gummyd/core.hpp>
 #include <gummyd/constants.hpp>
+#include <gummyd/file.hpp>
 
 using namespace fushko;
 
@@ -38,9 +39,9 @@ int image_brightness(uint8_t *buf, size_t sz, int bytes_per_pixel = 4, int strid
 	return ((rgb[0] * 0.2126) + (rgb[1] * 0.7152) + (rgb[2] * 0.0722)) * stride / (sz / bytes_per_pixel);
 }
 
-void gummy::brightness_server(display_server &dsp, size_t screen_idx, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken)
+void gummy::screenlight_server(display_server &dsp, size_t screen_idx, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken)
 {
-	int cur = constants::brt_steps_max;
+    int cur = constants::brt_steps_max;
 	int prev;
 	int delta = 0;
 
@@ -63,7 +64,7 @@ void gummy::brightness_server(display_server &dsp, size_t screen_idx, channel<in
 
 		if (delta > 8) {
 			delta = 0;
-			LOG_FMT_("[brightness_server] sending: {}\n", cur);
+            LOG_FMT_("[screenlight_server] sending: {}\n", cur);
 			ch.send(cur);
 		}
 
@@ -76,19 +77,30 @@ void gummy::brightness_server(display_server &dsp, size_t screen_idx, channel<in
 	}
 }
 
-void gummy::brightness_client(const channel<int> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
+void gummy::screenlight_client(const channel<int> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
 {
-	int val = model.max;
+    const std::string xdg_state_dir = xdg_state_filepath(fmt::format("gummyd/screen-{}", screen_idx));
+    const std::string filepath      = fmt::format("{}/{}", xdg_state_dir, config::screen::model_name(model.id));
+
+    const int start_val = [&] {
+        try {
+            return std::stoi(file_read(filepath));
+        } catch (std::runtime_error &e) {
+            std::filesystem::create_directories(xdg_state_dir);
+            return model.max;
+        }
+    }();
+
+    int val = start_val;
 	int prev_brt = -1;
 
 	while (true) {
-
 		const int brt = ch.recv(prev_brt);
 
-		LOG_FMT_("[brightness client] received {}.\n", brt);
+        LOG_FMT_("[model: {}, client: screenlight] received {}.\n", config::screen::model_name(model.id), brt);
 
 		if (brt < 0) {
-			return;
+            break;
 		}
 
 		const int target = remap(brt, 0, 255, model.max, model.min);
@@ -97,10 +109,12 @@ void gummy::brightness_client(const channel<int> &ch, config::screen::model mode
 			return ch.read() != brt;
 		};
 
-		LOG_FMT_("[brightness client] easing from {} to {}...\n", val, target);
+        LOG_FMT_("[model: {}, client: screenlight] easing from {} to {}...\n", config::screen::model_name(model.id), val, target);
 		val = easing::animate(val, target, adaptation_ms, easing::ease_out_expo, model_fn, interrupt);
 		prev_brt = brt;
 	}
+
+    file_write(filepath, fmt::format("{}\n", val));
 }
 
 void gummy::als_server(const als &als, channel<double> &ch, struct config::als conf, std::stop_token stoken)
@@ -132,8 +146,11 @@ void gummy::als_server(const als &als, channel<double> &ch, struct config::als c
 	}
 }
 
-void gummy::als_client(const channel<double> &ch, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
+void gummy::als_client(const channel<double> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
 {
+    const std::string xdg_state_dir = xdg_state_filepath(fmt::format("gummyd/screen-{}", screen_idx));
+    const std::string filepath      = fmt::format("{}/{}", xdg_state_dir, config::screen::model_name(model.id));
+
 	int val = model.max;
 	double prev_brt = -1;
 
@@ -157,6 +174,8 @@ void gummy::als_client(const channel<double> &ch, config::screen::model model, s
 		val = easing::animate(val, target, adaptation_ms, easing::ease_out_expo, model_fn, interrupt);
 		prev_brt = brt;
 	}
+
+    file_write(filepath, fmt::format("{}\n", screen_idx));
 }
 
 void gummy::time_server(channel<time_data> &ch, struct config::time conf, std::stop_token stoken)
@@ -217,9 +236,21 @@ gummy::time_target calc_time_target(bool step, gummy::time_data data, gummy::con
 		return { data.in_range ? model.max : model.min, duration_ms };
 }
 
-void gummy::time_client(const channel<time_data> &ch, config::screen::model model, std::function<void(int)> model_fn)
+void gummy::time_client(const channel<time_data> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn)
 {
-	int cur = model.max;
+    const std::string xdg_state_dir = xdg_state_filepath(fmt::format("gummyd/screen-{}", screen_idx));
+    const std::string filepath      = fmt::format("{}/{}", xdg_state_dir, config::screen::model_name(model.id));
+
+    const int start_val = [&] {
+        try {
+            return std::stoi(file_read(filepath));
+        } catch (std::runtime_error &e) {
+            std::filesystem::create_directories(xdg_state_dir);
+            return model.max;
+        }
+    }();
+
+    int cur = start_val;
 
 	time_data prev {-1, -1, -1};
 
@@ -229,7 +260,7 @@ void gummy::time_client(const channel<time_data> &ch, config::screen::model mode
 		const time_data data = ch.recv(prev);
 
 		if (data.in_range < 0)
-			return;
+            break;
 
 		const auto interrupt = [&] {
 			return ch.read().time_since_last_event != data.time_since_last_event;
@@ -242,4 +273,6 @@ void gummy::time_client(const channel<time_data> &ch, config::screen::model mode
 		}
 		prev = data;
 	}
+
+    file_write(filepath, fmt::format("{}\n", cur));
 }

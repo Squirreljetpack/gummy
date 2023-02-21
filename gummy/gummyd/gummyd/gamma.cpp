@@ -135,7 +135,7 @@ double calc_brt_mult(int step, size_t ramp_sz)
  * So, when ramp_sz = 2048, each value is increased in steps of 32,
  * When ramp_sz = 1024 (usually on iGPUs), it's 64, and so on.
  */
-void gamma_state::set(size_t screen_index, values vals)
+void gamma_state::apply(size_t screen_index, values vals)
 {
 	vals = gamma_state::sanitize(vals);
 	const size_t sz = dsp_->ramp_size(screen_index);
@@ -155,6 +155,8 @@ void gamma_state::set(size_t screen_index, values vals)
 		b[i] = uint16_t(val * b_mult);
 	}
 
+    LOG_FMT_("[screen {}] set_gamma_ramp(brt: {}, temp: {})\n", screen_index, vals.brightness, vals.temperature);
+
 	dsp_->set_gamma_ramp(screen_index, ramps);
 }
 
@@ -166,29 +168,30 @@ gamma_state::values gamma_state::sanitize(values vals) {
 	};
 }
 
-void gamma_state::refresh()
-{
+void gamma_state::apply_to_all_screens() {
 	for (size_t i = 0; i < screens_.size(); ++i) {
-		set(i, std::atomic_ref(screens_[i]).load());
+        apply(i, std::atomic_ref(screens_[i]).load());
 	}
 }
 
-void gamma_state::set_brightness(size_t idx, int val)
-{
+void gamma_state::set_brightness(size_t idx, int val) {
 	values values = std::atomic_ref(screens_[idx]).load();
 	values.brightness = val;
-
 	std::atomic_ref(screens_[idx]).store(values);
-
-	set(idx, values);
 }
 
-void gamma_state::set_temperature(size_t idx, int val)
-{
-	values values = std::atomic_ref(screens_[idx]).load();
-	values.temperature = val;
+void gamma_state::set_temperature(size_t idx, int val) {
+    values values = std::atomic_ref(screens_[idx]).load();
+    values.temperature = val;
+    std::atomic_ref(screens_[idx]).store(values);
+}
 
-	std::atomic_ref(screens_[idx]).store(values);
+void gamma_state::apply_brightness(size_t idx, int val) {
+    set_brightness(idx, val);
+    apply(idx, std::atomic_ref(screens_[idx]).load());
+}
 
-	set(idx, values);
+void gamma_state::apply_temperature(size_t idx, int val) {
+    set_temperature(idx, val);
+    apply(idx, std::atomic_ref(screens_[idx]).load());
 }
