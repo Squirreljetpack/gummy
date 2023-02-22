@@ -18,6 +18,7 @@
 
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/rotating_file_sink.h>
 
 #include <gummyd/file.hpp>
 #include <gummyd/utils.hpp>
@@ -39,7 +40,7 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 	const size_t screenshot_clients = conf.clients_for(config::screen::mode::SCREENSHOT);
 	const size_t als_clients        = conf.clients_for(config::screen::mode::ALS);
 	const size_t time_clients       = conf.clients_for(config::screen::mode::TIME);
-    spdlog::debug("clients: als: {}, screenlight: {}, time: {}\n", als_clients, screenshot_clients, time_clients);
+    spdlog::debug("clients: als: {}, screenlight: {}, time: {}", als_clients, screenshot_clients, time_clients);
 
 	std::vector<std::jthread> threads;
 
@@ -49,6 +50,7 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 	brt_channels.reserve(screenshot_clients);
 
 	if (time_clients > 0) {
+        spdlog::debug("starting time_server...");
 		threads.emplace_back([&] {
 			time_server(time_ch, conf.time, stoken);
 		});
@@ -58,6 +60,7 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
     std::vector<als> als = get_als();
 
 	if (als_clients > 0 && !als.empty()) {
+        spdlog::debug("starting time_server...");
 		threads.emplace_back([&] {
 			als_server(als[0], als_ch, conf.als, stoken);
 		});
@@ -86,8 +89,6 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 
 			switch (config::screen::model_id(model_idx)) {
 			case BACKLIGHT:
-			    if (idx < backlights.size())
-                    fn = std::bind(&backlight::set_step, &backlights[idx], _1);
 				break;
 			case BRIGHTNESS:
                 fn = std::bind(&gamma_state::set_brightness, &gamma_state, idx, _1);
@@ -144,19 +145,19 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 
             switch (model.mode) {
             case MANUAL:
-                spdlog::debug("{} setting manual value: {}\n", model_name, model.val);
+                spdlog::debug("[{} model] setting manual value: {}", model_name, model.val);
                 fn(model.val);
                 break;
             case ALS:
-                spdlog::debug("{} starting als_client...\n", model_name);
+                spdlog::debug("[{} model] starting als_client", model_name);
                 threads.emplace_back(als_client, std::ref(als_ch), idx, model, fn, conf.als.adaptation_ms);
                 break;
             case SCREENSHOT:
-                spdlog::debug("{} starting screenlight_client...\n", model_name);
+                spdlog::debug("[{} model] starting screenlight_client", model_name);
                 threads.emplace_back(screenlight_client, std::ref(brt_channels.back()), idx, model, fn, conf.screenshot.adaptation_ms);
                 break;
             case TIME:
-                spdlog::debug("{} starting time_client...\n", model_name);
+                spdlog::debug("[{} model] starting time_client", model_name);
                 threads.emplace_back(time_client, std::ref(time_ch), idx, model, fn);
                 break;
             }
@@ -164,32 +165,33 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 	}
 
 	threads.emplace_back([&] {
+        spdlog::debug("[gamma refresh] start");
 		while (true) {
             jthread_wait_until(std::chrono::seconds(10), stoken);
-            spdlog::debug("refreshing gamma...\n");
+            spdlog::debug("gamma refresh");
             gamma_state.apply_to_all_screens();
-			if (stoken.stop_requested())
+            if (stoken.stop_requested()) {
+                spdlog::debug("[gamma refresh] stop requested");
 				return;
+            }
 		}
 	});
 
+    spdlog::debug("joining {} threads", threads.size());
 	for (auto &t : threads)
 		t.join();
 
-    spdlog::debug("{:=^60}\n", "end");
+    spdlog::debug("{:=^60}", "end");
 }
 
 int message_loop()
 {
 	display_server dsp;
-    spdlog::debug("[display_server] found {} screen(s)\n", dsp.scr_count());
+    spdlog::debug("[display_server] found {} screen(s)", dsp.scr_count());
 
 	config conf(dsp.scr_count());
 
 	named_pipe pipe(constants::fifo_filepath);
-
-    std::filesystem::remove_all(xdg_state_filepath("gummyd/"));
-    std::filesystem::create_directories(xdg_state_filepath("gummyd/"));
 
     const auto proxy = sdbus_util::on_system_sleep([] (sdbus::Signal &sig) {
 	    bool sleep;
@@ -221,7 +223,7 @@ int message_loop()
 		}();
 
         if (msg.contains("error")) {
-            spdlog::error("{}\n", msg["error"].get<std::string>());
+            spdlog::error("{}", msg["error"].get<std::string>());
 			continue;
 		}
 
@@ -238,7 +240,12 @@ int main(int argc, char **argv)
 		std::exit(EXIT_SUCCESS);
 	}
 
+    auto logger = spdlog::rotating_logger_mt("gummyd", xdg_state_filepath("gummyd/logs/gummyd.log"), 1048576 * 5, 1);
+    spdlog::set_default_logger(logger);
+
     spdlog::set_level(gummyd::env_log_level());
+
+    std::filesystem::create_directories(xdg_state_filepath("gummyd/"));
 
 	lock_file flock(constants::flock_filepath);
 

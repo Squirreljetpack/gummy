@@ -214,7 +214,7 @@ public:
 			return { nullptr, err->error_code };
 		}
 
-        SPDLOG_TRACE("[XSHM] screenshot: {} * {} | x: {} y: {} size: {}\n", w, h, x, y, image_r->size);
+        SPDLOG_TRACE("[XSHM] got image: {} * {} | x: {} y: {} size: {}", w, h, x, y, image_r->size);
 
 		return {
 			image->data,
