@@ -3,9 +3,6 @@
 find_package(sdbus-c++ REQUIRED)
 find_library(LIBUDEV "udev" REQUIRED)
 
-# file
-add_library(file INTERFACE gummyd/file.hpp)
-
 # XCB
 find_library(LIBXCB "xcb" REQUIRED)
 find_library(LIBXCB-RANDR "xcb-randr" REQUIRED)
@@ -42,7 +39,7 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/data/udev/99-gummy.rules" DESTINATION
 # API
 add_library(libgummyd STATIC)
 target_sources(libgummyd
-    PRIVATE gummyd/api.cpp
+    PRIVATE gummyd/api.cpp gummyd/file.hpp
     PUBLIC  gummyd/api.hpp
 )
 set_target_properties(libgummyd PROPERTIES PREFIX "")
@@ -50,7 +47,7 @@ target_include_directories(libgummyd PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(libgummyd PRIVATE
     fmt::fmt
     nlohmann_json::nlohmann_json
-    file
+    spdlog::spdlog
 )
 target_compile_definitions(libgummyd PRIVATE CMAKE_INSTALL_DAEMON_PATH="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBEXECDIR}/gummyd")
 

@@ -21,6 +21,7 @@
 
 #include <nlohmann/json.hpp>
 #include <fmt/core.h>
+#include <spdlog/spdlog.h>
 #include <gummyd/api.hpp>
 #include <gummyd/file.hpp>
 #include <gummyd/constants.hpp>

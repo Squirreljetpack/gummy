@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <fmt/core.h>
+#include <spdlog/spdlog.h>
 
 namespace gummyd {
 
@@ -38,7 +39,7 @@ public:
 	named_pipe(std::string filepath) : filepath_(filepath) {
 		fd_ = mkfifo(filepath.c_str(), S_IFIFO | 0640);
 		if (fd_ < 0) {
-			//LOG_FMT_("named_pipe: mkfifo error");
+            spdlog::error("[named_pipe] mkfifo error");
 		}
 	}
 	~named_pipe() {

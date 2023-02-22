@@ -23,6 +23,7 @@
 #include <chrono>
 #include <thread>
 #include <gummyd/utils.hpp>
+#include <spdlog/spdlog.h>
 
 namespace gummyd {
 namespace easing {
@@ -69,7 +70,7 @@ inline int animate(int start, int end, int duration_ms, std::function<double(dou
 		cur = lerp(start, end, std::min(easing(double(progress.count()) / animation_time.count()), 1.));
 
 		if (prev != cur) {
-            //LOG_FMT_("cur: {}, progress {}/{}\n", cur, duration_cast<seconds>(progress), duration_cast<seconds>(animation_time));
+            SPDLOG_TRACE("[easing] cur: {}, progress {}/{}\n", cur, duration_cast<seconds>(progress), duration_cast<seconds>(animation_time));
 			fn(cur);
 		}
 
@@ -81,7 +82,7 @@ inline int animate(int start, int end, int duration_ms, std::function<double(dou
 		progress = (steady_clock::now() - begin);
 	}
 
-    LOG_FMT_("[easing] elapsed: {}\n", duration_cast<milliseconds>(steady_clock::now() - begin));
+    spdlog::debug("[easing] animation over in {}\n", duration_cast<milliseconds>(steady_clock::now() - begin));
 	return cur;
 }
 

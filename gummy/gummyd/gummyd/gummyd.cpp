@@ -16,8 +16,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//#include <syslog.h>
 #include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
 
 #include <gummyd/file.hpp>
 #include <gummyd/utils.hpp>
@@ -39,7 +39,7 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 	const size_t screenshot_clients = conf.clients_for(config::screen::mode::SCREENSHOT);
 	const size_t als_clients        = conf.clients_for(config::screen::mode::ALS);
 	const size_t time_clients       = conf.clients_for(config::screen::mode::TIME);
-	LOG_FMT_("clients: als: {}, screenlight: {}, time: {}\n", als_clients, screenshot_clients, time_clients);
+    spdlog::debug("clients: als: {}, screenlight: {}, time: {}\n", als_clients, screenshot_clients, time_clients);
 
 	std::vector<std::jthread> threads;
 
@@ -144,19 +144,19 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 
             switch (model.mode) {
             case MANUAL:
-                LOG_FMT_("{} setting manual value: {}\n", model_name, model.val);
+                spdlog::debug("{} setting manual value: {}\n", model_name, model.val);
                 fn(model.val);
                 break;
             case ALS:
-                LOG_FMT_("{} starting als_client...\n", model_name);
+                spdlog::debug("{} starting als_client...\n", model_name);
                 threads.emplace_back(als_client, std::ref(als_ch), idx, model, fn, conf.als.adaptation_ms);
                 break;
             case SCREENSHOT:
-                LOG_FMT_("{} starting screenlight_client...\n", model_name);
+                spdlog::debug("{} starting screenlight_client...\n", model_name);
                 threads.emplace_back(screenlight_client, std::ref(brt_channels.back()), idx, model, fn, conf.screenshot.adaptation_ms);
                 break;
             case TIME:
-                LOG_FMT_("{} starting time_client...\n", model_name);
+                spdlog::debug("{} starting time_client...\n", model_name);
                 threads.emplace_back(time_client, std::ref(time_ch), idx, model, fn);
                 break;
             }
@@ -166,7 +166,7 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 	threads.emplace_back([&] {
 		while (true) {
             jthread_wait_until(std::chrono::seconds(10), stoken);
-            LOG_("refreshing gamma...\n");
+            spdlog::debug("refreshing gamma...\n");
             gamma_state.apply_to_all_screens();
 			if (stoken.stop_requested())
 				return;
@@ -176,13 +176,13 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 	for (auto &t : threads)
 		t.join();
 
-	LOG_FMT_("{:=^60}\n", "end");
+    spdlog::debug("{:=^60}\n", "end");
 }
 
 int message_loop()
 {
 	display_server dsp;
-	LOG_FMT_("[display_server] found {} screen(s)\n", dsp.scr_count());
+    spdlog::debug("[display_server] found {} screen(s)\n", dsp.scr_count());
 
 	config conf(dsp.scr_count());
 
@@ -221,7 +221,7 @@ int message_loop()
 		}();
 
         if (msg.contains("error")) {
-            LOG_ERR_FMT_("{}\n", msg["error"].get<std::string>());
+            spdlog::error("{}\n", msg["error"].get<std::string>());
 			continue;
 		}
 
@@ -238,8 +238,9 @@ int main(int argc, char **argv)
 		std::exit(EXIT_SUCCESS);
 	}
 
+    spdlog::set_level(gummyd::env_log_level());
+
 	lock_file flock(constants::flock_filepath);
-	//openlog("gummyd", LOG_FMT_PID, LOG_FMT_DAEMON);
 
 	return message_loop();
 }

@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 #include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
 #include <CLI/App.hpp>
 #include <CLI/Formatter.hpp>
 #include <CLI/Config.hpp>
@@ -274,7 +275,7 @@ int interface(int argc, char **argv)
 	app.add_option(options[TIME_END][0], time.end, options[TIME_END][1])->check(check_time_format)->group(grp_time);
 	app.add_option(options[TIME_ADAPTATION_MS][0], time.adaptation_minutes, options[TIME_ADAPTATION_MS][1])->check(CLI::Range(1, 60 * 12))->group(grp_time);
 
-    LOG_("parsing options...\n");
+    spdlog::debug("parsing options...\n");
 	try {
 		if (argc == 1) {
 			app.parse("-h");
@@ -290,7 +291,7 @@ int interface(int argc, char **argv)
         std::exit(EXIT_SUCCESS);
     }
 
-    LOG_("getting config...\n");
+    spdlog::debug("getting config...\n");
     nlohmann::json config_json = [&] {
         try {
             return gummyd::config_get_current();
@@ -300,17 +301,14 @@ int interface(int argc, char **argv)
     }();
 
     if (config_json.contains("error")) {
-        LOG_ERR_FMT_("error while retrieving config:\n{}\n", config_json["error"].get<std::string>());
+        spdlog::error("error while retrieving config:\n{}\n", config_json["error"].get<std::string>());
 		return EXIT_FAILURE;
 	}
 
-    LOG_("updating config...\n");
 	const auto update_screen_conf = [&] (size_t idx) {
 
 		if (idx > config_json["screens"].size() - 1)
 			return;
-
-        LOG_FMT_("updating screen {}...\n", idx);
 
         auto &scr = config_json["screens"][idx];
 
@@ -337,7 +335,7 @@ int interface(int argc, char **argv)
             scr["temperature"]["mode"] = 0;
 	};
 
-    LOG_("updating screens\n");
+    spdlog::debug("updating screen {}\n", scr_idx);
 	if (scr_idx > -1) {
 		update_screen_conf(scr_idx);
 	} else {
@@ -345,27 +343,24 @@ int interface(int argc, char **argv)
 			update_screen_conf(i);
 	}
 
-    LOG_("updating time...\n");
+    spdlog::debug("updating services...\n");
 	setif(config_json["time"]["start"], time.start);
 	setif(config_json["time"]["end"], time.end);
 	setif(config_json["time"]["adaptation_minutes"], time.adaptation_minutes);
-
-    LOG_("updating screenshot...\n");
 	setif(config_json["screenshot"]["scale"], screenshot.scale, relative_flags[SCREENSHOT_SCALE], 0., 10.);
 	setif(config_json["screenshot"]["poll_ms"], screenshot.poll_ms);
 	setif(config_json["screenshot"]["adaptation_ms"], screenshot.adaptation_ms);
-
-    LOG_("updating als...\n");
 	setif(config_json["als"]["scale"], als.scale, relative_flags[ALS_SCALE], 0., 10.);
 	setif(config_json["als"]["poll_ms"], als.poll_ms);
 	setif(config_json["als"]["adaptation_ms"], als.adaptation_ms);
 
-    LOG_("writing to daemon...\n");
+    spdlog::debug("writing to daemon...\n");
     gummyd::daemon_send(config_json.dump());
 
 	return EXIT_SUCCESS;
 }
 
 int main(int argc, char **argv) {
-	return interface(argc, argv);
+    spdlog::set_level(gummyd::env_log_level());
+    return interface(argc, argv);
 }

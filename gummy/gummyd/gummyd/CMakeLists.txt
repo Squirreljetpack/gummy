@@ -14,14 +14,15 @@ target_sources(${PROJECT_NAME}
 	config.hpp
     utils.hpp
     constants.hpp
+    file.hpp
 	gummyd.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
 	nlohmann_json::nlohmann_json
 	fmt::fmt
+    spdlog::spdlog
 	sdbus-util
-	file
 	xcb
 	udev
 	time
@@ -35,7 +36,7 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
 target_compile_definitions(${PROJECT_NAME} PRIVATE
 	VERSION="${MAIN_VERSION}"
-	$<$<CONFIG:Debug>:CMAKE_DEBUG>
+    $<$<CONFIG:Debug>:SPDLOG_ACTIVE_LEVEL=0>
 )
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_LIBEXECDIR}")

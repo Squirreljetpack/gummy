@@ -20,6 +20,7 @@
 #define API_HPP
 
 #include <nlohmann/json_fwd.hpp>
+#include <spdlog/spdlog.h>
 
 namespace gummyd {
     bool daemon_start();
