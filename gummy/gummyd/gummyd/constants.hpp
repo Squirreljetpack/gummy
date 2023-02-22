@@ -21,13 +21,13 @@
 
 namespace gummyd {
 namespace constants {
-constexpr const char *flock_filepath  = "/tmp/gummy.lock";
-constexpr const char *fifo_filepath   = "/tmp/gummy.fifo";
-constexpr const char *config_filename = "gummyconf.json";
-constexpr int brt_steps_min  = 200;
-constexpr int brt_steps_max  = 1000;
-constexpr int temp_k_min     = 1000;
-constexpr int temp_k_max     = 6500;
+extern const char * const flock_filepath;
+extern const char * const fifo_filepath;
+extern const char * const config_filename;
+extern const int brt_steps_min;
+extern const int brt_steps_max;
+extern const int temp_k_min;
+extern const int temp_k_max;
 }}
 
 #endif // CONSTANTS_HPP

@@ -13,21 +13,43 @@ target_sources(${PROJECT_NAME}
 	config.cpp
 	config.hpp
     utils.hpp
+    utils.cpp
     constants.hpp
+    constants.cpp
     file.hpp
-	gummyd.cpp
+    file.cpp
+    easing.hpp
+    easing.cpp
+    channel.hpp
+    channel.cpp
+    time.hpp
+    time.cpp
+    xcb.hpp
+    xcb.cpp
+    gummyd.cpp
 )
+
+# udev
+find_library(LIBUDEV "udev" REQUIRED)
+if(NOT UDEV_RULES_DIR)
+    set(UDEV_RULES_DIR /usr/lib/udev/rules.d)
+endif()
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/data/udev/99-gummy.rules" DESTINATION "${UDEV_RULES_DIR}")
+
+# XCB
+find_library(LIBXCB "xcb" REQUIRED)
+find_library(LIBXCB-RANDR "xcb-randr" REQUIRED)
+find_library(LIBXCB-SHM "xcb-shm" REQUIRED)
+find_library(LIBXCB-IMAGE "xcb-image" REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBXCB} ${LIBXCB-RANDR} ${LIBXCB-SHM} ${LIBXCB-IMAGE})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
 	nlohmann_json::nlohmann_json
 	fmt::fmt
     spdlog::spdlog
-	sdbus-util
-	xcb
-	udev
-	time
-	channel
-	easing
+    SDBusCpp::sdbus-c++
+    ${LIBUDEV}
+    -latomic
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/gummy/")

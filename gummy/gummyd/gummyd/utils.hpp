@@ -19,56 +19,25 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
-#include <cmath>
-#include <chrono>
-#include <thread>
-#include <condition_variable>
-
-#include <fmt/core.h>
-#include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
 
 namespace gummyd {
 // scale value in a [0, 1] range
-inline double invlerp(double val, double min, double max)
-{
-	return (val - min) / (max - min);
-}
+double invlerp(double val, double min, double max);
+// interpolate betweeen a and b
+double lerp(double a, double b, double t);
+// convert from one range to another
+double remap(double val, double min, double max, double new_min, double new_max);
+// get the fractional part of a floating point number
+double mant(double x);
 
-// interpolate betweeen a and b. t = [0, 1]
-inline double lerp(double a, double b, double t)
-{
-	return ((1 - t) * a) + (t * b);
-}
+// Interpolate val to an array index.
+// The integral part of the return value is the index itself,
+// while the fractional part is the interpolation factor
+// between the index and the next one.
+double remap_to_idx(int val, int min, int max, size_t arr_sz);
 
-inline double remap(double val, double min, double max, double new_min, double new_max)
-{
-	return lerp(new_min, new_max, invlerp(val, min, max));
-}
-
-// Get the fractional part of a floating point number.
-inline double mant(double x)
-{
-	return x - std::floor(x);
-}
-
-/* Interpolate val to an array index.
-   The integral part of the return value is the index itself,
-   while the fractional part is the interpolation factor
-   between the index and the next one. */
-inline double remap_to_idx(int val, int min, int max, size_t arr_sz)
-{
-	return remap(val, min, max, 0, arr_sz - 1);
-}
-
-inline void jthread_wait_until(std::chrono::milliseconds ms, std::stop_token stoken)
-{
-	using namespace std::chrono;
-	std::mutex mutex;
-	std::unique_lock lock(mutex);
-	std::condition_variable_any()
-	        .wait_until(lock, stoken, system_clock::now() + ms, [&] { return stoken.stop_requested(); });
-}
+spdlog::level::level_enum env_log_level();
 
 template <class T, auto fn>
 struct deleter {
@@ -83,19 +52,6 @@ struct c_deleter {
 template <class T>
 using c_unique_ptr = std::unique_ptr<T, c_deleter<T>>;
 //using c_unique_ptr = std::unique_ptr<T, deleter<T, std::free>>;
-
-inline spdlog::level::level_enum env_log_level() {
-    const auto env = getenv("LOG_LEVEL");
-    if (!env)
-        return spdlog::level::off;
-
-    try {
-        return spdlog::level::level_enum(std::stoi(std::string(env)));
-    } catch (std::invalid_argument &e) {
-        return spdlog::level::off;
-    }
-}
-
 }
 
 #endif // UTILS_HPP

@@ -17,6 +17,7 @@
 */
 
 #include <gummyd/display.hpp>
+#include <gummyd/xcb.hpp>
 
 using namespace gummyd;
 
