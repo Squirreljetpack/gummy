@@ -18,6 +18,8 @@
 
 #include <stdexcept>
 #include <limits>
+#include <fstream>
+#include <unistd.h>
 
 #include <nlohmann/json.hpp>
 #include <fmt/core.h>

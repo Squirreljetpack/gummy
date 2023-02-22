@@ -16,26 +16,34 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <filesystem>
 #include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
 
+#include <gummyd/core.hpp>
 #include <gummyd/time.hpp>
 #include <gummyd/easing.hpp>
 #include <gummyd/utils.hpp>
-#include <gummyd/core.hpp>
 #include <gummyd/constants.hpp>
 #include <gummyd/file.hpp>
 
 // [0, 255]
-int image_brightness(uint8_t *buf, size_t sz, int bytes_per_pixel = 4, int stride = 1024)
-{
-	std::array<uint64_t, 3> rgb {};
-	for (uint64_t i = 0, inc = stride * bytes_per_pixel; i < sz; i += inc) {
-		rgb[0] += buf[i + 2];
-		rgb[1] += buf[i + 1];
-		rgb[2] += buf[i];
-	}
-	return ((rgb[0] * 0.2126) + (rgb[1] * 0.7152) + (rgb[2] * 0.0722)) * stride / (sz / bytes_per_pixel);
+int image_brightness(uint8_t *buf, size_t sz, int bytes_per_pixel = 4, int stride = 1024) {
+    std::array<uint64_t, 3> rgb {};
+    for (uint64_t i = 0, inc = stride * bytes_per_pixel; i < sz; i += inc) {
+        rgb[0] += buf[i + 2];
+        rgb[1] += buf[i + 1];
+        rgb[2] += buf[i];
+    }
+    return ((rgb[0] * 0.2126) + (rgb[1] * 0.7152) + (rgb[2] * 0.0722)) * stride / (sz / bytes_per_pixel);
+}
+
+void gummyd::jthread_wait_until(std::chrono::milliseconds ms, std::stop_token stoken) {
+    using namespace std::chrono;
+    std::mutex mutex;
+    std::unique_lock lock(mutex);
+    std::condition_variable_any()
+            .wait_until(lock, stoken, system_clock::now() + ms, [&] { return stoken.stop_requested(); });
 }
 
 void gummyd::screenlight_server(display_server &dsp, size_t screen_idx, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken)

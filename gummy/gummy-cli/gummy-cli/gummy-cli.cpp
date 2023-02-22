@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 #include <nlohmann/json.hpp>
+
 #include <spdlog/spdlog.h>
 #include <CLI/App.hpp>
 #include <CLI/Formatter.hpp>

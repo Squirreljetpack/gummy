@@ -28,6 +28,9 @@
 #include <gummyd/sysfs_devices.hpp>
 
 namespace gummyd {
+
+void jthread_wait_until(std::chrono::milliseconds ms, std::stop_token stoken);
+
 void screenlight_server(display_server &dsp, size_t screen_idx, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken);
 void screenlight_client(const channel<int> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms);
 
@@ -47,6 +50,7 @@ struct time_target {
 
 void time_server(channel<time_data> &ch, struct config::time conf, std::stop_token stoken);
 void time_client(const channel<time_data> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn);
+
 }
 
 #endif // CORE_HPP
