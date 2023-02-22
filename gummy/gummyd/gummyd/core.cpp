@@ -189,7 +189,7 @@ void gummyd::time_server(channel<time_data> &ch, struct config::time conf, std::
 		});
 
 		if (!in_range && tw.reference() > tw.start()) {
-            spdlog::debug("[time_server] adding 1 day to time range\n");
+            spdlog::debug("[time_server] adding 1 day to time range");
 			tw.shift_dates();
 		}
 
@@ -200,7 +200,7 @@ void gummyd::time_server(channel<time_data> &ch, struct config::time conf, std::
 
 		if (stoken.stop_requested()) {
 			ch.send({-1, -1, -1});
-            spdlog::debug("[time_server] exit\n");
+            spdlog::debug("[time_server] exit");
 			return;
 		}
 	}
