@@ -275,7 +275,7 @@ int interface(int argc, char **argv)
 	app.add_option(options[TIME_END][0], time.end, options[TIME_END][1])->check(check_time_format)->group(grp_time);
 	app.add_option(options[TIME_ADAPTATION_MS][0], time.adaptation_minutes, options[TIME_ADAPTATION_MS][1])->check(CLI::Range(1, 60 * 12))->group(grp_time);
 
-    spdlog::debug("parsing options...\n");
+    spdlog::debug("parsing options...");
 	try {
 		if (argc == 1) {
 			app.parse("-h");
@@ -291,7 +291,7 @@ int interface(int argc, char **argv)
         std::exit(EXIT_SUCCESS);
     }
 
-    spdlog::debug("getting config...\n");
+    spdlog::debug("getting config...");
     nlohmann::json config_json = [&] {
         try {
             return gummyd::config_get_current();
@@ -301,7 +301,7 @@ int interface(int argc, char **argv)
     }();
 
     if (config_json.contains("error")) {
-        spdlog::error("error while retrieving config:\n{}\n", config_json["error"].get<std::string>());
+        spdlog::error("error while retrieving config:{}", config_json["error"].get<std::string>());
 		return EXIT_FAILURE;
 	}
 
@@ -335,7 +335,7 @@ int interface(int argc, char **argv)
             scr["temperature"]["mode"] = 0;
 	};
 
-    spdlog::debug("updating screen {}\n", scr_idx);
+    spdlog::debug("updating screen {}", scr_idx);
 	if (scr_idx > -1) {
 		update_screen_conf(scr_idx);
 	} else {
@@ -343,7 +343,7 @@ int interface(int argc, char **argv)
 			update_screen_conf(i);
 	}
 
-    spdlog::debug("updating services...\n");
+    spdlog::debug("updating services...");
 	setif(config_json["time"]["start"], time.start);
 	setif(config_json["time"]["end"], time.end);
 	setif(config_json["time"]["adaptation_minutes"], time.adaptation_minutes);
@@ -354,7 +354,7 @@ int interface(int argc, char **argv)
 	setif(config_json["als"]["poll_ms"], als.poll_ms);
 	setif(config_json["als"]["adaptation_ms"], als.adaptation_ms);
 
-    spdlog::debug("writing to daemon...\n");
+    spdlog::debug("writing to daemon...");
     gummyd::daemon_send(config_json.dump());
 
 	return EXIT_SUCCESS;

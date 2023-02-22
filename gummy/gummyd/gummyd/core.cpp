@@ -52,7 +52,7 @@ void gummyd::screenlight_server(display_server &dsp, size_t screen_idx, channel<
 				const auto ret = dsp.screen_data(screen_idx);
 				if (ret.data)
 					return ret;
-                spdlog::error("failed to get screen data [error: {}], retrying ({})...\n", ret.size, tries + 1);
+                spdlog::error("failed to get screen data [error: {}], retrying ({})...", ret.size, tries + 1);
 				std::this_thread::sleep_for(std::chrono::milliseconds(500));
 			}
 			throw std::runtime_error("failed to get screen data after 10 tries");
@@ -63,7 +63,7 @@ void gummyd::screenlight_server(display_server &dsp, size_t screen_idx, channel<
 
 		if (delta > 8) {
 			delta = 0;
-            spdlog::debug("[screenlight_server] sending: {}\n", cur);
+            spdlog::debug("[screenlight_server] sending: {}", cur);
 			ch.send(cur);
 		}
 
@@ -96,7 +96,7 @@ void gummyd::screenlight_client(const channel<int> &ch, size_t screen_idx, confi
 	while (true) {
 		const int brt = ch.recv(prev_brt);
 
-        spdlog::debug("[model: {}, client: screenlight] received {}.\n", config::screen::model_name(model.id), brt);
+        spdlog::debug("[model: {}, client: screenlight] received {}.", config::screen::model_name(model.id), brt);
 
 		if (brt < 0) {
             break;
@@ -108,12 +108,12 @@ void gummyd::screenlight_client(const channel<int> &ch, size_t screen_idx, confi
 			return ch.read() != brt;
 		};
 
-        spdlog::debug("[model: {}, client: screenlight] easing from {} to {}...\n", config::screen::model_name(model.id), val, target);
+        spdlog::debug("[model: {}, client: screenlight] easing from {} to {}...", config::screen::model_name(model.id), val, target);
 		val = easing::animate(val, target, adaptation_ms, easing::ease_out_expo, model_fn, interrupt);
 		prev_brt = brt;
 	}
 
-    file_write(filepath, fmt::format("{}\n", val));
+    file_write(filepath, fmt::format("{}", val));
 }
 
 void gummyd::als_server(const als &als, channel<double> &ch, struct config::als conf, std::stop_token stoken)
@@ -130,7 +130,7 @@ void gummyd::als_server(const als &als, channel<double> &ch, struct config::als 
 		cur = std::log10(std::max(lux * conf.scale, 1.));
 
 		if (std::abs(prev - cur) > 0.01) {
-            spdlog::debug("[als] sending: {}\n", cur);
+            spdlog::debug("[als] sending: {}", cur);
 			ch.send(cur);
 		}
 
@@ -157,7 +157,7 @@ void gummyd::als_client(const channel<double> &ch, size_t screen_idx, config::sc
 
 		const double brt = ch.recv(prev_brt);
 
-        spdlog::debug("[als client] received {} (prev: {}).\n", brt, prev_brt);
+        spdlog::debug("[als client] received {} (prev: {}).", brt, prev_brt);
 
 		if (brt < 0) {
 			return;
@@ -169,12 +169,12 @@ void gummyd::als_client(const channel<double> &ch, size_t screen_idx, config::sc
 			return ch.read() != brt;
 		};
 
-        spdlog::debug("[als client] easing from {} to {}...\n", val, target);
+        spdlog::debug("[als client] easing from {} to {}...", val, target);
 		val = easing::animate(val, target, adaptation_ms, easing::ease_out_expo, model_fn, interrupt);
 		prev_brt = brt;
 	}
 
-    file_write(filepath, fmt::format("{}\n", screen_idx));
+    file_write(filepath, fmt::format("{}", screen_idx));
 }
 
 void gummyd::time_server(channel<time_data> &ch, struct config::time conf, std::stop_token stoken)
@@ -187,7 +187,7 @@ void gummyd::time_server(channel<time_data> &ch, struct config::time conf, std::
 
 		const int in_range = tw.in_range();
 
-        spdlog::debug("[time_server] in range: {}\n", in_range);
+        spdlog::debug("[time_server] in range: {}", in_range);
 
 		ch.send({
 		    tw.time_since_last(),
@@ -201,7 +201,7 @@ void gummyd::time_server(channel<time_data> &ch, struct config::time conf, std::
 		}
 
 		const std::chrono::seconds time_to_next(std::abs(tw.time_to_next()));
-        spdlog::debug("[time_server] sleeping until next event in: {} (~{})\n", std::chrono::duration_cast<std::chrono::minutes>(time_to_next), std::chrono::duration_cast<std::chrono::hours>(time_to_next));
+        spdlog::debug("[time_server] sleeping until next event in: {} (~{})", std::chrono::duration_cast<std::chrono::minutes>(time_to_next), std::chrono::duration_cast<std::chrono::hours>(time_to_next));
 
 		jthread_wait_until(time_to_next, stoken);
 
@@ -255,7 +255,7 @@ void gummyd::time_client(const channel<time_data> &ch, size_t screen_idx, config
 
 	while (true) {
 
-        spdlog::debug("[time_client] reading...\n");
+        spdlog::debug("[time_client] reading...");
 		const time_data data = ch.recv(prev);
 
 		if (data.in_range < 0)
@@ -267,11 +267,11 @@ void gummyd::time_client(const channel<time_data> &ch, size_t screen_idx, config
 
 		for (int step = 0; step < 2; ++step) {
 			const time_target target = calc_time_target(step, data, model);
-            spdlog::debug("[time_client] easing from {} to {} (duration: {})...\n", cur, target.val, std::chrono::duration_cast<std::chrono::minutes>(std::chrono::milliseconds(target.duration_ms)));
+            spdlog::debug("[time_client] easing from {} to {} (duration: {})...", cur, target.val, std::chrono::duration_cast<std::chrono::minutes>(std::chrono::milliseconds(target.duration_ms)));
 			cur = easing::animate(cur, target.val, target.duration_ms, easing::ease, model_fn, interrupt);
 		}
 		prev = data;
 	}
 
-    file_write(filepath, fmt::format("{}\n", cur));
+    file_write(filepath, fmt::format("{}", cur));
 }

@@ -156,7 +156,7 @@ void gamma_state::apply(size_t screen_index, values vals)
 		b[i] = uint16_t(val * b_mult);
 	}
 
-    SPDLOG_TRACE("[screen {}] set_gamma_ramp(brt: {}, temp: {})\n", screen_index, vals.brightness, vals.temperature);
+    SPDLOG_TRACE("[screen {}] set_gamma_ramp(brt: {}, temp: {})", screen_index, vals.brightness, vals.temperature);
 
 	dsp_->set_gamma_ramp(screen_index, ramps);
 }
