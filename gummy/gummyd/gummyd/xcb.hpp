@@ -45,6 +45,9 @@ public:
     bool extension_present(std::string name) const;
 };
 
+// Copyright (c) 2021-2023, Francesco Fusco. All rights reserved.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 class shared_memory {
     xcb::connection conn_;
     xcb_shm_segment_info_t shminfo_;
