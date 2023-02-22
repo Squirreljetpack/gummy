@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 project(gummy VERSION 0.4 LANGUAGES CXX)
 include(GNUInstallDirs)
+include(CPack)
 
 set(
     CPACK_INSTALL_DEFAULT_DIRECTORY_PERMISSIONS

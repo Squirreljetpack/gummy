@@ -25,6 +25,7 @@
 #include <xcb/xcb_image.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <spdlog/spdlog.h>
 #include <gummyd/utils.hpp>
 
 namespace gummyd {
@@ -213,7 +214,7 @@ public:
 			return { nullptr, err->error_code };
 		}
 
-		//LOG_FMT_("{} * {} | x: {} y: {} size: {}\n",w,h,x,y,image_r->size);
+        SPDLOG_TRACE("[XSHM] screenshot: {} * {} | x: {} y: {} size: {}\n", w, h, x, y, image_r->size);
 
 		return {
 			image->data,

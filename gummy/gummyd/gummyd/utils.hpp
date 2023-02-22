@@ -26,6 +26,7 @@
 
 #include <fmt/core.h>
 #include <fmt/chrono.h>
+#include <spdlog/spdlog.h>
 
 namespace gummyd {
 // scale value in a [0, 1] range
@@ -82,18 +83,19 @@ struct c_deleter {
 template <class T>
 using c_unique_ptr = std::unique_ptr<T, c_deleter<T>>;
 //using c_unique_ptr = std::unique_ptr<T, deleter<T, std::free>>;
+
+inline spdlog::level::level_enum env_log_level() {
+    const auto env = getenv("LOG_LEVEL");
+    if (!env)
+        return spdlog::level::off;
+
+    try {
+        return spdlog::level::level_enum(std::stoi(std::string(env)));
+    } catch (std::invalid_argument &e) {
+        return spdlog::level::off;
+    }
 }
 
-#ifdef CMAKE_DEBUG
-    #define LOG_(str)         fmt::print(str);
-    #define LOG_ERR_(str, ...) fmt::print(stderr, str);
-    #define LOG_FMT_(str, ...) fmt::print(str, __VA_ARGS__);
-    #define LOG_ERR_FMT_(str, ...) fmt::print(stderr, str, __VA_ARGS__);
-#else
-    #define LOG_(str)
-    #define LOG_ERR_(str, ...)
-    #define LOG_FMT_(str, ...)
-    #define LOG_ERR_FMT_(str, ...)
-#endif
+}
 
 #endif // UTILS_HPP
