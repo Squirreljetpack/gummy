@@ -6,6 +6,8 @@ target_sources(${PROJECT_NAME}
 	gamma.hpp
 	display.cpp
 	display.hpp
+    udev.hpp
+    udev.cpp
 	sysfs_devices.cpp
 	sysfs_devices.hpp
 	core.cpp
@@ -14,6 +16,8 @@ target_sources(${PROJECT_NAME}
 	config.hpp
     utils.hpp
     utils.cpp
+    sdbus-util.hpp
+    sdbus-util.cpp
     constants.hpp
     constants.cpp
     file.hpp
@@ -31,10 +35,6 @@ target_sources(${PROJECT_NAME}
 
 # udev
 find_library(LIBUDEV "udev" REQUIRED)
-if(NOT UDEV_RULES_DIR)
-    set(UDEV_RULES_DIR /usr/lib/udev/rules.d)
-endif()
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/data/udev/99-gummy.rules" DESTINATION "${UDEV_RULES_DIR}")
 
 # XCB
 find_library(LIBXCB "xcb" REQUIRED)
@@ -61,4 +61,9 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Debug>:SPDLOG_ACTIVE_LEVEL=0>
 )
 
+if(NOT UDEV_RULES_DIR)
+    set(UDEV_RULES_DIR /usr/lib/udev/rules.d)
+endif()
+
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_LIBEXECDIR}")
+install(FILES "${CMAKE_SOURCE_DIR}/gummy/gummyd/data/udev/99-gummy.rules" DESTINATION "${UDEV_RULES_DIR}")

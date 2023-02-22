@@ -16,11 +16,12 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <vector>
 #include <filesystem>
-#include <libudev.h>
 
-#include <gummyd/utils.hpp>
 #include <gummyd/sysfs_devices.hpp>
+#include <gummyd/udev.hpp>
+#include <gummyd/utils.hpp>
 #include <gummyd/constants.hpp>
 
 using namespace gummyd;
