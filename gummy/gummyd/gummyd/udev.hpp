@@ -21,53 +21,30 @@
 
 #include <string>
 #include <libudev.h>
-#include <systemd/sd-device.h>
+//#include <systemd/sd-device.h>
 
 namespace gummyd {
-namespace sysfs
-{
+namespace sysfs {
 
-class udev_context
-{
+class udev_context {
     udev *_addr;
 public:
-	udev_context() {
-		_addr = udev_new();
-	}
-	~udev_context() {
-		udev_unref(_addr);
-	}
-	udev* get() const {
-		return _addr;
-	}
+    udev_context();
+    ~udev_context();
+    udev* get() const;
 };
 
-class device
-{
+class device {
     udev_device *_addr;
 public:
-	device(const udev_context &udev, std::string path)
-	: _addr(udev_device_new_from_syspath(udev.get(), path.c_str())) {}
-
-	~device() {
-		udev_device_unref(_addr);
-	};
-
-	std::string path() const {
-		return udev_device_get_syspath(_addr);
-	}
-
-	std::string get(std::string attr) const {
-		const char *s = udev_device_get_sysattr_value(_addr, attr.c_str());
-		return s ? s : "";
-	}
-
-	void set(std::string attr, std::string val) {
-		udev_device_set_sysattr_value(_addr, attr.c_str(), val.c_str());
-	}
+    device(const udev_context &udev, std::string path);
+    ~device();
+    std::string path() const;
+    std::string get(std::string attr) const;
+    void set(std::string attr, std::string val);
 };
 
-};
+}
 }
 
-#endif // SYSFS_HPP
+#endif // UDEV_HPP
