@@ -5,6 +5,7 @@
 #define CONFIG_HPP
 
 #include <string>
+#include <filesystem>
 #include <nlohmann/json_fwd.hpp>
 
 namespace gummyd {
@@ -19,7 +20,7 @@ class config {
 	void from_json(nlohmann::json data);
 	nlohmann::json to_json() const;
 
-	std::string filepath_;
+    std::filesystem::path filepath_;
 public:
 
     struct time {

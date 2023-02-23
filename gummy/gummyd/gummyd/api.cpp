@@ -8,6 +8,7 @@
 
 #include <nlohmann/json.hpp>
 #include <fmt/core.h>
+#include <fmt/std.h>
 #include <spdlog/spdlog.h>
 #include <gummyd/api.hpp>
 #include <gummyd/file.hpp>
@@ -35,7 +36,7 @@ bool daemon_start() {
 
 bool daemon_stop() {
     try {
-        lock_file flock(gummyd::constants::flock_filepath);
+        lockfile flock(xdg_runtime_dir().append(gummyd::constants::flock_filename));
         return false;
     } catch (std::runtime_error &e) {
         daemon_send("stop");
@@ -45,7 +46,7 @@ bool daemon_stop() {
 
 bool daemon_is_running() {
     try {
-        lock_file flock(gummyd::constants::flock_filepath);
+        lockfile flock(xdg_runtime_dir().append(gummyd::constants::flock_filename));
         return false;
     } catch (std::runtime_error &e) {
         return true;
@@ -53,11 +54,11 @@ bool daemon_is_running() {
 }
 
 void daemon_send(const std::string &s) {
-    file_write(gummyd::constants::fifo_filepath, s);
+    file_write(xdg_runtime_dir().append(gummyd::constants::fifo_filename), s);
 }
 
 nlohmann::json config_get_current() {
-    std::ifstream ifs(xdg_config_filepath(gummyd::constants::config_filename));
+    std::ifstream ifs(xdg_config_dir().append(gummyd::constants::config_filename));
     nlohmann::json ret;
     ifs >> ret;
     return ret;

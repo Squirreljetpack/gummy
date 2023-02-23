@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <fstream>
+#include <fmt/std.h>
 #include <nlohmann/json.hpp>
 
 #include <gummyd/config.hpp>
@@ -13,7 +14,7 @@ using namespace gummyd;
 
 void config::defaults()
 {
-    filepath_ = xdg_config_filepath(constants::config_filename);
+    filepath_ = xdg_config_dir().append(constants::config_filename);
 
 	time.start               = "06:00";
 	time.end                 = "16:00";

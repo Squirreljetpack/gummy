@@ -4,11 +4,13 @@
 #ifndef CONSTANTS_HPP
 #define CONSTANTS_HPP
 
+#include <string_view>
+
 namespace gummyd {
 namespace constants {
-extern const char * const flock_filepath;
-extern const char * const fifo_filepath;
-extern const char * const config_filename;
+extern const std::string_view flock_filename;
+extern const std::string_view fifo_filename;
+extern const std::string_view config_filename;
 extern const int brt_steps_min;
 extern const int brt_steps_max;
 extern const int temp_k_min;
