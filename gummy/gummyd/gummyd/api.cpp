@@ -36,7 +36,7 @@ bool daemon_start() {
 
 bool daemon_stop() {
     try {
-        lockfile flock(xdg_runtime_dir().append(gummyd::constants::flock_filename));
+        lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename);
         return false;
     } catch (std::runtime_error &e) {
         daemon_send("stop");
@@ -46,7 +46,7 @@ bool daemon_stop() {
 
 bool daemon_is_running() {
     try {
-        lockfile flock(xdg_runtime_dir().append(gummyd::constants::flock_filename));
+        lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename);
         return false;
     } catch (std::runtime_error &e) {
         return true;
@@ -54,11 +54,11 @@ bool daemon_is_running() {
 }
 
 void daemon_send(const std::string &s) {
-    file_write(xdg_runtime_dir().append(gummyd::constants::fifo_filename), s);
+    file_write(xdg_runtime_dir() / gummyd::constants::fifo_filename, s);
 }
 
 nlohmann::json config_get_current() {
-    std::ifstream ifs(xdg_config_dir().append(gummyd::constants::config_filename));
+    std::ifstream ifs(xdg_config_dir() / gummyd::constants::config_filename);
     nlohmann::json ret;
     ifs >> ret;
     return ret;
