@@ -73,14 +73,15 @@ void gummyd::screenlight_server(display_server &dsp, size_t screen_idx, channel<
 
 void gummyd::screenlight_client(const channel<int> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
 {
-    const std::string xdg_state_dir = xdg_state_filepath(fmt::format("gummyd/screen-{}", screen_idx));
-    const std::string filepath      = fmt::format("{}/{}", xdg_state_dir, config::screen::model_name(model.id));
+    const std::filesystem::path state_dir = xdg_state_dir().append(fmt::format("gummyd/screen-{}", screen_idx));
+    std::filesystem::create_directories(state_dir);
+    auto filepath = state_dir;
+    filepath.append(config::screen::model_name(model.id));
 
     const int start_val = [&] {
         try {
             return std::stoi(file_read(filepath));
         } catch (std::runtime_error &e) {
-            std::filesystem::create_directories(xdg_state_dir);
             return model.max;
         }
     }();
@@ -108,7 +109,7 @@ void gummyd::screenlight_client(const channel<int> &ch, size_t screen_idx, confi
 		prev_brt = brt;
 	}
 
-    file_write(filepath, fmt::format("{}", val));
+    file_write(filepath, std::to_string(val));
 }
 
 void gummyd::als_server(const als &als, channel<double> &ch, struct config::als conf, std::stop_token stoken)
@@ -143,10 +144,20 @@ void gummyd::als_server(const als &als, channel<double> &ch, struct config::als 
 
 void gummyd::als_client(const channel<double> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
 {
-    const std::string xdg_state_dir = xdg_state_filepath(fmt::format("gummyd/screen-{}", screen_idx));
-    const std::string filepath      = fmt::format("{}/{}", xdg_state_dir, config::screen::model_name(model.id));
+    const std::filesystem::path state_dir = xdg_state_dir().append(fmt::format("gummyd/screen-{}", screen_idx));
+    std::filesystem::create_directories(state_dir);
+    auto filepath = state_dir;
+    filepath.append(config::screen::model_name(model.id));
 
-	int val = model.max;
+    const int start_val = [&] {
+        try {
+            return std::stoi(file_read(filepath));
+        } catch (std::runtime_error &e) {
+            return model.max;
+        }
+    }();
+
+    int val = start_val;
 	double prev_brt = -1;
 
 	while (true) {
@@ -170,7 +181,7 @@ void gummyd::als_client(const channel<double> &ch, size_t screen_idx, config::sc
 		prev_brt = brt;
 	}
 
-    file_write(filepath, fmt::format("{}", screen_idx));
+    file_write(filepath, std::to_string(val));
 }
 
 void gummyd::time_server(channel<time_data> &ch, struct config::time conf, std::stop_token stoken)
@@ -235,14 +246,15 @@ gummyd::time_target calc_time_target(bool step, gummyd::time_data data, gummyd::
 
 void gummyd::time_client(const channel<time_data> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn)
 {
-    const std::string xdg_state_dir = xdg_state_filepath(fmt::format("gummyd/screen-{}", screen_idx));
-    const std::string filepath      = fmt::format("{}/{}", xdg_state_dir, config::screen::model_name(model.id));
+    const std::filesystem::path state_dir = xdg_state_dir().append(fmt::format("gummyd/screen-{}", screen_idx));
+    std::filesystem::create_directories(state_dir);
+    auto filepath = state_dir;
+    filepath.append(config::screen::model_name(model.id));
 
     const int start_val = [&] {
         try {
             return std::stoi(file_read(filepath));
         } catch (std::runtime_error &e) {
-            std::filesystem::create_directories(xdg_state_dir);
             return model.max;
         }
     }();
@@ -271,5 +283,5 @@ void gummyd::time_client(const channel<time_data> &ch, size_t screen_idx, config
 		prev = data;
 	}
 
-    file_write(filepath, fmt::format("{}", cur));
+    file_write(filepath, std::to_string(cur));
 }

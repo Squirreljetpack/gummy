@@ -5,34 +5,39 @@
 #define FILE_HPP
 
 #include <string>
+#include <string_view>
+#include <filesystem>
 #include <fcntl.h>
 
 namespace gummyd {
 
 class named_pipe {
 	int fd_;
-	std::string filepath_;
+    std::filesystem::path filepath_;
 public:
-    named_pipe(std::string filepath);
+    named_pipe(std::filesystem::path filepath);
     ~named_pipe();
 };
 
-class lock_file {
-	std::string filepath_;
+class lockfile {
+    std::filesystem::path filepath_;
 	int fd_;
 	int fnctl_op_;
 	flock fl_;
 public:
-    lock_file(std::string filepath);
-    ~lock_file();
+    lockfile(std::filesystem::path filepath);
+    ~lockfile();
 };
 
-std::string file_read(std::string filepath);
-void file_write(std::string filepath, const std::string &data);
+std::string file_read(std::filesystem::path filepath);
+void file_write(std::filesystem::path filepath, const std::string &data);
 
-// https://specifications.freedesktop.org/basedir-spec/0.8/ar01s03.html
-std::string xdg_config_filepath(std::string filename);
-std::string xdg_state_filepath(std::string filename);
+std::string env(std::string_view var);
+
+// https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+std::filesystem::path xdg_config_dir();
+std::filesystem::path xdg_state_dir();
+std::filesystem::path xdg_runtime_dir();
 }
 
 #endif // FILE_HPP

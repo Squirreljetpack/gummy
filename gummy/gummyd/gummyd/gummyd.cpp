@@ -62,7 +62,7 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
             threads.emplace_back(screenlight_server, std::ref(dsp), idx, std::ref(brt_channels.back()), conf.screenshot, stoken);
 		}
 
-        const std::string xdg_state_dir = xdg_state_filepath(fmt::format("gummyd/screen-{}", idx));
+        const auto state_dir = xdg_state_dir().append(fmt::format("gummyd/screen-{}", idx));
 
         for (size_t model_idx = 0; model_idx < conf.screens[idx].models.size(); ++model_idx) {
 
@@ -93,7 +93,8 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
                     return model.val;
 
                 try {
-                    const std::string filepath = fmt::format("{}/{}", xdg_state_dir, config::screen::model_name(model.id));
+                    auto cpy = state_dir;
+                    const auto filepath = cpy.append(config::screen::model_name(model.id));
                     return std::stoi(file_read(filepath));
                 } catch (std::exception &e) {
                     return model.max;
@@ -187,13 +188,15 @@ int message_loop()
 
 	config conf(dsp.scr_count());
 
-	named_pipe pipe(constants::fifo_filepath);
+    const std::filesystem::path pipe_filepath = xdg_runtime_dir().append(constants::fifo_filename);
 
-    const auto proxy = sdbus_util::on_system_sleep([] (sdbus::Signal &sig) {
+    named_pipe pipe(pipe_filepath);
+
+    const auto proxy = sdbus_util::on_system_sleep([&pipe_filepath] (sdbus::Signal &sig) {
 	    bool sleep;
 	    sig >> sleep;
 	    if (!sleep)
-	        file_write(constants::fifo_filepath, "reset");
+            file_write(pipe_filepath, "reset");
     });
 
 	while (true) {
@@ -202,7 +205,7 @@ int message_loop()
 			run(dsp, conf, stoken);
 		});
 
-		const std::string data(file_read(constants::fifo_filepath));
+        const std::string data(file_read(pipe_filepath));
 
 		if (data == "stop")
 			break;
@@ -236,14 +239,13 @@ int main(int argc, char **argv)
 		std::exit(EXIT_SUCCESS);
 	}
 
-    auto logger = spdlog::rotating_logger_mt("gummyd", xdg_state_filepath("gummyd/logs/gummyd.log"), 1048576 * 5, 1);
-    spdlog::set_default_logger(logger);
+    lockfile flock(xdg_runtime_dir().append(constants::flock_filename));
 
+    auto logger = spdlog::rotating_logger_mt("gummyd", xdg_state_dir().append("gummyd/logs/gummyd.log"), 1048576 * 5, 1);
+    spdlog::set_default_logger(logger);
     spdlog::set_level(gummyd::env_log_level());
 
-    std::filesystem::create_directories(xdg_state_filepath("gummyd/"));
-
-	lock_file flock(constants::flock_filepath);
+    std::filesystem::create_directories(xdg_state_dir().append("gummyd/"));
 
 	return message_loop();
 }
