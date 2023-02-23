@@ -14,7 +14,7 @@ using namespace gummyd;
 
 void config::defaults()
 {
-    filepath_ = xdg_config_dir().append(constants::config_filename);
+    filepath_ = xdg_config_dir() / constants::config_filename;
 
 	time.start               = "06:00";
 	time.end                 = "16:00";

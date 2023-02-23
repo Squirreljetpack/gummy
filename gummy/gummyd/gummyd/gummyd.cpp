@@ -62,7 +62,7 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
             threads.emplace_back(screenlight_server, std::ref(dsp), idx, std::ref(brt_channels.back()), conf.screenshot, stoken);
 		}
 
-        const auto state_dir = xdg_state_dir().append(fmt::format("gummyd/screen-{}", idx));
+        const auto state_dir = xdg_state_dir() / fmt::format("gummyd/screen-{}", idx);
 
         for (size_t model_idx = 0; model_idx < conf.screens[idx].models.size(); ++model_idx) {
 
@@ -93,9 +93,7 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
                     return model.val;
 
                 try {
-                    auto cpy = state_dir;
-                    const auto filepath = cpy.append(config::screen::model_name(model.id));
-                    return std::stoi(file_read(filepath));
+                    return std::stoi(file_read(state_dir / config::screen::model_name(model.id)));
                 } catch (std::exception &e) {
                     return model.max;
                 }
@@ -188,7 +186,7 @@ int message_loop()
 
 	config conf(dsp.scr_count());
 
-    const std::filesystem::path pipe_filepath = xdg_runtime_dir().append(constants::fifo_filename);
+    const std::filesystem::path pipe_filepath = xdg_runtime_dir() / constants::fifo_filename;
 
     named_pipe pipe(pipe_filepath);
 
@@ -239,13 +237,13 @@ int main(int argc, char **argv)
 		std::exit(EXIT_SUCCESS);
 	}
 
-    lockfile flock(xdg_runtime_dir().append(constants::flock_filename));
+    lockfile flock(xdg_runtime_dir() / constants::flock_filename);
 
-    auto logger = spdlog::rotating_logger_mt("gummyd", xdg_state_dir().append("gummyd/logs/gummyd.log"), 1048576 * 5, 1);
+    std::filesystem::create_directories(xdg_state_dir() / "gummyd");
+
+    auto logger = spdlog::rotating_logger_mt("gummyd", xdg_state_dir() / "gummyd/logs/gummyd.log", 1048576 * 5, 1);
     spdlog::set_default_logger(logger);
     spdlog::set_level(gummyd::env_log_level());
-
-    std::filesystem::create_directories(xdg_state_dir().append("gummyd/"));
 
 	return message_loop();
 }

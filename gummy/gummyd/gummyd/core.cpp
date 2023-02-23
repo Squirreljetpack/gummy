@@ -73,10 +73,9 @@ void gummyd::screenlight_server(display_server &dsp, size_t screen_idx, channel<
 
 void gummyd::screenlight_client(const channel<int> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
 {
-    const std::filesystem::path state_dir = xdg_state_dir().append(fmt::format("gummyd/screen-{}", screen_idx));
+    const auto state_dir = xdg_state_dir() / fmt::format("gummyd/screen-{}", screen_idx);
     std::filesystem::create_directories(state_dir);
-    auto filepath = state_dir;
-    filepath.append(config::screen::model_name(model.id));
+    const auto filepath = state_dir / config::screen::model_name(model.id);
 
     const int start_val = [&] {
         try {
@@ -144,10 +143,9 @@ void gummyd::als_server(const als &als, channel<double> &ch, struct config::als 
 
 void gummyd::als_client(const channel<double> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms)
 {
-    const std::filesystem::path state_dir = xdg_state_dir().append(fmt::format("gummyd/screen-{}", screen_idx));
+    const auto state_dir = xdg_state_dir() / fmt::format("gummyd/screen-{}", screen_idx);
     std::filesystem::create_directories(state_dir);
-    auto filepath = state_dir;
-    filepath.append(config::screen::model_name(model.id));
+    const auto filepath = state_dir / config::screen::model_name(model.id);
 
     const int start_val = [&] {
         try {
@@ -246,10 +244,9 @@ gummyd::time_target calc_time_target(bool step, gummyd::time_data data, gummyd::
 
 void gummyd::time_client(const channel<time_data> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn)
 {
-    const std::filesystem::path state_dir = xdg_state_dir().append(fmt::format("gummyd/screen-{}", screen_idx));
+    const auto state_dir = xdg_state_dir() / fmt::format("gummyd/screen-{}", screen_idx);
     std::filesystem::create_directories(state_dir);
-    auto filepath = state_dir;
-    filepath.append(config::screen::model_name(model.id));
+    const auto filepath = state_dir / config::screen::model_name(model.id);
 
     const int start_val = [&] {
         try {
