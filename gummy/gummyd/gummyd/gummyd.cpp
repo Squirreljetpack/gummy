@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <nlohmann/json.hpp>
+#include <fmt/std.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 
@@ -22,17 +23,17 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 {
 	assert(dsp.scr_count() == conf.screens.size());
 
-	const size_t screenshot_clients = conf.clients_for(config::screen::mode::SCREENSHOT);
-	const size_t als_clients        = conf.clients_for(config::screen::mode::ALS);
-	const size_t time_clients       = conf.clients_for(config::screen::mode::TIME);
-    spdlog::debug("clients: als: {}, screenlight: {}, time: {}", als_clients, screenshot_clients, time_clients);
+    const size_t screenlight_clients = conf.clients_for(config::screen::mode::SCREENLIGHT);
+    const size_t als_clients         = conf.clients_for(config::screen::mode::ALS);
+    const size_t time_clients        = conf.clients_for(config::screen::mode::TIME);
+    spdlog::debug("clients: screenlight: {}, als: {}, time: {}", screenlight_clients, als_clients, time_clients);
 
 	std::vector<std::jthread> threads;
 
 	channel<double>    als_ch(-1.);
 	channel<time_data> time_ch({-1, -1, -1});
 	std::vector<channel<int>> brt_channels;
-	brt_channels.reserve(screenshot_clients);
+    brt_channels.reserve(screenlight_clients);
 
 	if (time_clients > 0) {
         spdlog::debug("starting time_server...");
@@ -45,7 +46,7 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
     std::vector<als> als = get_als();
 
 	if (als_clients > 0 && !als.empty()) {
-        spdlog::debug("starting time_server...");
+        spdlog::debug("starting als_server...");
 		threads.emplace_back([&] {
 			als_server(als[0], als_ch, conf.als, stoken);
 		});
@@ -55,7 +56,8 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 
 	for (size_t idx = 0; idx < conf.screens.size(); ++idx) {
 
-		if (conf.clients_for(config::screen::mode::SCREENSHOT, idx) > 0) {
+        if (conf.clients_for(config::screen::mode::SCREENLIGHT, idx) > 0) {
+            spdlog::debug("[screen {}] starting screenlight server", idx);
 			brt_channels.emplace_back(-1);
             threads.emplace_back(screenlight_server, std::ref(dsp), idx, std::ref(brt_channels.back()), conf.screenshot, stoken);
 		}
@@ -98,7 +100,8 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
                 }
             }();
 
-            fn(val);
+            if (model.id == BRIGHTNESS || model.id == TEMPERATURE)
+                fn(val);
         }
 
         for (size_t model_idx = 0; model_idx < conf.screens[idx].models.size(); ++model_idx) {
@@ -109,7 +112,6 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
             using enum config::screen::mode;
             using std::placeholders::_1;
 
-            const auto model_name = config::screen::model_name(config::screen::model_id(model_idx));
 
             // dummy function
             std::function<void(int)> fn = [] ([[maybe_unused]] int val) { };
@@ -128,21 +130,27 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
                 break;
             }
 
+            const auto scr_model_id = fmt::format("screen-{}-{}", idx, config::screen::model_name(config::screen::model_id(model_idx)));
+
             switch (model.mode) {
             case MANUAL:
-                spdlog::debug("[{} model] setting manual value: {}", model_name, model.val);
+                spdlog::debug("[{}] setting manual value: {}", scr_model_id, model.val);
                 fn(model.val);
                 break;
             case ALS:
-                spdlog::debug("[{} model] starting als_client", model_name);
+                if (als.empty()) {
+                    spdlog::warn("[{}] ALS not found, skipping", scr_model_id);
+                    break;
+                }
+                spdlog::debug("[{}] starting als_client", scr_model_id);
                 threads.emplace_back(als_client, std::ref(als_ch), idx, model, fn, conf.als.adaptation_ms);
                 break;
-            case SCREENSHOT:
-                spdlog::debug("[{} model] starting screenlight_client", model_name);
+            case SCREENLIGHT:
+                spdlog::debug("[{}] starting screenlight_client", scr_model_id);
                 threads.emplace_back(screenlight_client, std::ref(brt_channels.back()), idx, model, fn, conf.screenshot.adaptation_ms);
                 break;
             case TIME:
-                spdlog::debug("[{} model] starting time_client", model_name);
+                spdlog::debug("[{}] starting time_client", scr_model_id);
                 threads.emplace_back(time_client, std::ref(time_ch), idx, model, fn);
                 break;
             }
@@ -163,10 +171,13 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 	});
 
     spdlog::debug("joining {} threads", threads.size());
-	for (auto &t : threads)
+    for (auto &t : threads) {
+        spdlog::debug("waiting for thread {}", t.get_id());
 		t.join();
+    }
 
     spdlog::debug("{:=^60}", "end");
+    spdlog::flush_on(spdlog::level::debug);
 }
 
 int message_loop()

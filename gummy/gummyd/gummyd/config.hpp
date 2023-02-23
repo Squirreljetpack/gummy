@@ -50,7 +50,7 @@ public:
 
 		enum class mode {
             MANUAL,
-			SCREENSHOT,
+			SCREENLIGHT,
 			ALS,
 			TIME,
 		};
