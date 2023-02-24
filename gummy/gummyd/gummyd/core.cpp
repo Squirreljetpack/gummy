@@ -165,7 +165,7 @@ void gummyd::als_client(const channel<double> &ch, size_t screen_idx, config::sc
         spdlog::debug("[als client] received {} (prev: {}).", brt, prev_brt);
 
 		if (brt < 0) {
-			return;
+			break;
 		}
 
 		const int target = lerp(model.min, model.max, std::clamp(brt, 0., 1.));
