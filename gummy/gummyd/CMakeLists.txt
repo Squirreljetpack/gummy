@@ -1,8 +1,5 @@
 ﻿project(gummyd LANGUAGES CXX)
 
-find_package(sdbus-c++ REQUIRED)
-find_library(LIBUDEV "udev" REQUIRED)
-
 # API
 add_library(libgummyd STATIC gummyd/api.cpp gummyd/file.cpp gummyd/constants.cpp gummyd/utils.cpp)
 set_target_properties(libgummyd PROPERTIES PREFIX "")
