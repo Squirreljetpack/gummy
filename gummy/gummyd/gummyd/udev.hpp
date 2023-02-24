@@ -5,6 +5,9 @@
 #define SYSFS_H
 
 #include <string>
+#include <string_view>
+#include <filesystem>
+
 #include <libudev.h>
 //#include <systemd/sd-device.h>
 
@@ -22,11 +25,11 @@ public:
 class device {
     udev_device *_addr;
 public:
-    device(const udev_context &udev, std::string path);
+    device(const udev_context &udev, std::filesystem::path path);
     ~device();
     std::string path() const;
-    std::string get(std::string attr) const;
-    void set(std::string attr, std::string val);
+    std::string get(std::string_view attr) const;
+    void set(std::string_view attr, std::string_view val);
 };
 
 }

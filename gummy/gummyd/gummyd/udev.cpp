@@ -3,6 +3,7 @@
 
 #include <string>
 #include <libudev.h>
+#include <filesystem>
 #include <gummyd/udev.hpp>
 //#include <systemd/sd-device.h> @TODO: replace libudev with this
 
@@ -21,8 +22,8 @@ udev* udev_context::get() const {
     return _addr;
 }
 
-device::device(const udev_context &udev, std::string path)
-    : _addr(udev_device_new_from_syspath(udev.get(), path.c_str())) {}
+device::device(const udev_context &udev, std::filesystem::path path)
+    : _addr(udev_device_new_from_syspath(udev.get(), path.generic_string().c_str())) {}
 
 device::~device() {
     udev_device_unref(_addr);
@@ -32,13 +33,13 @@ std::string device::path() const {
     return udev_device_get_syspath(_addr);
 }
 
-std::string device::get(std::string attr) const {
-    const char *s = udev_device_get_sysattr_value(_addr, attr.c_str());
+std::string device::get(std::string_view attr) const {
+    const char *s = udev_device_get_sysattr_value(_addr, attr.data());
     return s ? s : "";
 }
 
-void device::set(std::string attr, std::string val) {
-    udev_device_set_sysattr_value(_addr, attr.c_str(), val.c_str());
+void device::set(std::string_view attr, std::string_view val) {
+    udev_device_set_sysattr_value(_addr, attr.data(), val.data());
 }
 
 } // namespace syfs
