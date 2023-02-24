@@ -5,6 +5,7 @@
 #define SYSFS_DEVICES_HPP
 
 #include <vector>
+#include <filesystem>
 #include <gummyd/udev.hpp>
 
 namespace gummyd {
@@ -15,7 +16,7 @@ class backlight {
 	int _val;
 	int _max;
 public:
-	backlight(std::string path);
+    backlight(std::filesystem::path path);
 	int val() const;
 	int max() const;
 	int step() const;
@@ -28,7 +29,7 @@ class als {
 	std::string   _lux_filename;
 	double        _lux_scale;
 public:
-	als(std::string path);
+    als(std::filesystem::path path);
     double read_lux() const;
 };
 
