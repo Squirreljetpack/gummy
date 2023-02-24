@@ -139,7 +139,7 @@ shared_image::shared_image(shared_memory &shmem, unsigned int width, unsigned in
                 XCB_IMAGE_FORMAT_Z_PIXMAP,
                 conn_.first_screen()->root_depth,
                 shmem_->addr(),
-                screen_size(conn_.first_screen()),
+                xcb::screen_size(conn_.first_screen()),
                 nullptr))
 {
 }
@@ -149,14 +149,14 @@ shared_image::~shared_image() {
     //xcb_image_destroy(image);
 }
 
-shared_image::buffer shared_image::get(int16_t x, int16_t y, uint16_t w, uint16_t h) {
+shared_image::buffer shared_image::get(int16_t x, int16_t y, uint16_t w, uint16_t h, uint32_t offset) {
     auto image_c = xcb_shm_get_image(
                 conn_.get(),
                 conn_.first_screen()->root,
                 x, y,
                 w, h,
                 ~0, XCB_IMAGE_FORMAT_Z_PIXMAP,
-                shmem_->seg(), 0);
+	            shmem_->seg(), offset);
 
     xcb_generic_error_t *err;
 
@@ -172,6 +172,10 @@ shared_image::buffer shared_image::get(int16_t x, int16_t y, uint16_t w, uint16_
         image->data,
         image_r->size,
     };
+}
+
+size_t shared_image::size() const {
+	return image->size;
 }
 
 } // namespace xcb
