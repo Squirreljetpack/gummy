@@ -85,7 +85,8 @@ public:
     };
     shared_image(shared_memory &shmem, unsigned int width, unsigned int height);
     ~shared_image();
-    buffer get(int16_t x, int16_t y, uint16_t w, uint16_t h);
+	buffer get(int16_t x, int16_t y, uint16_t w, uint16_t h, uint32_t offset = 0);
+	size_t size() const;
 };
 
 }

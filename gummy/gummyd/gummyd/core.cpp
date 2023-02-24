@@ -38,27 +38,27 @@ void gummyd::screenlight_server(display_server &dsp, size_t screen_idx, channel<
     int cur = constants::brt_steps_max;
 	int prev;
 	int delta = 0;
-
 	while (true) {
 		prev = cur;
 
-		const auto buf = [&dsp, screen_idx] {
+		const int brightness = [&] {
 			for (int tries = 0; tries < 10; ++tries) {
-				const auto ret = dsp.screen_data(screen_idx);
-				if (ret.data)
+				const int ret = dsp.shared_image_data(screen_idx, [] (xcb::shared_image::buffer b) { return image_brightness(b.data, b.size); });
+				if (ret > -1)
 					return ret;
-                spdlog::error("failed to get screen data [error: {}], retrying ({})...", ret.size, tries + 1);
+				spdlog::error("failed to get screen data [error: {}], retrying ({})...", ret, tries + 1);
 				std::this_thread::sleep_for(std::chrono::milliseconds(500));
 			}
 			throw std::runtime_error("failed to get screen data after 10 tries");
 		}();
 
-		cur = std::clamp(double(image_brightness(buf.data, buf.size)) * conf.scale, 0., 255.);
+		cur = std::clamp(double(brightness) * conf.scale, 0., 255.);
+		fmt::print("[screen {}] brightness {}\n", screen_idx, cur);
 		delta += std::abs(prev - cur);
 
 		if (delta > 8) {
 			delta = 0;
-            spdlog::debug("[screenlight_server] sending: {}", cur);
+			spdlog::debug("[screenlight_server (scr: {})] sending: {}", screen_idx, cur);
 			ch.send(cur);
 		}
 

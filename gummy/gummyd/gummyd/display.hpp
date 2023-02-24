@@ -5,6 +5,9 @@
 #define DISPLAY_HPP
 
 #include <vector>
+#include <mutex>
+#include <functional>
+
 #include <gummyd/xcb.hpp>
 
 namespace gummyd {
@@ -15,9 +18,10 @@ class display_server
 	std::vector<xcb::randr::output> randr_outputs_;
 	xcb::shared_memory shmem_;
 	xcb::shared_image  shimg_;
+	std::mutex mutex_;
 public:
 	display_server();
-	xcb::shared_image::buffer screen_data(int scr_idx);
+	int     shared_image_data(size_t scr_idx, std::function<int(xcb::shared_image::buffer)> fn);
 	void    set_gamma_ramp(int scr_idx, const std::vector<uint16_t> &ramps);
 	size_t  ramp_size(int scr_idx) const;
 	size_t  scr_count() const;
