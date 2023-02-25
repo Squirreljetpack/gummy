@@ -6,8 +6,8 @@ target_sources(${PROJECT_NAME}
 	gamma.hpp
 	display.cpp
 	display.hpp
-    udev.hpp
-    udev.cpp
+	sysfs.hpp
+	sysfs.cpp
 	sysfs_devices.cpp
 	sysfs_devices.hpp
 	core.cpp

@@ -8,11 +8,11 @@
 #include <fmt/std.h>
 
 #include <gummyd/sysfs_devices.hpp>
-#include <gummyd/udev.hpp>
+#include <gummyd/sysfs.hpp>
 #include <gummyd/utils.hpp>
 #include <gummyd/constants.hpp>
 
-namespace gummyd::constants {
+namespace gummyd::sysfs::constants {
 
 namespace backlight {
 constexpr std::string_view path      = "/sys/class/backlight";
@@ -33,9 +33,9 @@ constexpr std::array<std::string_view, 2> lux_filenames = {
 
 using namespace gummyd;
 
-std::vector<backlight> gummyd::get_backlights() {
+std::vector<sysfs::backlight> sysfs::get_backlights() {
 	using namespace std::filesystem;
-    std::vector<backlight> vec;
+	std::vector<sysfs::backlight> vec;
 
     if (exists(constants::backlight::path)) {
         for (const auto &s : directory_iterator(constants::backlight::path))
@@ -45,13 +45,13 @@ std::vector<backlight> gummyd::get_backlights() {
 	return vec;
 }
 
-std::vector<als> gummyd::get_als() {
+std::vector<sysfs::als> sysfs::get_als() {
 	using namespace std::filesystem;
-    std::vector<als> vec;
-    if (exists(constants::als::path)) {
-        for (const auto &s : directory_iterator(constants::als::path)) {
+	std::vector<als> vec;
+	if (exists(constants::als::path)) {
+		for (const auto &s : directory_iterator(constants::als::path)) {
             const std::string stem = s.path().stem();
-            if (stem.find(constants::als::name) != std::string::npos)
+			if (stem.find(constants::als::name) != std::string::npos)
 				vec.emplace_back(s.path());
 		}
 	}
@@ -59,30 +59,30 @@ std::vector<als> gummyd::get_als() {
 	return vec;
 }
 
-backlight::backlight(std::filesystem::path path)
+sysfs::backlight::backlight(std::filesystem::path path)
     : _dev(path),
       _val(std::stoi(_dev.get(constants::backlight::name))),
       _max(std::stoi(_dev.get(constants::backlight::max_name))) {
 }
 
-void backlight::set_step(int step) {
-	_val = remap(step, 0, constants::brt_steps_max, 0, _max);
+void sysfs::backlight::set_step(int step) {
+	_val = remap(step, 0, gummyd::constants::brt_steps_max, 0, _max);
     _dev.set(constants::backlight::name, std::to_string(_val));
 }
 
-int backlight::val() const {
+int sysfs::backlight::val() const {
 	return _val;
 }
 
-int backlight::step() const {
-	return remap(_val, 0, _max, 0, constants::brt_steps_max);
+int sysfs::backlight::step() const {
+	return remap(_val, 0, _max, 0, gummyd::constants::brt_steps_max);
 }
 
-int backlight::max() const {
+int sysfs::backlight::max() const {
 	return _max;
 }
 
-als::als(std::filesystem::path path)
+sysfs::als::als(std::filesystem::path path)
     : _dev(path),
       _lux_scale(1.0) {
     for (std::string_view fname : constants::als::lux_filenames) {
@@ -93,7 +93,7 @@ als::als(std::filesystem::path path)
 	}
 
 	if (_lux_filename.empty()) {
-        throw std::runtime_error(fmt::format("Lux data not found for ALS at path: {} ", path));
+		throw std::runtime_error(fmt::format("Lux data not found for ALS at path: {}", path));
 	}
 
 	_lux_scale = [this] {
@@ -102,7 +102,7 @@ als::als(std::filesystem::path path)
 	}();
 }
 
-double als::read_lux() const {
-	const sysfs::device dev(_dev.path());
-	return std::stod(dev.get(_lux_filename)) * _lux_scale;
+double sysfs::als::read_lux() const {
+	const sysfs::device copy(_dev.path());
+	return std::stod(copy.get(_lux_filename)) * _lux_scale;
 }

@@ -19,7 +19,7 @@ void jthread_wait_until(std::chrono::milliseconds ms, std::stop_token stoken);
 void screenlight_server(display_server &dsp, size_t screen_idx, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken);
 void screenlight_client(const channel<int> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms);
 
-void als_server(const als &als, channel<double> &ch, struct config::als conf, std::stop_token stoken);
+void als_server(const sysfs::als &als, channel<double> &ch, struct config::als conf, std::stop_token stoken);
 void als_client(const channel<double> &ch, size_t screen_idx, config::screen::model model, std::function<void(int)> model_fn, int adaptation_ms);
 
 struct time_data {

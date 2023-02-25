@@ -25,4 +25,4 @@ public:
 }
 }
 
-#endif // UDEV_HPP
+#endif // SYSFS_HPP
