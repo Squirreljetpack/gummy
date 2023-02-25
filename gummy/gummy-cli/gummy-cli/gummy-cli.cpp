@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 
 #include <spdlog/spdlog.h>
+#include <spdlog/cfg/env.h>
 #include <CLI/App.hpp>
 #include <CLI/Formatter.hpp>
 #include <CLI/Config.hpp>
@@ -367,6 +368,6 @@ int interface(int argc, char **argv)
 }
 
 int main(int argc, char **argv) {
-    spdlog::set_level(gummyd::env_log_level());
+    spdlog::cfg::load_env_levels();
     return interface(argc, argv);
 }
