@@ -237,11 +237,11 @@ int interface(int argc, char **argv)
     const range brightness_range(0, brightness_range_real.max / 10);
     const range temp_range(temp_range_pair.first, temp_range_pair.second);
 
-    const range als_range_scale(1., 10.);
+    const range als_range_scale(0.0, 10.0);
     const range als_range_poll_ms(1, 10000 * 60 * 60);
     const range als_range_adaptation_ms(1, 10000);
 
-    const range screenlight_range_scale(1., 10.);
+    const range screenlight_range_scale(0.0, 10.0);
     const range screenlight_range_adaptation_ms(1, 10000);
     const range screenlight_range_poll_ms(1, 10000);
 
