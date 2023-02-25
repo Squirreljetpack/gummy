@@ -181,10 +181,19 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 
 int message_loop()
 {
-	display_server dsp;
+    display_server dsp;
     spdlog::debug("[display_server] found {} screen(s)", dsp.scr_count());
 
-	config conf(dsp.scr_count());
+    // restore default gamma on exit.
+    // in the unlikely event that display_server throws, gamma state is already at default
+    const auto fn = [] () {
+        display_server dsp;
+        gamma_state(dsp).apply_to_all_screens();
+    };
+
+    std::atexit(fn);
+    std::set_terminate(fn);
+    config conf(dsp.scr_count());
 
     const std::filesystem::path pipe_filepath = xdg_runtime_dir() / constants::fifo_filename;
 
@@ -242,6 +251,7 @@ int main(int argc, char **argv)
     std::filesystem::create_directories(xdg_state_dir() / "gummyd");
 
     auto logger = spdlog::rotating_logger_mt("gummyd", xdg_state_dir() / "gummyd/logs/gummyd.log", 1048576 * 5, 1);
+
     spdlog::set_default_logger(logger);
     spdlog::set_level(gummyd::env_log_level());
 
