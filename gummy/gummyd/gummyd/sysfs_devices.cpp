@@ -60,7 +60,7 @@ std::vector<als> gummyd::get_als() {
 }
 
 backlight::backlight(std::filesystem::path path)
-    : _dev(_udev, path),
+    : _dev(path),
       _val(std::stoi(_dev.get(constants::backlight::name))),
       _max(std::stoi(_dev.get(constants::backlight::max_name))) {
 }
@@ -83,7 +83,7 @@ int backlight::max() const {
 }
 
 als::als(std::filesystem::path path)
-    : _dev(_udev, path),
+    : _dev(path),
       _lux_scale(1.0) {
     for (std::string_view fname : constants::als::lux_filenames) {
 		if (!_dev.get(fname).empty()) {
@@ -103,6 +103,6 @@ als::als(std::filesystem::path path)
 }
 
 double als::read_lux() const {
-    const sysfs::device dev(_udev, _dev.path());
+	const sysfs::device dev(_dev.path());
 	return std::stod(dev.get(_lux_filename)) * _lux_scale;
 }

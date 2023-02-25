@@ -2,44 +2,43 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <string>
+#include <stdexcept>
 #include <libudev.h>
 #include <filesystem>
 #include <gummyd/udev.hpp>
-//#include <systemd/sd-device.h> @TODO: replace libudev with this
+#include <systemd/sd-device.h>
 
 namespace gummyd {
 namespace sysfs {
 
-udev_context::udev_context() {
-    _addr = udev_new();
+device::device(std::filesystem::path path) {
+	const int ret = sd_device_new_from_syspath(&addr_, path.generic_string().c_str());
+	if (ret < 0) {
+		throw std::runtime_error("sd_device_new_from_syspath " + std::to_string(ret));
+	}
 }
-
-udev_context::~udev_context() {
-    udev_unref(_addr);
-}
-
-udev* udev_context::get() const {
-    return _addr;
-}
-
-device::device(const udev_context &udev, std::filesystem::path path)
-    : _addr(udev_device_new_from_syspath(udev.get(), path.generic_string().c_str())) {}
 
 device::~device() {
-    udev_device_unref(_addr);
+	sd_device_unref(addr_);
 };
 
 std::string device::path() const {
-    return udev_device_get_syspath(_addr);
+	const char *path = nullptr;
+	const int ret = sd_device_get_syspath(addr_, &path);
+	if (ret < 0) {
+		throw std::runtime_error("sd_device_get_syspath " + std::to_string(ret));
+	}
+	return path;
 }
 
 std::string device::get(std::string_view attr) const {
-    const char *s = udev_device_get_sysattr_value(_addr, attr.data());
-    return s ? s : "";
+	const char *val = nullptr;
+	sd_device_get_sysattr_value(addr_, attr.data(), &val);
+	return val ? val : "";
 }
 
-void device::set(std::string_view attr, std::string_view val) {
-    udev_device_set_sysattr_value(_addr, attr.data(), val.data());
+int device::set(std::string_view attr, std::string_view val) {
+	return sd_device_set_sysattr_value(addr_, attr.data(), val.data());
 }
 
 } // namespace syfs
