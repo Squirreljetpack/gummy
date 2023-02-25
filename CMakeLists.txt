@@ -50,14 +50,14 @@ set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/Fushko/gummy")
 set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS YES)
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
-#set(CPACK_SOURCE_GENERATOR "TGZ;ZIP")
-#set(CPACK_SOURCE_IGNORE_FILES
-#    /.git
-#    /.*build.*
-#    .swp
-#    .*~
-#    .user
-#    )
+set(CPACK_SOURCE_GENERATOR "TGZ")
+set(CPACK_SOURCE_IGNORE_FILES
+    /.git
+    /.*build.*
+    .swp
+    .*~
+    .user
+    )
 
 include(CPack)
 
