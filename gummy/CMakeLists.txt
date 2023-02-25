@@ -1,5 +1,9 @@
 include(FetchContent)
 
+set(JSON_ImplicitConversions OFF)
+set(CLI11_PRECOMPILED ON)
+set(SPDLOG_FMT_EXTERNAL ON)
+
 FetchContent_Declare(json
     URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz
 )
@@ -19,6 +23,7 @@ FetchContent_MakeAvailable(
     spdlog
     cli11
 )
+
 
 add_subdirectory(gummyd)
 add_subdirectory(gummy-cli)
