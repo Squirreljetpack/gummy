@@ -34,7 +34,7 @@ target_sources(${PROJECT_NAME}
 )
 
 # udev
-find_library(LIBUDEV "udev" REQUIRED)
+find_library(LIBSYSTEMD "systemd" REQUIRED)
 
 # XCB
 find_library(LIBXCB "xcb" REQUIRED)
@@ -48,7 +48,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	fmt::fmt
     spdlog::spdlog
     SDBusCpp::sdbus-c++
-    ${LIBUDEV}
+    ${LIBSYSTEMD}
     -latomic
 )
 

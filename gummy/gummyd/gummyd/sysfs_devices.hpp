@@ -11,7 +11,6 @@
 namespace gummyd {
 
 class backlight {
-    sysfs::udev_context _udev;
 	sysfs::device _dev;
 	int _val;
 	int _max;
@@ -24,8 +23,7 @@ public:
 };
 
 class als {
-    sysfs::udev_context _udev;
-	sysfs::device _dev;
+    sysfs::device _dev;
 	std::string   _lux_filename;
 	double        _lux_scale;
 public:
