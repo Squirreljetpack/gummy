@@ -4,7 +4,8 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
-#include <spdlog/spdlog.h>
+#include <cstdlib>
+#include <memory>
 
 namespace gummyd {
 // scale value in a [0, 1] range
@@ -21,8 +22,6 @@ double mant(double x);
 // while the fractional part is the interpolation factor
 // between the index and the next one.
 double remap_to_idx(int val, int min, int max, size_t arr_sz);
-
-spdlog::level::level_enum env_log_level();
 
 template <class T, auto fn>
 struct deleter {

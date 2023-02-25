@@ -4,6 +4,7 @@
 #include <nlohmann/json.hpp>
 #include <fmt/std.h>
 #include <spdlog/spdlog.h>
+#include <spdlog/cfg/env.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 
 #include <gummyd/file.hpp>
@@ -250,10 +251,8 @@ int main(int argc, char **argv)
 
     std::filesystem::create_directories(xdg_state_dir() / "gummyd");
 
-    auto logger = spdlog::rotating_logger_mt("gummyd", xdg_state_dir() / "gummyd/logs/gummyd.log", 1048576 * 5, 1);
-
-    spdlog::set_default_logger(logger);
-    spdlog::set_level(gummyd::env_log_level());
+    spdlog::cfg::load_env_levels();
+    spdlog::set_default_logger(spdlog::rotating_logger_mt("gummyd", xdg_state_dir() / "gummyd/logs/gummyd.log", 1048576 * 5, 3));
 
 	return message_loop();
 }
