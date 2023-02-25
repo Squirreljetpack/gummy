@@ -42,8 +42,8 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 		});
 	}
 
-    std::vector<backlight> backlights = get_backlights();
-    std::vector<als> als = get_als();
+	std::vector<sysfs::backlight> backlights = sysfs::get_backlights();
+	std::vector<sysfs::als> als = sysfs::get_als();
 
 	if (als_clients > 0 && !als.empty()) {
         spdlog::debug("starting als_server...");
@@ -119,7 +119,7 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 
             case BACKLIGHT:
                 if (idx < backlights.size())
-                    fn = std::bind(&backlight::set_step, &backlights[idx], _1);
+					fn = std::bind(&sysfs::backlight::set_step, &backlights[idx], _1);
                 break;
             case BRIGHTNESS:
                 fn = std::bind(&gamma_state::apply_brightness, &gamma_state, idx, _1);

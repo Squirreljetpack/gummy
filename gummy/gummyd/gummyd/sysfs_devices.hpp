@@ -6,9 +6,10 @@
 
 #include <vector>
 #include <filesystem>
-#include <gummyd/udev.hpp>
+#include <gummyd/sysfs.hpp>
 
 namespace gummyd {
+namespace sysfs {
 
 class backlight {
 	sysfs::device _dev;
@@ -33,6 +34,7 @@ public:
 
 std::vector<backlight> get_backlights();
 std::vector<als>       get_als();
-}
+} // namespace sysfs
+} // namespace gummyd
 
 #endif // SYSFS_DEVICES_HPP

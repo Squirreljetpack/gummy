@@ -7,6 +7,7 @@
 #include <spdlog/spdlog.h>
 
 #include <gummyd/core.hpp>
+#include <gummyd/sysfs.hpp>
 #include <gummyd/time.hpp>
 #include <gummyd/easing.hpp>
 #include <gummyd/utils.hpp>
@@ -111,7 +112,7 @@ void gummyd::screenlight_client(const channel<int> &ch, size_t screen_idx, confi
     file_write(filepath, std::to_string(val));
 }
 
-void gummyd::als_server(const als &als, channel<double> &ch, struct config::als conf, std::stop_token stoken)
+void gummyd::als_server(const sysfs::als &als, channel<double> &ch, struct config::als conf, std::stop_token stoken)
 {
     spdlog::debug("[als_server] thread id: {}", std::this_thread::get_id());
 	double prev = -1;
@@ -121,6 +122,7 @@ void gummyd::als_server(const als &als, channel<double> &ch, struct config::als 
 
 		// have at least 1 lux to play with
 		const double lux = std::max(als.read_lux(), 1.);
+		spdlog::debug("[als] got {} lux", lux);
 
 		// the human eye's perception of light intensity is roughly logarithmic
 		cur = std::log10(std::max(lux * conf.scale, 1.));

@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <string>
+#include <string_view>
 #include <stdexcept>
-#include <libudev.h>
 #include <filesystem>
-#include <gummyd/udev.hpp>
 #include <systemd/sd-device.h>
+#include <gummyd/sysfs.hpp>
 
 namespace gummyd {
 namespace sysfs {
@@ -41,5 +41,5 @@ int device::set(std::string_view attr, std::string_view val) {
 	return sd_device_set_sysattr_value(addr_, attr.data(), val.data());
 }
 
-} // namespace syfs
+} // namespace sysfs
 } // namespace gummyd
