@@ -143,9 +143,9 @@ void config::from_json(json in)
 	time.end                 = in["time"]["end"].get<std::string>();
 	time.adaptation_minutes  = in["time"]["adaptation_minutes"].get<int>();
 
-	screenshot.scale         = in["screenshot"]["scale"].get<double>();
-	screenshot.poll_ms       = in["screenshot"]["poll_ms"].get<int>();
-	screenshot.adaptation_ms = in["screenshot"]["adaptation_ms"].get<int>();
+	screenshot.scale         = in["screenlight"]["scale"].get<double>();
+	screenshot.poll_ms       = in["screenlight"]["poll_ms"].get<int>();
+	screenshot.adaptation_ms = in["screenlight"]["adaptation_ms"].get<int>();
 
 	als.scale                = in["als"]["scale"].get<double>();
 	als.poll_ms              = in["als"]["poll_ms"].get<int>();
@@ -163,7 +163,7 @@ json config::to_json() const
 				{"adaptation_minutes", time.adaptation_minutes},
 		}},
 
-		{"screenshot", {
+		{"screenlight", {
 				{"scale", screenshot.scale},
 				{"poll_ms", screenshot.poll_ms},
 				{"adaptation_ms", screenshot.adaptation_ms},

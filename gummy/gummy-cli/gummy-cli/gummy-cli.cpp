@@ -309,9 +309,9 @@ int interface(int argc, char **argv)
 	setif(config_json["time"]["end"], time.end);
     setif(config_json["time"]["adaptation_minutes"], time.adaptation_minutes, rel_fl[TIME_ADAPTATION_MINUTES], time_range_adaptation_minutes);
 
-    setif(config_json["screenshot"]["scale"], screenlight.scale, rel_fl[SCREENSHOT_SCALE], screenlight_range_scale);
-    setif(config_json["screenshot"]["poll_ms"], screenlight.poll_ms, rel_fl[SCREENSHOT_POLL_MS], screenlight_range_poll_ms);
-    setif(config_json["screenshot"]["adaptation_ms"], screenlight.adaptation_ms, rel_fl[SCREENSHOT_ADAPTATION_MS], screenlight_range_adaptation_ms);
+    setif(config_json["screenlight"]["scale"], screenlight.scale, rel_fl[SCREENSHOT_SCALE], screenlight_range_scale);
+    setif(config_json["screenlight"]["poll_ms"], screenlight.poll_ms, rel_fl[SCREENSHOT_POLL_MS], screenlight_range_poll_ms);
+    setif(config_json["screenlight"]["adaptation_ms"], screenlight.adaptation_ms, rel_fl[SCREENSHOT_ADAPTATION_MS], screenlight_range_adaptation_ms);
 
     setif(config_json["als"]["scale"], als.scale, rel_fl[ALS_SCALE], als_range_scale);
     setif(config_json["als"]["poll_ms"], als.poll_ms, rel_fl[ALS_POLL_MS], als_range_poll_ms);
