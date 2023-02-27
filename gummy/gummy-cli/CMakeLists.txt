@@ -13,7 +13,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-    VERSION="${MAIN_VERSION}"
+    VERSION="${GUMMY_VERSION}"
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME gummy)
