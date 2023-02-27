@@ -1,6 +1,8 @@
 // Copyright (c) 2021-2023, Francesco Fusco. All rights reserved.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <cerrno>
+#include <cstring>
 #include <array>
 #include <vector>
 #include <string>
@@ -12,6 +14,7 @@
 #include <gummyd/sysfs.hpp>
 #include <gummyd/utils.hpp>
 #include <gummyd/constants.hpp>
+#include <spdlog/spdlog.h>
 
 namespace gummyd::constants {
 namespace {
@@ -71,7 +74,11 @@ sysfs::backlight::backlight(std::filesystem::path path)
 
 void sysfs::backlight::set_step(int step) {
     _val = remap(step, 0, constants::brt_steps_max, 0, _max);
-    _dev.set(constants::backlight::name, std::to_string(_val));
+	const int res = _dev.set(constants::backlight::name, std::to_string(_val));
+
+	if (res < 0) {
+		spdlog::error("[sysfs] backlight error code {} ({})", errno, std::strerror(errno));
+	}
 }
 
 int sysfs::backlight::val() const {
