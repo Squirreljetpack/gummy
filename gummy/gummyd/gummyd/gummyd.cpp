@@ -45,6 +45,7 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 
 	std::vector<sysfs::backlight> backlights = sysfs::get_backlights();
 	std::vector<sysfs::als> als = sysfs::get_als();
+	spdlog::info("[sysfs] backlights: {}, als: {}", backlights.size(), als.size());
 
 	if (als_clients > 0 && !als.empty()) {
         spdlog::debug("starting als_server...");
