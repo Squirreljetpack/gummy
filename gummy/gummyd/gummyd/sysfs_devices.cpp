@@ -1,6 +1,7 @@
 // Copyright (c) 2021-2023, Francesco Fusco. All rights reserved.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <array>
 #include <vector>
 #include <string>
 #include <string_view>
@@ -12,13 +13,14 @@
 #include <gummyd/utils.hpp>
 #include <gummyd/constants.hpp>
 
-namespace gummyd::sysfs::constants {
+namespace gummyd::constants {
+namespace {
 
 namespace backlight {
 constexpr std::string_view path      = "/sys/class/backlight";
 constexpr std::string_view name      = "brightness";
 constexpr std::string_view max_name  = "max_brightness";
-}
+} // namespace backlight
 
 namespace als {
 constexpr std::string_view path      = "/sys/bus/iio/devices";
@@ -28,13 +30,15 @@ constexpr std::array<std::string_view, 2> lux_filenames = {
     "in_illuminance_input",
     "in_illuminance_raw"
 };
-}
-}
+} // namespace als
+
+} // anonymous namespace
+} // namespace gummyd::constants
 
 using namespace gummyd;
 
 std::vector<sysfs::backlight> sysfs::get_backlights() {
-	using namespace std::filesystem;
+    using namespace std::filesystem;
 	std::vector<sysfs::backlight> vec;
 
     if (exists(constants::backlight::path)) {
@@ -66,7 +70,7 @@ sysfs::backlight::backlight(std::filesystem::path path)
 }
 
 void sysfs::backlight::set_step(int step) {
-	_val = remap(step, 0, gummyd::constants::brt_steps_max, 0, _max);
+    _val = remap(step, 0, constants::brt_steps_max, 0, _max);
     _dev.set(constants::backlight::name, std::to_string(_val));
 }
 
@@ -75,7 +79,7 @@ int sysfs::backlight::val() const {
 }
 
 int sysfs::backlight::step() const {
-	return remap(_val, 0, _max, 0, gummyd::constants::brt_steps_max);
+    return remap(_val, 0, _max, 0, constants::brt_steps_max);
 }
 
 int sysfs::backlight::max() const {
