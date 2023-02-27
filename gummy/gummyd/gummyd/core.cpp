@@ -54,7 +54,6 @@ void gummyd::screenlight_server(display_server &dsp, size_t screen_idx, channel<
 		}();
 
 		cur = std::clamp(double(brightness) * conf.scale, 0., 255.);
-		fmt::print("[screen {}] brightness {}\n", screen_idx, cur);
 		delta += std::abs(prev - cur);
 
 		if (delta > 8) {
