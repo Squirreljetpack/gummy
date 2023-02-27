@@ -101,6 +101,11 @@ std::tuple<double, double, double> kelvin_to_rgb(int val)
 
     const double idx_lerp = remap_to_idx(val, constants::temp_k_min, constants::temp_k_max, ingo_thies_table.size());
 	const size_t idx = std::floor(idx_lerp);
+
+    if (idx == ingo_thies_table.size() - 1) {
+        return {1., 1., 1.};
+    }
+
 	const double r = lerp(ingo_thies_table[idx][0], ingo_thies_table[idx + 1][0], mant(idx_lerp));
 	const double g = lerp(ingo_thies_table[idx][1], ingo_thies_table[idx + 1][1], mant(idx_lerp));
 	const double b = lerp(ingo_thies_table[idx][2], ingo_thies_table[idx + 1][2], mant(idx_lerp));
