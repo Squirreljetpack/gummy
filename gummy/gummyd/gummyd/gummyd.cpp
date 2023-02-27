@@ -193,7 +193,7 @@ int message_loop()
     };
 
     std::atexit(fn);
-    std::set_terminate(fn);
+	//std::set_terminate(fn);
     config conf(dsp.scr_count());
 
     const std::filesystem::path pipe_filepath = xdg_runtime_dir() / constants::fifo_filename;
