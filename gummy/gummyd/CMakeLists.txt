@@ -10,5 +10,6 @@ target_link_libraries(libgummyd PRIVATE
     spdlog::spdlog
 )
 target_compile_definitions(libgummyd PRIVATE CMAKE_INSTALL_DAEMON_PATH="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBEXECDIR}/gummyd")
+target_compile_features(libgummyd PRIVATE cxx_std_20)
 
 add_subdirectory(gummyd)
