@@ -36,7 +36,7 @@ target_sources(${PROJECT_NAME}
 )
 
 find_package(sdbus-c++ REQUIRED)
-find_library(LIBDDCUTIL "libddca" REQUIRED)
+find_library(LIBDDCUTIL "ddcutil" REQUIRED)
 
 # udev
 find_library(LIBSYSTEMD "systemd" REQUIRED)
