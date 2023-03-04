@@ -30,10 +30,13 @@ target_sources(${PROJECT_NAME}
     time.cpp
     xcb.hpp
     xcb.cpp
+    ddc.hpp
+    ddc.cpp
     gummyd.cpp
 )
 
 find_package(sdbus-c++ REQUIRED)
+find_library(LIBDDCUTIL "libddca" REQUIRED)
 
 # udev
 find_library(LIBSYSTEMD "systemd" REQUIRED)
@@ -51,6 +54,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     spdlog::spdlog
     SDBusCpp::sdbus-c++
     ${LIBSYSTEMD}
+    ${LIBDDCUTIL}
     -latomic
 )
 
