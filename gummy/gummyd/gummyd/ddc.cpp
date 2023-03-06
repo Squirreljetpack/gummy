@@ -85,32 +85,27 @@ DDCA_Non_Table_Vcp_Value ddc::display::get_brightness_vcp() const {
     return val;
 }
 
-void ddc::display::set_brightness_vcp(uint16_t new_val) {
-
+void ddc::display::set_brightness_vcp(int new_val) {
     const DDCA_Non_Table_Vcp_Value old_val = get_brightness_vcp();
-
     const uint16_t max_val = old_val.mh << 8 | old_val.ml;
     const uint16_t cur_val = old_val.sh << 8 | old_val.sl;
 
-    const uint16_t out_val = std::clamp(uint16_t(gummyd::remap(new_val, 0, gummyd::constants::brt_steps_max, 0, 100)), uint16_t(0), max_val);
+    const int tmp = std::clamp(new_val, 0, gummyd::constants::brt_steps_max);
+    const uint16_t out_val = gummyd::remap(tmp, 0, gummyd::constants::brt_steps_max, 0, max_val);
+    const uint8_t  out_val_hi = out_val >> 8;
+    const uint8_t  out_val_lo = out_val & 0xFF;
 
     if (out_val == cur_val) {
         return;
     }
 
-    const uint8_t out_sh = out_val >> 8;
-    const uint8_t out_sl = out_val & 0xff;
-
     spdlog::debug("[ddc] setting brightness: {}/{}, prev: {}", out_val, max_val, cur_val);
-    const DDCA_Status st = ddca_set_non_table_vcp_value(handle_, info_->feature_code, out_sh, out_sl);
+    const DDCA_Status st = ddca_set_non_table_vcp_value(handle_, info_->feature_code, out_val_hi, out_val_lo);
 
-    if (st != 0) {
-        spdlog::error("[ddc] ddca_set_non_table_vcp_value", st);
-        if (st == DDCRC_VERIFY) {
-            spdlog::error("[ddc] value verification failed");
-        }
+    if (st == 0)
         return;
-    }
+
+    spdlog::error("[ddc] ddca_set_non_table_vcp_value error {}", st);
 }
 
 DDCA_Display_Handle ddc::display::get() const {
