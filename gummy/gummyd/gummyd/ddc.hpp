@@ -23,7 +23,7 @@ public:
     ~display();
     DDCA_Display_Handle get() const;
     DDCA_Non_Table_Vcp_Value get_brightness_vcp() const;
-    void set_brightness_vcp(uint16_t new_val);
+    void set_brightness_vcp(int new_val);
 };
 
 // not guaranteed to be for brightness
