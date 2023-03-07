@@ -59,6 +59,7 @@ void daemon_send(const std::string &s) {
 
 nlohmann::json config_get_current() {
     std::ifstream ifs(xdg_config_dir() / gummyd::constants::config_filename);
+    ifs.exceptions(std::fstream::failbit);
     nlohmann::json ret;
     ifs >> ret;
     return ret;
