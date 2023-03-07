@@ -285,11 +285,6 @@ int interface(int argc, char **argv)
 		return app.exit(e);
 	}
 
-    if (!gummyd::daemon_is_running()) {
-        std::puts("gummy is not running.\nType: `gummy start`");
-        std::exit(EXIT_SUCCESS);
-    }
-
     spdlog::debug("getting config...");
     nlohmann::json config_json = [&] {
         try {
@@ -361,8 +356,13 @@ int interface(int argc, char **argv)
         update_screen_conf(scr_idx);
     }
 
-    spdlog::debug("writing to daemon...");
-    gummyd::daemon_send(config_json.dump());
+    if (gummyd::daemon_is_running()) {
+        spdlog::debug("writing to daemon...");
+        gummyd::daemon_send(config_json.dump());
+    } else {
+        spdlog::debug("daemon not running, updating config instead");
+        gummyd::config_write(config_json);
+    }
 
 	return EXIT_SUCCESS;
 }

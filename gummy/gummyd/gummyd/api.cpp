@@ -64,6 +64,12 @@ nlohmann::json config_get_current() {
     return ret;
 }
 
+void config_write(nlohmann::json json) {
+    std::ofstream fs(xdg_config_dir() / gummyd::constants::config_filename);
+    fs.exceptions(std::fstream::failbit);
+    fs << std::setw(4) << json;
+}
+
 int config_invalid_val() {
     return std::numeric_limits<int>().min();
 }
