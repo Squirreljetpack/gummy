@@ -1,7 +1,7 @@
 ﻿project(gummyd LANGUAGES CXX)
 
 # API
-add_library(libgummyd STATIC gummyd/api.cpp gummyd/file.cpp gummyd/constants.cpp gummyd/utils.cpp)
+add_library(libgummyd STATIC gummyd/api.hpp gummyd/api.cpp gummyd/file.cpp gummyd/constants.cpp gummyd/utils.cpp)
 set_target_properties(libgummyd PROPERTIES PREFIX "")
 target_include_directories(libgummyd PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(libgummyd PRIVATE
