@@ -18,12 +18,13 @@ class info_list;
 class display {
     DDCA_Display_Handle handle_;
     DDCA_Feature_Metadata *info_;
+    uint16_t max_brightness_;
 public:
     display(DDCA_Display_Ref ref);
     ~display();
     DDCA_Display_Handle get() const;
     DDCA_Non_Table_Vcp_Value get_brightness_vcp() const;
-    void set_brightness_vcp(int new_val);
+    void set_brightness_step(int val);
 };
 
 // not guaranteed to be for brightness

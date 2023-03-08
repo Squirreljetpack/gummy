@@ -17,10 +17,11 @@
 #include <gummyd/gamma.hpp>
 #include <gummyd/sysfs_devices.hpp>
 #include <gummyd/constants.hpp>
+#include <gummyd/ddc.hpp>
 
 using namespace gummyd;
 
-void run(display_server &dsp, config conf, std::stop_token stoken)
+void run(display_server &dsp, std::vector<ddc::display> &ddc_displays, config conf, std::stop_token stoken)
 {
 	assert(dsp.scr_count() == conf.screens.size());
 
@@ -43,9 +44,10 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
 		});
 	}
 
-	std::vector<sysfs::backlight> backlights = sysfs::get_backlights();
-	std::vector<sysfs::als> als = sysfs::get_als();
-	spdlog::info("[sysfs] backlights: {}, als: {}", backlights.size(), als.size());
+    std::vector<sysfs::backlight> backlights = sysfs::get_backlights();
+
+    std::vector<sysfs::als> als = sysfs::get_als();
+    spdlog::info("[sysfs] backlights: {}, als: {}", backlights.size(), als.size());
 
 	if (als_clients > 0 && !als.empty()) {
         spdlog::debug("starting als_server...");
@@ -113,15 +115,17 @@ void run(display_server &dsp, config conf, std::stop_token stoken)
             using enum config::screen::mode;
             using std::placeholders::_1;
 
-
             // dummy function
             std::function<void(int)> fn = [] ([[maybe_unused]] int val) { };
 
             switch (config::screen::model_id(model_idx)) {
 
             case BACKLIGHT:
-                if (idx < backlights.size())
-					fn = std::bind(&sysfs::backlight::set_step, &backlights[idx], _1);
+                if (idx < backlights.size()) {
+                    fn = std::bind(&sysfs::backlight::set_step, &backlights[idx], _1);
+                } else if (idx < ddc_displays.size()) {
+                    fn = std::bind(&ddc::display::set_brightness_step, &ddc_displays[idx], _1);
+                }
                 break;
             case BRIGHTNESS:
                 fn = std::bind(&gamma_state::apply_brightness, &gamma_state, idx, _1);
@@ -208,10 +212,12 @@ int message_loop()
             file_write(pipe_filepath, "reset");
     });
 
+    std::vector<ddc::display> ddc_displays = ddc::get_displays();
+
 	while (true) {
 
 		std::jthread thr([&] (std::stop_token stoken) {
-			run(dsp, conf, stoken);
+            run(dsp, ddc_displays, conf, stoken);
 		});
 
         const std::string data(file_read(pipe_filepath));

@@ -29,7 +29,7 @@ class ddc::info_list {
     DDCA_Display_Info_List *list_;
 public:
     info_list() {
-        ddca_get_display_info_list2(false, &list_);
+        ddca_get_display_info_list2(true, &list_);
     }
     ~info_list() {
         ddca_free_display_info_list(list_);
@@ -47,7 +47,7 @@ std::string ddc::feature_name(DDCA_Vcp_Feature_Code vcp_code) {
 
 std::vector<ddc::display> ddc::get_displays() {
     if (ddc::feature_name(ddc::brightness_code) != "Brightness") {
-        throw std::runtime_error(fmt::format("DDC: {} not Brightness", ddc::brightness_code));
+        throw std::runtime_error(fmt::format("DDC: {} code is for {}", ddc::brightness_code, ddc::feature_name(ddc::brightness_code)));
     }
 
     ddc::info_list list;
@@ -64,48 +64,37 @@ std::vector<ddc::display> ddc::get_displays() {
 
 ddc::display::display(DDCA_Display_Ref ref) {
     DDCA_Status st = ddca_open_display2(ref, true, &handle_);
-    if (st != 0) {
+    if (st != DDCRC_OK) {
         throw std::runtime_error("ddca_open_display2 " + std::to_string(st));
     }
 
     st = ddca_get_feature_metadata_by_dh(ddc::brightness_code, handle_, false, &info_);
-    if (st != 0) {
+    if (st != DDCRC_OK) {
         throw std::runtime_error("ddca_get_feature_metadata_by_dh " + std::to_string(st));
     }
 
     spdlog::info("[ddc] Feature is simple NC: {}", info_->feature_flags & DDCA_SIMPLE_NC);
+
+    const DDCA_Non_Table_Vcp_Value brightness = get_brightness_vcp();
+    max_brightness_ = brightness.mh << 8 | brightness.ml;
 }
 
 DDCA_Non_Table_Vcp_Value ddc::display::get_brightness_vcp() const {
     DDCA_Non_Table_Vcp_Value val;
     const DDCA_Status st = ddca_get_non_table_vcp_value(handle_, info_->feature_code, &val);
-    if (st != 0) {
+    if (st != DDCRC_OK) {
         throw std::runtime_error("ddca_get_non_table_vcp_value " + std::to_string(st));
     }
     return val;
 }
 
-void ddc::display::set_brightness_vcp(int new_val) {
-    const DDCA_Non_Table_Vcp_Value old_val = get_brightness_vcp();
-    const uint16_t max_val = old_val.mh << 8 | old_val.ml;
-    const uint16_t cur_val = old_val.sh << 8 | old_val.sl;
+void ddc::display::set_brightness_step(int val) {
+    const uint16_t out_val = std::clamp(uint16_t(gummyd::remap(val, 0, gummyd::constants::brt_steps_max, 0, max_brightness_)), uint16_t(0), max_brightness_);
+    spdlog::debug("[ddc] setting brightness: {}/{}", out_val, max_brightness_);
 
-    const int tmp = std::clamp(new_val, 0, gummyd::constants::brt_steps_max);
-    const uint16_t out_val = gummyd::remap(tmp, 0, gummyd::constants::brt_steps_max, 0, max_val);
-    const uint8_t  out_val_hi = out_val >> 8;
-    const uint8_t  out_val_lo = out_val & 0xFF;
-
-    if (out_val == cur_val) {
-        return;
-    }
-
-    spdlog::debug("[ddc] setting brightness: {}/{}, prev: {}", out_val, max_val, cur_val);
-    const DDCA_Status st = ddca_set_non_table_vcp_value(handle_, info_->feature_code, out_val_hi, out_val_lo);
-
-    if (st == 0)
-        return;
-
-    spdlog::error("[ddc] ddca_set_non_table_vcp_value error {}", st);
+    const DDCA_Status st = ddca_set_non_table_vcp_value(handle_, info_->feature_code, out_val >> 8, out_val & 0xFF);
+    if (st != DDCRC_OK)
+        spdlog::error("[ddc] ddca_set_non_table_vcp_value error {}", st);
 }
 
 DDCA_Display_Handle ddc::display::get() const {
@@ -113,6 +102,6 @@ DDCA_Display_Handle ddc::display::get() const {
 }
 
 ddc::display::~display() {
-    std::free(info_);
+    ddca_free_feature_metadata(info_);
     ddca_close_display(handle_);
 }
