@@ -13,7 +13,7 @@
 namespace ddc {
 
 class display_refs;
-class info_list;
+class display_list;
 
 class display {
     DDCA_Display_Handle handle_;

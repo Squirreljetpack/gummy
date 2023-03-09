@@ -25,13 +25,13 @@ public:
     }
 };
 
-class ddc::info_list {
+class ddc::display_list {
     DDCA_Display_Info_List *list_;
 public:
-    info_list() {
+    display_list() {
         ddca_get_display_info_list2(true, &list_);
     }
-    ~info_list() {
+    ~display_list() {
         ddca_free_display_info_list(list_);
     }
     DDCA_Display_Info_List *get() const {
@@ -50,12 +50,12 @@ std::vector<ddc::display> ddc::get_displays() {
         throw std::runtime_error(fmt::format("DDC: {} code is for {}", ddc::brightness_code, ddc::feature_name(ddc::brightness_code)));
     }
 
-    ddc::info_list list;
+    const ddc::display_list list;
     std::vector<ddc::display> vec;
 
     for (int i = 0; i < list.get()->ct; ++i) {
         const auto &info = list.get()->info[i];
-        spdlog::debug("ddc [{}] = disp_no: {}, model: {}", i, info.dispno, info.model_name);
+        spdlog::info("ddc [{}] = disp_no: {}, model: {}", i, info.dispno, info.model_name);
         vec.emplace_back(info.dref);
     }
 
