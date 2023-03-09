@@ -62,8 +62,10 @@ std::vector<ddc::display> ddc::get_displays() {
     return vec;
 }
 
-ddc::display::display(DDCA_Display_Ref ref) {
-    DDCA_Status st = ddca_open_display2(ref, true, &handle_);
+ddc::display::display(DDCA_Display_Ref ref) : max_brightness_(0) {
+    DDCA_Status st;
+
+    st = ddca_open_display2(ref, true, &handle_);
     if (st != DDCRC_OK) {
         throw std::runtime_error("ddca_open_display2 " + std::to_string(st));
     }
@@ -72,11 +74,6 @@ ddc::display::display(DDCA_Display_Ref ref) {
     if (st != DDCRC_OK) {
         throw std::runtime_error("ddca_get_feature_metadata_by_dh " + std::to_string(st));
     }
-
-    spdlog::info("[ddc] Feature is simple NC: {}", info_->feature_flags & DDCA_SIMPLE_NC);
-
-    const DDCA_Non_Table_Vcp_Value brightness = get_brightness_vcp();
-    max_brightness_ = brightness.mh << 8 | brightness.ml;
 }
 
 DDCA_Non_Table_Vcp_Value ddc::display::get_brightness_vcp() const {
@@ -89,6 +86,16 @@ DDCA_Non_Table_Vcp_Value ddc::display::get_brightness_vcp() const {
 }
 
 void ddc::display::set_brightness_step(int val) {
+    if (max_brightness_ == 0) {
+        try {
+            const DDCA_Non_Table_Vcp_Value brightness = get_brightness_vcp();
+            max_brightness_ = brightness.mh << 8 | brightness.ml;
+        } catch (std::runtime_error &e) {
+            spdlog::error("[ddc] exception: {}. DDC/CI disabled/unavailable for this screen.", e.what());
+            return;
+        }
+    }
+
     const uint16_t out_val = std::clamp(uint16_t(gummyd::remap(val, 0, gummyd::constants::brt_steps_max, 0, max_brightness_)), uint16_t(0), max_brightness_);
     spdlog::debug("[ddc] setting brightness: {}/{}", out_val, max_brightness_);
 
