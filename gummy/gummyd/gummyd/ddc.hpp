@@ -17,7 +17,6 @@ class display_list;
 
 class display {
     DDCA_Display_Handle handle_;
-    DDCA_Feature_Metadata *info_;
     uint16_t max_brightness_;
 public:
     display(DDCA_Display_Ref ref);
