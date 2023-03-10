@@ -10,6 +10,10 @@
 #include <gummyd/constants.hpp>
 #include <gummyd/ddc.hpp>
 
+namespace ddc {
+static constexpr DDCA_Vcp_Feature_Code brightness_code = 0x10;
+}
+
 // currently unused
 class ddc::display_refs {
     DDCA_Display_Ref *refs_;
@@ -39,17 +43,11 @@ public:
     }
 };
 
-constexpr DDCA_Vcp_Feature_Code ddc::brightness_code = 0x10;
-
 std::string ddc::feature_name(DDCA_Vcp_Feature_Code vcp_code) {
     return ddca_get_feature_name(vcp_code);
 }
 
 std::vector<ddc::display> ddc::get_displays() {
-    if (ddc::feature_name(ddc::brightness_code) != "Brightness") {
-        throw std::runtime_error(fmt::format("DDC: {} code is for {}", ddc::brightness_code, ddc::feature_name(ddc::brightness_code)));
-    }
-
     const ddc::display_list list;
     std::vector<ddc::display> vec;
 
@@ -78,7 +76,7 @@ ddc::display::display(DDCA_Display_Ref ref) : max_brightness_(0) {
 
 DDCA_Non_Table_Vcp_Value ddc::display::get_brightness_vcp() const {
     DDCA_Non_Table_Vcp_Value val;
-    const DDCA_Status st = ddca_get_non_table_vcp_value(handle_, info_->feature_code, &val);
+    const DDCA_Status st = ddca_get_non_table_vcp_value(handle_, ddc::brightness_code, &val);
     if (st != DDCRC_OK) {
         throw std::runtime_error("ddca_get_non_table_vcp_value " + std::to_string(st));
     }
@@ -99,7 +97,7 @@ void ddc::display::set_brightness_step(int val) {
     const uint16_t out_val = std::clamp(uint16_t(gummyd::remap(val, 0, gummyd::constants::brt_steps_max, 0, max_brightness_)), uint16_t(0), max_brightness_);
     spdlog::debug("[ddc] setting brightness: {}/{}", out_val, max_brightness_);
 
-    const DDCA_Status st = ddca_set_non_table_vcp_value(handle_, info_->feature_code, out_val >> 8, out_val & 0xFF);
+    const DDCA_Status st = ddca_set_non_table_vcp_value(handle_, ddc::brightness_code, out_val >> 8, out_val & 0xFF);
     if (st != DDCRC_OK)
         spdlog::error("[ddc] ddca_set_non_table_vcp_value error {}", st);
 }
