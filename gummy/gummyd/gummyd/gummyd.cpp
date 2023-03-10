@@ -51,7 +51,7 @@ void run(display_server &dsp, std::vector<ddc::display> &ddc_displays, config co
 
 	if (als_clients > 0 && !als.empty()) {
         spdlog::debug("starting als_server...");
-		threads.emplace_back([&] {
+        threads.emplace_back([&] {
 			als_server(als[0], als_ch, conf.als, stoken);
 		});
 	}
@@ -66,54 +66,45 @@ void run(display_server &dsp, std::vector<ddc::display> &ddc_displays, config co
             threads.emplace_back(screenlight_server, std::ref(dsp), idx, std::ref(brt_channels.back()), conf.screenshot, stoken);
 		}
 
+        using std::placeholders::_1;
+        using enum config::screen::model_id;
+        using enum config::screen::mode;
         const auto state_dir = xdg_state_dir() / fmt::format("gummyd/screen-{}", idx);
 
+        // individual gamma settings must be already stored to avoid screen flickering,
+        // when multiple threads are modifying gamma
         for (size_t model_idx = 0; model_idx < conf.screens[idx].models.size(); ++model_idx) {
 
-			const auto &model = conf.screens[idx].models[model_idx];
-            using enum config::screen::model_id;
-            using enum config::screen::mode;
-            using std::placeholders::_1;
+            const auto &model = conf.screens[idx].models[model_idx];
 
-			// dummy function
-			std::function<void(int)> fn = [] ([[maybe_unused]] int val) { };
+            // dummy function
+            std::function<void(int)> model_fn = [] ([[maybe_unused]] int val) {};
 
-			switch (config::screen::model_id(model_idx)) {
-			case BACKLIGHT:
-				break;
-			case BRIGHTNESS:
-                fn = std::bind(&gamma_state::set_brightness, &gamma_state, idx, _1);
-				break;
-			case TEMPERATURE:
-                fn = std::bind(&gamma_state::set_temperature, &gamma_state, idx, _1);
-				break;
+            switch (config::screen::model_id(model_idx)) {
+            case BACKLIGHT:
+                break;
+            case BRIGHTNESS:
+                model_fn = std::bind(&gamma_state::store_brightness, &gamma_state, idx, _1);
+                break;
+            case TEMPERATURE:
+                model_fn = std::bind(&gamma_state::store_temperature, &gamma_state, idx, _1);
+                break;
             }
 
-            // if two threads are modifying two different gamma values,
-            // they must both know beforehand the respective gamma values,
-            // in order to avoid screen flickering
-            const int val = [&] {
+            model_fn([&model, &state_dir] {
                 if (model.mode == MANUAL)
                     return model.val;
-
                 try {
                     return std::stoi(file_read(state_dir / config::screen::model_name(model.id)));
                 } catch (std::exception &e) {
                     return model.max;
                 }
-            }();
-
-            if (model.id == BRIGHTNESS || model.id == TEMPERATURE)
-                fn(val);
+            }());
         }
 
         for (size_t model_idx = 0; model_idx < conf.screens[idx].models.size(); ++model_idx) {
 
             const auto &model = conf.screens[idx].models[model_idx];
-
-            using enum config::screen::model_id;
-            using enum config::screen::mode;
-            using std::placeholders::_1;
 
             // dummy function
             std::function<void(int)> fn = [] ([[maybe_unused]] int val) { };
@@ -128,10 +119,10 @@ void run(display_server &dsp, std::vector<ddc::display> &ddc_displays, config co
                 }
                 break;
             case BRIGHTNESS:
-                fn = std::bind(&gamma_state::apply_brightness, &gamma_state, idx, _1);
+                fn = std::bind(&gamma_state::set_brightness, &gamma_state, idx, _1);
                 break;
             case TEMPERATURE:
-                fn = std::bind(&gamma_state::apply_temperature, &gamma_state, idx, _1);
+                fn = std::bind(&gamma_state::set_temperature, &gamma_state, idx, _1);
                 break;
             }
 
@@ -167,7 +158,7 @@ void run(display_server &dsp, std::vector<ddc::display> &ddc_displays, config co
 		while (true) {
             jthread_wait_until(std::chrono::seconds(10), stoken);
             spdlog::debug("gamma refresh");
-            gamma_state.apply_to_all_screens();
+            gamma_state.reset();
             if (stoken.stop_requested()) {
                 spdlog::debug("[gamma refresh] stop requested");
 				return;
@@ -194,7 +185,7 @@ int message_loop()
     // in the unlikely event that display_server throws, gamma state is already at default
     const auto fn = [] () {
         display_server dsp;
-        gamma_state(dsp).apply_to_all_screens();
+        gamma_state(dsp).reset();
     };
 
     std::atexit(fn);
