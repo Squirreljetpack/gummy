@@ -22,8 +22,4 @@ double mant(double x) {
     return x - std::floor(x);
 }
 
-double remap_to_idx(int val, int min, int max, size_t arr_sz) {
-    return remap(val, min, max, 0, arr_sz - 1);
-}
-
 }

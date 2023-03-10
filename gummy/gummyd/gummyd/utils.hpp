@@ -4,7 +4,6 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
-#include <cstdlib>
 #include <memory>
 
 namespace gummyd {
@@ -16,12 +15,6 @@ double lerp(double a, double b, double t);
 double remap(double val, double min, double max, double new_min, double new_max);
 // get the fractional part of a floating point number
 double mant(double x);
-
-// Interpolate val to an array index.
-// The integral part of the return value is the index itself,
-// while the fractional part is the interpolation factor
-// between the index and the next one.
-double remap_to_idx(int val, int min, int max, size_t arr_sz);
 
 template <class T, auto fn>
 struct deleter {
