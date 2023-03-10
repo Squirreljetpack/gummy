@@ -61,17 +61,14 @@ std::vector<ddc::display> ddc::get_displays() {
 }
 
 ddc::display::display(DDCA_Display_Ref ref) : max_brightness_(0) {
-    DDCA_Status st;
-
-    st = ddca_open_display2(ref, true, &handle_);
+    const DDCA_Status st = ddca_open_display2(ref, true, &handle_);
     if (st != DDCRC_OK) {
         throw std::runtime_error("ddca_open_display2 " + std::to_string(st));
     }
+}
 
-    st = ddca_get_feature_metadata_by_dh(ddc::brightness_code, handle_, false, &info_);
-    if (st != DDCRC_OK) {
-        throw std::runtime_error("ddca_get_feature_metadata_by_dh " + std::to_string(st));
-    }
+ddc::display::~display() {
+    ddca_close_display(handle_);
 }
 
 DDCA_Non_Table_Vcp_Value ddc::display::get_brightness_vcp() const {
@@ -106,7 +103,3 @@ DDCA_Display_Handle ddc::display::get() const {
     return handle_;
 }
 
-ddc::display::~display() {
-    ddca_free_feature_metadata(info_);
-    ddca_close_display(handle_);
-}
