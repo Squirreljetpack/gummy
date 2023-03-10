@@ -27,8 +27,6 @@ public:
     void set_brightness_step(int val);
 };
 
-// not guaranteed to be for brightness
-extern const DDCA_Vcp_Feature_Code brightness_code;
 std::string feature_name(DDCA_Vcp_Feature_Code vcp_code);
 std::vector<display> get_displays();
 
