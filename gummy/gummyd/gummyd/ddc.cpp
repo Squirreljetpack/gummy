@@ -53,7 +53,7 @@ std::vector<ddc::display> ddc::get_displays() {
 
     for (int i = 0; i < list.get()->ct; ++i) {
         const auto &info = list.get()->info[i];
-        spdlog::info("ddc [{}] = disp_no: {}, model: {}", i, info.dispno, info.model_name);
+        spdlog::info("[ddc] found model: {} [{}]", info.model_name, i);
         vec.emplace_back(info.dref);
     }
 
