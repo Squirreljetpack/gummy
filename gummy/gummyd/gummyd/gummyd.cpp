@@ -21,21 +21,24 @@
 
 using namespace gummyd;
 
-void run(display_server &dsp, std::vector<ddc::display> &ddc_displays, config conf, std::stop_token stoken)
-{
+void run(display_server &dsp,
+         std::vector<sysfs::backlight> &sysfs_backlights,
+         std::vector<sysfs::als>       &sysfs_als,
+         std::vector<ddc::display>     &ddc_displays,
+         config conf,
+         std::stop_token stoken) {
 	assert(dsp.scr_count() == conf.screens.size());
 
     const size_t screenlight_clients = conf.clients_for(config::screen::mode::SCREENLIGHT);
     const size_t als_clients         = conf.clients_for(config::screen::mode::ALS);
     const size_t time_clients        = conf.clients_for(config::screen::mode::TIME);
-    spdlog::debug("clients: screenlight: {}, als: {}, time: {}", screenlight_clients, als_clients, time_clients);
-
-	std::vector<std::jthread> threads;
+    spdlog::info("clients: screenlight: {}, als: {}, time: {}", screenlight_clients, als_clients, time_clients);
 
 	channel<double>    als_ch(-1.);
 	channel<time_data> time_ch({-1, -1, -1});
-	std::vector<channel<int>> brt_channels;
-    brt_channels.reserve(screenlight_clients);
+    std::vector<channel<int>> screenlight_channels;
+    screenlight_channels.reserve(screenlight_clients);
+    std::vector<std::jthread> threads;
 
 	if (time_clients > 0) {
         spdlog::debug("starting time_server...");
@@ -44,15 +47,10 @@ void run(display_server &dsp, std::vector<ddc::display> &ddc_displays, config co
 		});
 	}
 
-    std::vector<sysfs::backlight> backlights = sysfs::get_backlights();
-
-    std::vector<sysfs::als> als = sysfs::get_als();
-    spdlog::info("[sysfs] backlights: {}, als: {}", backlights.size(), als.size());
-
-	if (als_clients > 0 && !als.empty()) {
+    if (als_clients > 0 && !sysfs_als.empty()) {
         spdlog::debug("starting als_server...");
         threads.emplace_back([&] {
-			als_server(als[0], als_ch, conf.als, stoken);
+            als_server(sysfs_als[0], als_ch, conf.als, stoken);
 		});
 	}
 
@@ -62,8 +60,8 @@ void run(display_server &dsp, std::vector<ddc::display> &ddc_displays, config co
 
         if (conf.clients_for(config::screen::mode::SCREENLIGHT, idx) > 0) {
             spdlog::debug("[screen {}] starting screenlight server", idx);
-			brt_channels.emplace_back(-1);
-            threads.emplace_back(screenlight_server, std::ref(dsp), idx, std::ref(brt_channels.back()), conf.screenshot, stoken);
+            screenlight_channels.emplace_back(-1);
+            threads.emplace_back(screenlight_server, std::ref(dsp), idx, std::ref(screenlight_channels.back()), conf.screenshot, stoken);
 		}
 
         using std::placeholders::_1;
@@ -112,8 +110,8 @@ void run(display_server &dsp, std::vector<ddc::display> &ddc_displays, config co
             switch (config::screen::model_id(model_idx)) {
 
             case BACKLIGHT:
-                if (idx < backlights.size()) {
-                    fn = std::bind(&sysfs::backlight::set_step, &backlights[idx], _1);
+                if (idx < sysfs_backlights.size()) {
+                    fn = std::bind(&sysfs::backlight::set_step, &sysfs_backlights[idx], _1);
                 } else if (idx < ddc_displays.size()) {
                     fn = std::bind(&ddc::display::set_brightness_step, &ddc_displays[idx], _1);
                 }
@@ -134,7 +132,7 @@ void run(display_server &dsp, std::vector<ddc::display> &ddc_displays, config co
                 fn(model.val);
                 break;
             case ALS:
-                if (als.empty()) {
+                if (sysfs_als.empty()) {
                     spdlog::warn("[{}] ALS not found, skipping", scr_model_id);
                     break;
                 }
@@ -143,7 +141,7 @@ void run(display_server &dsp, std::vector<ddc::display> &ddc_displays, config co
                 break;
             case SCREENLIGHT:
                 spdlog::debug("[{}] starting screenlight_client", scr_model_id);
-                threads.emplace_back(screenlight_client, std::ref(brt_channels.back()), idx, model, fn, conf.screenshot.adaptation_ms);
+                threads.emplace_back(screenlight_client, std::ref(screenlight_channels.back()), idx, model, fn, conf.screenshot.adaptation_ms);
                 break;
             case TIME:
                 spdlog::debug("[{}] starting time_client", scr_model_id);
@@ -176,20 +174,22 @@ void run(display_server &dsp, std::vector<ddc::display> &ddc_displays, config co
     spdlog::flush_on(spdlog::level::debug);
 }
 
-int message_loop()
-{
+int message_loop() {
     display_server dsp;
-    spdlog::debug("[display_server] found {} screen(s)", dsp.scr_count());
+    std::vector<ddc::display> ddc_displays         = ddc::get_displays();
+    std::vector<sysfs::als> sysfs_als              = sysfs::get_als();
+    std::vector<sysfs::backlight> sysfs_backlights = sysfs::get_backlights();
+
+    spdlog::info("[display_server] found {} screen(s)", dsp.scr_count());
+    spdlog::info("[sysfs] backlights: {}, als: {}", sysfs_backlights.size(), sysfs_als.size());
+    assert(dsp.scr_count() == ddc_displays.size());
 
     // restore default gamma on exit.
     // in the unlikely event that display_server throws, gamma state is already at default
-    const auto fn = [] () {
+    std::atexit([] () {
         display_server dsp;
         gamma_state(dsp).reset();
-    };
-
-    std::atexit(fn);
-	//std::set_terminate(fn);
+    });
     config conf(dsp.scr_count());
 
     const std::filesystem::path pipe_filepath = xdg_runtime_dir() / constants::fifo_filename;
@@ -203,12 +203,10 @@ int message_loop()
             file_write(pipe_filepath, "reset");
     });
 
-    std::vector<ddc::display> ddc_displays = ddc::get_displays();
-
 	while (true) {
 
 		std::jthread thr([&] (std::stop_token stoken) {
-            run(dsp, ddc_displays, conf, stoken);
+            run(dsp, sysfs_backlights, sysfs_als, ddc_displays, conf, stoken);
 		});
 
         const std::string data(file_read(pipe_filepath));
