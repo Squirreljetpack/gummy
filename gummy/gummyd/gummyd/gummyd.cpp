@@ -182,7 +182,10 @@ int message_loop() {
 
     spdlog::info("[display_server] found {} screen(s)", dsp.scr_count());
     spdlog::info("[sysfs] backlights: {}, als: {}", sysfs_backlights.size(), sysfs_als.size());
-    assert(dsp.scr_count() == ddc_displays.size());
+
+    if (dsp.scr_count() != ddc_displays.size()) {
+        throw std::runtime_error(fmt::format("display count mismatch: randr: {}, ddc {}", dsp.scr_count(), ddc_displays.size()));
+    }
 
     // restore default gamma on exit.
     // in the unlikely event that display_server throws, gamma state is already at default
