@@ -62,4 +62,5 @@ set(CPACK_SOURCE_IGNORE_FILES
 
 include(CPack)
 
-add_subdirectory(gummy)
+add_subdirectory(gummy/gummyd)
+add_subdirectory(gummy/gummy-cli)
