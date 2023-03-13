@@ -43,6 +43,30 @@ public:
     }
 };
 
+class ddc_error {
+    DDCA_Error_Detail *error_;
+public:
+    ddc_error() {
+        error_ = ddca_get_error_detail();
+    }
+    ~ddc_error() {
+        ddca_free_error_detail(error_);
+    }
+    DDCA_Error_Detail *get() const {
+        return error_;
+    }
+    std::string get_error() {
+        if (!error_) {
+            return "ddca_get_error_detail unavailable";
+        }
+        auto ret = fmt::format("error count: {} detail: {}. Causes:\n", error_->cause_ct, error_->detail);
+        for (int i = 0; i < error_->cause_ct; ++i) {
+            ret += fmt::format("{}: {}\n", i, error_->causes[i]->detail);
+        }
+        return ret;
+    }
+};
+
 std::string ddc::feature_name(DDCA_Vcp_Feature_Code vcp_code) {
     return ddca_get_feature_name(vcp_code);
 }
