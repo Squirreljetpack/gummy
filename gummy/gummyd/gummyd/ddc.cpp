@@ -72,6 +72,9 @@ std::string ddc::feature_name(DDCA_Vcp_Feature_Code vcp_code) {
 }
 
 std::vector<ddc::display> ddc::get_displays() {
+    ddca_set_max_tries(DDCA_WRITE_READ_TRIES, ddca_max_max_tries());
+    ddca_set_max_tries(DDCA_MULTI_PART_TRIES, ddca_max_max_tries());
+
     const ddc::display_list list;
     std::vector<ddc::display> vec;
 
