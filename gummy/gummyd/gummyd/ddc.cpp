@@ -87,7 +87,7 @@ std::vector<ddc::display> ddc::get_displays() {
 ddc::display::display(DDCA_Display_Ref ref) : max_brightness_(0) {
     const DDCA_Status st = ddca_open_display2(ref, true, &handle_);
     if (st != DDCRC_OK) {
-        throw std::runtime_error("ddca_open_display2 " + std::to_string(st));
+        throw std::runtime_error(fmt::format("ddca_open_display2 {}", st));
     }
 }
 
@@ -99,7 +99,7 @@ DDCA_Non_Table_Vcp_Value ddc::display::get_brightness_vcp() const {
     DDCA_Non_Table_Vcp_Value val;
     const DDCA_Status st = ddca_get_non_table_vcp_value(handle_, ddc::brightness_code, &val);
     if (st != DDCRC_OK) {
-        throw std::runtime_error("ddca_get_non_table_vcp_value " + std::to_string(st));
+        throw std::runtime_error(fmt::format("ddca_get_non_table_vcp_value error {} ({})", st, ddca_rc_desc(st)));
     }
     return val;
 }
@@ -110,7 +110,7 @@ void ddc::display::set_brightness_step(int val) {
             const DDCA_Non_Table_Vcp_Value brightness = get_brightness_vcp();
             max_brightness_ = brightness.mh << 8 | brightness.ml;
         } catch (std::runtime_error &e) {
-            spdlog::error("[ddc] exception: {}. DDC/CI disabled/unavailable for this screen.", e.what());
+            spdlog::error("[ddc] exception: {}.", e.what());
             return;
         }
     }
@@ -119,8 +119,9 @@ void ddc::display::set_brightness_step(int val) {
     spdlog::debug("[ddc] setting brightness: {}/{}", out_val, max_brightness_);
 
     const DDCA_Status st = ddca_set_non_table_vcp_value(handle_, ddc::brightness_code, out_val >> 8, out_val & 0xFF);
-    if (st != DDCRC_OK)
+    if (st != DDCRC_OK) {
         spdlog::error("[ddc] ddca_set_non_table_vcp_value error {}", st);
+    }
 }
 
 DDCA_Display_Handle ddc::display::get() const {
