@@ -21,6 +21,7 @@ class display {
 public:
     display(DDCA_Display_Ref ref);
     ~display();
+    display(display &&o);
     DDCA_Display_Handle get() const;
     DDCA_Non_Table_Vcp_Value get_brightness_vcp() const;
     void set_brightness_step(int val);

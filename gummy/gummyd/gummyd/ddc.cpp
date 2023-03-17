@@ -78,6 +78,7 @@ std::vector<ddc::display> ddc::get_displays() {
 
     const ddc::display_list list;
     std::vector<ddc::display> vec;
+    vec.reserve(list.get()->ct);
 
     for (int i = 0; i < list.get()->ct; ++i) {
         const auto &info = list.get()->info[i];
@@ -93,6 +94,10 @@ ddc::display::display(DDCA_Display_Ref ref) : max_brightness_(0) {
     if (st != DDCRC_OK) {
         throw std::runtime_error(fmt::format("ddca_open_display2 {}", st));
     }
+}
+
+ddc::display::display(ddc::display &&o) : handle_(o.handle_) {
+    o.handle_ = nullptr;
 }
 
 ddc::display::~display() {
