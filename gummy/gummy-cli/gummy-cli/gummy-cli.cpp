@@ -362,6 +362,7 @@ int interface(int argc, char **argv)
     } else {
         spdlog::debug("daemon not running, updating config instead");
         gummyd::config_write(config_json);
+        std::puts("Config changed. Run 'gummy start' to apply.");
     }
 
 	return EXIT_SUCCESS;
