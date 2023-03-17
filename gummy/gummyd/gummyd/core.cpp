@@ -3,7 +3,6 @@
 
 #include <filesystem>
 #include <fmt/chrono.h>
-#include <fmt/std.h> // formatting of std::thread::id
 #include <spdlog/spdlog.h>
 
 #include <gummyd/core.hpp>
@@ -35,7 +34,6 @@ void gummyd::jthread_wait_until(std::chrono::milliseconds ms, std::stop_token st
 
 void gummyd::screenlight_server(display_server &dsp, size_t screen_idx, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken)
 {
-    spdlog::debug("[screenlight_server] thread id: {}", std::this_thread::get_id());
     int cur = constants::brt_steps_max;
 	int prev;
 	int delta = 0;
@@ -113,7 +111,6 @@ void gummyd::screenlight_client(const channel<int> &ch, size_t screen_idx, confi
 
 void gummyd::als_server(const sysfs::als &als, channel<double> &ch, struct config::als conf, std::stop_token stoken)
 {
-    spdlog::debug("[als_server] thread id: {}", std::this_thread::get_id());
 	double prev = -1;
 	double cur;
 
@@ -185,8 +182,6 @@ void gummyd::als_client(const channel<double> &ch, size_t screen_idx, config::sc
 
 void gummyd::time_server(channel<time_data> &ch, struct config::time conf, std::stop_token stoken)
 {
-    spdlog::debug("[time_server] thread id: {}", std::this_thread::get_id());
-
     time_window tw(std::time(nullptr), conf.start, conf.end, -(conf.adaptation_minutes * 60));
 
 	while (true) {

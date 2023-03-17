@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <nlohmann/json.hpp>
-#include <fmt/std.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/cfg/env.h>
 #include <spdlog/sinks/rotating_file_sink.h>
@@ -166,12 +165,11 @@ void run(display_server &dsp,
 
     spdlog::debug("joining {} threads", threads.size());
     for (auto &t : threads) {
-        spdlog::debug("waiting for thread {}", t.get_id());
 		t.join();
     }
 
     spdlog::debug("{:=^60}", "end");
-    spdlog::flush_on(spdlog::level::debug);
+    spdlog::flush_on(spdlog::level::info);
 }
 
 int message_loop() {
@@ -239,19 +237,19 @@ int message_loop() {
 	return EXIT_SUCCESS;
 }
 
-int main(int argc, char **argv)
-{
-	if (argc > 1 && strcmp(argv[1], "-v") == 0) {
-		std::puts(VERSION);
-		std::exit(EXIT_SUCCESS);
-	}
+int main(int argc, char **argv) {
+    if (argc > 1 && strcmp(argv[1], "-v") == 0) {
+        std::puts(VERSION);
+        std::exit(EXIT_SUCCESS);
+    }
+
+    std::filesystem::create_directories(xdg_state_dir() / "gummyd");
+    spdlog::cfg::load_env_levels();
+    spdlog::set_default_logger(spdlog::rotating_logger_mt("gummyd", xdg_state_dir() / "gummyd/logs/gummyd.log", 1048576 * 5, 3));
+    spdlog::flush_every(std::chrono::seconds(10));
+    spdlog::info("gummyd v{}", VERSION);
 
     lockfile flock(xdg_runtime_dir() / constants::flock_filename);
 
-    std::filesystem::create_directories(xdg_state_dir() / "gummyd");
-
-    spdlog::cfg::load_env_levels();
-    spdlog::set_default_logger(spdlog::rotating_logger_mt("gummyd", xdg_state_dir() / "gummyd/logs/gummyd.log", 1048576 * 5, 3));
-	spdlog::info("gummyd v{}", VERSION);
-	return message_loop();
+    return message_loop();
 }
