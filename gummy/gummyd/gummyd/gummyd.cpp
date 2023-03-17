@@ -154,7 +154,7 @@ void run(display_server &dsp,
         spdlog::debug("[gamma refresh] start");
 		while (true) {
             jthread_wait_until(std::chrono::seconds(10), stoken);
-            spdlog::debug("gamma refresh");
+            spdlog::trace("gamma refresh");
             gamma_state.reset();
             if (stoken.stop_requested()) {
                 spdlog::debug("[gamma refresh] stop requested");
