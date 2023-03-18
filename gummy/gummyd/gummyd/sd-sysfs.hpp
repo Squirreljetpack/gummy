@@ -1,8 +1,8 @@
 // Copyright 2021-2023 Francesco Fusco
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef SYSFS_H
-#define SYSFS_H
+#ifndef SD_SYSFS_H
+#define SD_SYSFS_H
 
 #include <string>
 #include <string_view>
@@ -25,4 +25,4 @@ public:
 }
 }
 
-#endif // SYSFS_HPP
+#endif // SD_SYSFS_HPP

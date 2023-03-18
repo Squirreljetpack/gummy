@@ -6,7 +6,7 @@
 #include <sdbus-c++/IProxy.h>
 
 namespace gummyd {
-namespace sdbus_util {
+namespace dbus {
 
 std::unique_ptr<sdbus::IProxy> register_signal_handler(
     std::string service,
@@ -21,7 +21,7 @@ std::unique_ptr<sdbus::IProxy> register_signal_handler(
 }
 
 std::unique_ptr<sdbus::IProxy> on_system_sleep(std::function<void(sdbus::Signal &signal)> fn) {
-    return sdbus_util::register_signal_handler(
+    return dbus::register_signal_handler(
             "org.freedesktop.login1",
             "/org/freedesktop/login1",
             "org.freedesktop.login1.Manager",

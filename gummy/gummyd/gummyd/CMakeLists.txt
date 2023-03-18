@@ -6,18 +6,18 @@ target_sources(${PROJECT_NAME}
 	gamma.hpp
 	display.cpp
 	display.hpp
-	sysfs.hpp
-	sysfs.cpp
-	sysfs_devices.cpp
-	sysfs_devices.hpp
+    sd-dbus.hpp
+    sd-dbus.cpp
+    sd-sysfs.hpp
+    sd-sysfs.cpp
+    sd-sysfs-devices.cpp
+    sd-sysfs-devices.hpp
 	core.cpp
 	core.hpp
 	config.cpp
 	config.hpp
     utils.hpp
     utils.cpp
-    sdbus-util.hpp
-    sdbus-util.cpp
     constants.hpp
     constants.cpp
     file.hpp
@@ -28,8 +28,8 @@ target_sources(${PROJECT_NAME}
     channel.cpp
     time.hpp
     time.cpp
-    xcb.hpp
-    xcb.cpp
+    x11-xcb.hpp
+    x11-xcb.cpp
     ddc.hpp
     ddc.cpp
     gummyd.cpp

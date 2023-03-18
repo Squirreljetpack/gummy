@@ -8,13 +8,13 @@
 
 #include <gummyd/file.hpp>
 #include <gummyd/utils.hpp>
-#include <gummyd/sdbus-util.hpp>
+#include <gummyd/sd-dbus.hpp>
 #include <gummyd/channel.hpp>
 #include <gummyd/core.hpp>
 #include <gummyd/config.hpp>
 #include <gummyd/display.hpp>
 #include <gummyd/gamma.hpp>
-#include <gummyd/sysfs_devices.hpp>
+#include <gummyd/sd-sysfs-devices.hpp>
 #include <gummyd/constants.hpp>
 #include <gummyd/ddc.hpp>
 
@@ -197,7 +197,7 @@ int message_loop() {
 
     named_pipe pipe(pipe_filepath);
 
-    const auto proxy = sdbus_util::on_system_sleep([&pipe_filepath] (sdbus::Signal &sig) {
+    const auto proxy = dbus::on_system_sleep([&pipe_filepath] (sdbus::Signal &sig) {
 	    bool sleep;
 	    sig >> sleep;
 	    if (!sleep)

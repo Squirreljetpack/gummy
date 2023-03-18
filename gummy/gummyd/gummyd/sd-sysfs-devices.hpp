@@ -1,12 +1,12 @@
 // Copyright 2021-2023 Francesco Fusco
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef SYSFS_DEVICES_HPP
-#define SYSFS_DEVICES_HPP
+#ifndef SD_SYSFS_DEVICES_HPP
+#define SD_SYSFS_DEVICES_HPP
 
 #include <vector>
 #include <filesystem>
-#include <gummyd/sysfs.hpp>
+#include <gummyd/sd-sysfs.hpp>
 
 namespace gummyd {
 namespace sysfs {
@@ -37,4 +37,4 @@ std::vector<als>       get_als();
 } // namespace sysfs
 } // namespace gummyd
 
-#endif // SYSFS_DEVICES_HPP
+#endif // SD_SYSFS_DEVICES_HPP

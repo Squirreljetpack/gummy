@@ -1,15 +1,15 @@
 // Copyright 2021-2023 Francesco Fusco
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef SDBUS_UTIL_HPP
-#define SDBUS_UTIL_HPP
+#ifndef SD_DBUS_HPP
+#define SD_DBUS_HPP
 
 #include <string>
 #include <functional>
 #include <sdbus-c++/IProxy.h>
 
 namespace gummyd {
-namespace sdbus_util {
+namespace dbus {
 
 std::unique_ptr<sdbus::IProxy> register_signal_handler(
     std::string service,
@@ -23,4 +23,5 @@ std::unique_ptr<sdbus::IProxy> on_system_sleep(std::function<void(sdbus::Signal 
 }
 }
 
-#endif // SDBUS_UTIL_HPP
+#endif // SD_DBUS_HPP
+

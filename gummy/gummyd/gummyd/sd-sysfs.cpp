@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <filesystem>
 #include <systemd/sd-device.h>
-#include <gummyd/sysfs.hpp>
+#include <gummyd/sd-sysfs.hpp>
 
 namespace gummyd {
 namespace sysfs {
