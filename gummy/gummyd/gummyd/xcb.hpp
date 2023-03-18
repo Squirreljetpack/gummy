@@ -1,20 +1,5 @@
-/**
-* gummy
-* Copyright (C) 2023  Francesco Fusco
-*
-* This program is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+// Copyright 2021-2023 Francesco Fusco
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #ifndef XCB_HPP
 #define XCB_HPP
@@ -44,9 +29,6 @@ public:
     xcb_screen_t* first_screen() const;
     bool extension_present(std::string name) const;
 };
-
-// Copyright (c) 2021-2023, Francesco Fusco. All rights reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
 
 class shared_memory {
     xcb::connection conn_;

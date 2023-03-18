@@ -101,6 +101,6 @@ You can buy me a coffee at: https://coindrop.to/fushko
 
 ## License
 
-Copyright (C) 2021-2023, Francesco Fusco.
+Copyright 2021-2023 Francesco Fusco
 
 Released under the terms of the GNU General Public License v3.0.
