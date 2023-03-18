@@ -10,7 +10,7 @@
 #include <gummyd/channel.hpp>
 #include <gummyd/display.hpp>
 #include <gummyd/config.hpp>
-#include <gummyd/sysfs_devices.hpp>
+#include <gummyd/sd-sysfs-devices.hpp>
 
 namespace gummyd {
 

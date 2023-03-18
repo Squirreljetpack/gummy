@@ -1,8 +1,8 @@
 // Copyright 2021-2023 Francesco Fusco
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef XCB_HPP
-#define XCB_HPP
+#ifndef X11_XCB_HPP
+#define X11_XCB_HPP
 
 #include <xcb/xcb.h>
 #include <xcb/randr.h>
@@ -11,7 +11,6 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <spdlog/spdlog.h>
-#include <gummyd/utils.hpp>
 
 namespace gummyd {
 namespace xcb {
@@ -74,4 +73,4 @@ public:
 }
 }
 
-#endif // XCB_HPP
+#endif // X11_XCB_HPP

@@ -6,7 +6,7 @@
 #include <spdlog/spdlog.h>
 
 #include <gummyd/core.hpp>
-#include <gummyd/sysfs.hpp>
+#include <gummyd/sd-sysfs.hpp>
 #include <gummyd/time.hpp>
 #include <gummyd/easing.hpp>
 #include <gummyd/utils.hpp>

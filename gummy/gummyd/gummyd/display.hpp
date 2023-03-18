@@ -8,7 +8,7 @@
 #include <mutex>
 #include <functional>
 
-#include <gummyd/xcb.hpp>
+#include <gummyd/x11-xcb.hpp>
 
 namespace gummyd {
 class display_server

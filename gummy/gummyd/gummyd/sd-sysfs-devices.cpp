@@ -10,8 +10,8 @@
 #include <filesystem>
 #include <fmt/std.h>
 
-#include <gummyd/sysfs_devices.hpp>
-#include <gummyd/sysfs.hpp>
+#include <gummyd/sd-sysfs.hpp>
+#include <gummyd/sd-sysfs-devices.hpp>
 #include <gummyd/utils.hpp>
 #include <gummyd/constants.hpp>
 #include <spdlog/spdlog.h>

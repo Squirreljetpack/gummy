@@ -1,10 +1,10 @@
 // Copyright 2021-2023 Francesco Fusco
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include <gummyd/display.hpp>
-#include <gummyd/xcb.hpp>
 #include <functional>
 #include <mutex>
+#include <gummyd/x11-xcb.hpp>
+#include <gummyd/display.hpp>
 
 using namespace gummyd;
 

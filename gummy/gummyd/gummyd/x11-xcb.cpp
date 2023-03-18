@@ -8,7 +8,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <spdlog/spdlog.h>
-#include <gummyd/xcb.hpp>
+#include <gummyd/x11-xcb.hpp>
 #include <gummyd/utils.hpp>
 
 namespace gummyd {
