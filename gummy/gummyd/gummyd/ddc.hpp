@@ -12,9 +12,7 @@
 
 namespace ddc {
 
-class display_refs;
 class display_list;
-
 class display {
     DDCA_Display_Handle handle_;
     uint16_t max_brightness_;
@@ -27,7 +25,6 @@ public:
     void set_brightness_step(int val);
 };
 
-std::string feature_name(DDCA_Vcp_Feature_Code vcp_code);
 std::vector<display> get_displays();
 
 } // namespace ddc
