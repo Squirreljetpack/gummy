@@ -174,14 +174,17 @@ void run(display_server &dsp,
 
 int message_loop() {
     display_server dsp;
-    std::vector<ddc::display> ddc_displays         = ddc::get_displays();
+    std::vector<ddc::display> ddc_displays = ddc::get_displays();
+
     std::vector<sysfs::als> sysfs_als              = sysfs::get_als();
     std::vector<sysfs::backlight> sysfs_backlights = sysfs::get_backlights();
 
     spdlog::info("[display_server] found {} screen(s)", dsp.scr_count());
     spdlog::info("[sysfs] backlights: {}, als: {}", sysfs_backlights.size(), sysfs_als.size());
 
-    if (dsp.scr_count() != ddc_displays.size()) {
+    if (ddc_displays.size() == 0) {
+        spdlog::warn("No DDC displays found. i2c-dev module not loaded?");
+    } else if (dsp.scr_count() != ddc_displays.size()) {
         throw std::runtime_error(fmt::format("display count mismatch: randr: {}, ddc {}", dsp.scr_count(), ddc_displays.size()));
     }
 
