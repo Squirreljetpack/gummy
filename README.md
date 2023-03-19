@@ -23,7 +23,14 @@ These settings can be set manually or automatically, based on any of these input
 
 For NixOS users: you must add the following line to `configuration.nix`: `services.udev.packages = [ pkgs.gummy ];`
 
-gummy uses the ddcutil library on your system for managing external backlights. Until ddcutil [1.4+](https://www.ddcutil.com/release_notes/#i2c-device-permissions-simplified), you must add your user to the "i2c" group for rootless operation. From ddcutil's [documentation](https://www.ddcutil.com/config_steps/#i2c-device-permissions):
+
+gummy uses the ddcutil library on your system for managing backlights of external monitors. The kernel module **i2c-dev** is needed if you want this functionality. 
+
+**i2c-dev** is built-in in some distributions. Otherwise, you must load it explicitly. [This guide](https://www.ddcutil.com/kernel_module/) shows you how to load it automatically. 
+
+You can quickly load it with the command: `sudo modprobe i2c-dev`. This method does not survive a system reboot, however.
+
+ Until ddcutil [1.4+](https://www.ddcutil.com/release_notes/#i2c-device-permissions-simplified), you must add your user to the "i2c" group for rootless operation.
 
 `sudo usermod <user-name> -aG i2c`
 
