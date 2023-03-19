@@ -247,6 +247,7 @@ int main(int argc, char **argv) {
     }
 
     std::filesystem::create_directories(xdg_state_dir() / "gummyd");
+    spdlog::set_level(spdlog::level::warn);
     spdlog::cfg::load_env_levels();
     spdlog::set_default_logger(spdlog::rotating_logger_mt("gummyd", xdg_state_dir() / "gummyd/logs/gummyd.log", 1048576 * 5, 3));
     spdlog::flush_every(std::chrono::seconds(10));
