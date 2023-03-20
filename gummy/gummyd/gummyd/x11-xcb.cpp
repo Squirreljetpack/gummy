@@ -123,10 +123,15 @@ std::vector<randr::output> randr::outputs(const connection &conn, xcb_screen_t *
             const auto len  = xcb_randr_get_output_property_data_length(outprop_r.get());
 
             if (len != edid_len) {
-                throw std::runtime_error(fmt::format("[{}] edid is {} bytes", len, dsp_id));
+                const auto log = fmt::format("[x11] {} edid is {} bytes", dsp_id, len);
+                if (len == edid_len / 2) {
+                    spdlog::warn(log);
+                } else {
+                    throw std::runtime_error(log);
+                }
             }
 
-            std::array<uint8_t, edid_len> ret;
+            std::array<uint8_t, edid_len> ret{};
             for (int i = 0; i < len; i++)
                 ret[i] = edid[i];
             return ret;
