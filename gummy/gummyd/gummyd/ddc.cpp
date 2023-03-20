@@ -1,6 +1,7 @@
 // Copyright 2021-2023 Francesco Fusco
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <algorithm>
 #include <ddcutil_c_api.h>
 #include <ddcutil_macros.h>
 #include <ddcutil_status_codes.h>
@@ -62,26 +63,17 @@ std::vector<ddc::display> ddc::get_displays(std::vector<std::array<uint8_t, 256>
         throw std::runtime_error(fmt::format("[ddc] edid count mismatch: {} vs DDC: {}", edids.size(), list.get()->ct));
     }
 
-    // todo: don't recheck previously found edid
-    for (size_t i = 0; i < edids.size(); i++) {
-        for (size_t j = 0; j < edids.size(); ++j) {
+    for (const auto &edid : edids) {
+        for (size_t i = 0; i < edids.size(); ++i) {
+            const auto &display_data = list.get()->info[i];
 
-            const auto &display_data = list.get()->info[j];
-
-            const bool edid_match = [&] () {
-                for (size_t k = 0; k < edids[i].size() / 2; ++k) {
-                    if (edids[i][k] != display_data.edid_bytes[k])
-                        return false;
-                }
-                return true;
-            }();
-
-            if (edid_match) {
+            if (std::equal(edid.begin(), edid.begin() + 128, std::begin(display_data.edid_bytes), std::end(display_data.edid_bytes))) {
                 vec.emplace_back(display_data.dref);
                 spdlog::info("[ddc] found: {}-{}-{}", display_data.mfg_id, display_data.model_name, display_data.sn);
                 break;
-            } else if (j == edids.size() - 1) {
+            }
 
+            if (i == edids.size() - 1) {
                 const auto ddc_edid_strings = [&list] {
                     std::vector<std::string> ret(list.get()->ct);
                     for (int i = 0; i < list.get()->ct; ++i) {
@@ -90,10 +82,9 @@ std::vector<ddc::display> ddc::get_displays(std::vector<std::array<uint8_t, 256>
                     }
                     return ret;
                 }();
-
                 throw std::runtime_error(
                             fmt::format("could not match the first 128 bytes of this edid with any DDC edid.\n{:02x}\n\nDDC edids:\n{}",
-                                        fmt::join(edids[i], " "), fmt::join(ddc_edid_strings, " "))
+                                        fmt::join(edid, " "), fmt::join(ddc_edid_strings, " "))
                             );
             }
         }
