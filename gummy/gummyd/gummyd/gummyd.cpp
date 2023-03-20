@@ -174,7 +174,7 @@ void run(display_server &dsp,
 
 int message_loop() {
     display_server dsp;
-    std::vector<ddc::display> ddc_displays = ddc::get_displays();
+    std::vector<ddc::display> ddc_displays = ddc::get_displays(dsp.get_edids());
 
     std::vector<sysfs::als> sysfs_als              = sysfs::get_als();
     std::vector<sysfs::backlight> sysfs_backlights = sysfs::get_backlights();

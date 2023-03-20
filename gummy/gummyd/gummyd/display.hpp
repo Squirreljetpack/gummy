@@ -25,6 +25,7 @@ public:
 	void    set_gamma_ramp(int scr_idx, const std::vector<uint16_t> &ramps);
 	size_t  ramp_size(int scr_idx) const;
 	size_t  scr_count() const;
+    std::vector<std::array<uint8_t, 256>> get_edids();
 };
 }
 
