@@ -4,6 +4,7 @@
 #ifndef DDC_HPP
 #define DDC_HPP
 
+#include <array>
 #include <vector>
 #include <string>
 #include <ddcutil_c_api.h>
@@ -26,6 +27,7 @@ public:
 };
 
 std::vector<display> get_displays();
+std::vector<display> get_displays(std::vector<std::array<uint8_t, 256>> edids);
 
 } // namespace ddc
 

@@ -95,6 +95,12 @@ std::vector<randr::output> randr::outputs(const connection &conn, xcb_screen_t *
     xcb_randr_output_t *outputs = xcb_randr_get_screen_resources_current_outputs(res_r.get());
     std::vector<output> ret;
 
+    auto atom_c = xcb_intern_atom(conn.get(), 1, strlen("EDID"), "EDID");
+    auto atom_r = c_unique_ptr<xcb_intern_atom_reply_t>(xcb_intern_atom_reply(conn.get(), atom_c, &err));
+    throw_if(err, "xcb_intern_atom_reply");
+
+    static constexpr int edid_len = 256;
+
     for (size_t i = 0; i < res_r.get()->num_outputs; ++i) {
         auto output_c = xcb_randr_get_output_info(conn.get(), outputs[i], XCB_CURRENT_TIME);
         auto output_r = c_unique_ptr<xcb_randr_get_output_info_reply_t>(xcb_randr_get_output_info_reply(conn.get(), output_c, &err));
@@ -105,11 +111,34 @@ std::vector<randr::output> randr::outputs(const connection &conn, xcb_screen_t *
         if (!crtc_info_r)
             continue;
 
+        const uint8_t *buf = xcb_randr_get_output_info_name(output_r.get());
+        const std::string dsp_id(buf, buf + output_r->name_len);
+        spdlog::info("[x11] found: {}", dsp_id);
+
+        const std::array<uint8_t, edid_len> edid = [&] () {
+            auto outprop_c = xcb_randr_get_output_property(conn.get(), outputs[i], atom_r->atom, XCB_GET_PROPERTY_TYPE_ANY, 0, edid_len, 0, 0);
+            auto outprop_r = c_unique_ptr<xcb_randr_get_output_property_reply_t>(xcb_randr_get_output_property_reply(conn.get(), outprop_c, &err));
+
+            const auto edid = xcb_randr_get_output_property_data(outprop_r.get());
+            const auto len  = xcb_randr_get_output_property_data_length(outprop_r.get());
+
+            if (len != edid_len) {
+                throw std::runtime_error(fmt::format("[{}] edid is {} bytes", len, dsp_id));
+            }
+
+            std::array<uint8_t, edid_len> ret;
+            for (int i = 0; i < len; i++)
+                ret[i] = edid[i];
+            return ret;
+        }();
+
         auto gamma_c = xcb_randr_get_crtc_gamma_size(conn.get(), output_r->crtc);
         auto gamma_r = c_unique_ptr<xcb_randr_get_crtc_gamma_size_reply_t>(xcb_randr_get_crtc_gamma_size_reply(conn.get(), gamma_c, &err));
         throw_if(err, "xcb_randr_get_crtc_gamma_size");
 
         ret.push_back({
+                          dsp_id,
+                          edid,
                           output_r->crtc,
                           crtc_info_r->width,
                           crtc_info_r->height,
