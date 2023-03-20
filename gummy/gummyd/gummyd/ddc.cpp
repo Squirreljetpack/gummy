@@ -62,43 +62,41 @@ std::vector<ddc::display> ddc::get_displays(std::vector<std::array<uint8_t, 256>
         throw std::runtime_error(fmt::format("[ddc] edid count mismatch: {} vs DDC: {}", edids.size(), list.get()->ct));
     }
 
-    while (vec.size() < edids.size()) {
+    // todo: don't recheck previously found edid
+    for (size_t i = 0; i < edids.size(); i++) {
+        for (size_t j = 0; j < edids.size(); ++j) {
 
-        for (size_t i = 0; i < edids.size(); i++) {
-            for (size_t j = 0; j < edids.size(); ++j) {
+            const auto &display_data = list.get()->info[j];
 
-                const auto &display_data = list.get()->info[j];
+            const bool edid_match = [&] () {
+                for (size_t k = 0; k < edids[i].size() / 2; ++k) {
+                    if (edids[i][k] != display_data.edid_bytes[k])
+                        return false;
+                }
+                return true;
+            }();
 
-                const bool edid_match = [&] () {
-                    for (size_t k = 0; k < edids[i].size() / 2; ++k) {
-                        if (edids[i][k] != display_data.edid_bytes[k])
-                            return false;
+            if (edid_match) {
+                vec.emplace_back(display_data.dref);
+                spdlog::info("[ddc] found: {}-{}-{}", display_data.mfg_id, display_data.model_name, display_data.sn);
+                break;
+            } else if (j == edids.size() - 1) {
+
+                const auto ddc_edid_strings = [&list] {
+                    std::vector<std::string> ret(list.get()->ct);
+                    for (int i = 0; i < list.get()->ct; ++i) {
+                        const auto &display_data = list.get()->info[i];
+                        ret[i] = fmt::format("{:02x}\n\n", fmt::join(display_data.edid_bytes, " "));
                     }
-                    return true;
+                    return ret;
                 }();
 
-                if (edid_match) {
-                    vec.emplace_back(display_data.dref);
-                    spdlog::info("[ddc] found: {}-{}-{}", display_data.mfg_id, display_data.model_name, display_data.sn);
-                } else if (j == edids.size()) {
-
-                    const auto ddc_edid_strings = [&list] {
-                         std::vector<std::string> ret(list.get()->ct);
-                         for (int i = 0; i < list.get()->ct; ++i) {
-                             const auto &display_data = list.get()->info[i];
-                             ret[i] = fmt::format("{:02x}\n\n", fmt::join(display_data.edid_bytes, " "));
-                         }
-                         return ret;
-                    }();
-
-                    throw std::runtime_error(
-                    fmt::format("could not match the first 128 bytes of this edid with any DDC edid.\n{:02x}\n\nDDC edids:\n{}",
-                                fmt::join(edids[i], " "), fmt::join(ddc_edid_strings, " "))
-                    );
-                }
+                throw std::runtime_error(
+                            fmt::format("could not match the first 128 bytes of this edid with any DDC edid.\n{:02x}\n\nDDC edids:\n{}",
+                                        fmt::join(edids[i], " "), fmt::join(ddc_edid_strings, " "))
+                            );
             }
         }
-
     }
 
     return vec;
