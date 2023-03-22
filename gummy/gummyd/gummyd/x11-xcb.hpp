@@ -44,7 +44,7 @@ class randr {
 public:
     struct output {
         std::string id;
-        std::array<uint8_t, 256> edid;
+        std::array<uint8_t, 128> edid;
         xcb_randr_crtc_t crtc_id;
         uint16_t width;
         uint16_t height;
