@@ -27,7 +27,7 @@ public:
 };
 
 std::vector<display> get_displays();
-std::vector<display> get_displays(std::vector<std::array<uint8_t, 256>> edids);
+std::vector<display> get_displays(std::vector<std::array<uint8_t, 128>> edids);
 
 } // namespace ddc
 

@@ -35,8 +35,8 @@ size_t display_server::scr_count() const {
 	return randr_outputs_.size();
 }
 
-std::vector<std::array<uint8_t, 256>> display_server::get_edids() {
-    std::vector<std::array<uint8_t, 256>> vec;
+std::vector<std::array<uint8_t, 128>> display_server::get_edids() {
+    std::vector<std::array<uint8_t, 128>> vec;
     vec.reserve(randr_outputs_.size());
     for (const auto &out : randr_outputs_) {
         vec.push_back(out.edid);

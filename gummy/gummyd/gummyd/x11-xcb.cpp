@@ -1,6 +1,7 @@
 // Copyright 2021-2023 Francesco Fusco
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <algorithm>
 #include <xcb/xcb.h>
 #include <xcb/randr.h>
 #include <xcb/shm.h>
@@ -99,7 +100,8 @@ std::vector<randr::output> randr::outputs(const connection &conn, xcb_screen_t *
     auto atom_r = c_unique_ptr<xcb_intern_atom_reply_t>(xcb_intern_atom_reply(conn.get(), atom_c, &err));
     throw_if(err, "xcb_intern_atom_reply");
 
-    static constexpr int edid_len = 256;
+    // https://en.wikipedia.org/wiki/Extended_Display_Identification_Data
+    static constexpr int edid_base_block_size = 128;
 
     for (size_t i = 0; i < res_r.get()->num_outputs; ++i) {
         auto output_c = xcb_randr_get_output_info(conn.get(), outputs[i], XCB_CURRENT_TIME);
@@ -115,26 +117,25 @@ std::vector<randr::output> randr::outputs(const connection &conn, xcb_screen_t *
         const std::string dsp_id(buf, buf + output_r->name_len);
         spdlog::info("[x11] found: {}", dsp_id);
 
-        const std::array<uint8_t, edid_len> edid = [&] () {
-            auto outprop_c = xcb_randr_get_output_property(conn.get(), outputs[i], atom_r->atom, XCB_GET_PROPERTY_TYPE_ANY, 0, edid_len, 0, 0);
+        const std::array<uint8_t, edid_base_block_size> edid = [&] () {
+            auto outprop_c = xcb_randr_get_output_property(conn.get(), outputs[i], atom_r->atom, XCB_GET_PROPERTY_TYPE_ANY, 0, edid_base_block_size, 0, 0);
             auto outprop_r = c_unique_ptr<xcb_randr_get_output_property_reply_t>(xcb_randr_get_output_property_reply(conn.get(), outprop_c, &err));
+            throw_if(err, "xcb_randr_get_output_property");
 
             const auto edid = xcb_randr_get_output_property_data(outprop_r.get());
             const auto len  = xcb_randr_get_output_property_data_length(outprop_r.get());
 
-            if (len != edid_len) {
-                const auto log = fmt::format("[x11] {} edid is {} bytes", dsp_id, len);
-                if (len == edid_len / 2) {
-                    spdlog::warn(log);
-                } else {
-                    throw std::runtime_error(log);
-                }
+            const auto log = fmt::format("[x11] {} edid is {} bytes", dsp_id, len);
+            if (len >= edid_base_block_size) {
+                spdlog::info(log);
+            } else {
+                throw std::runtime_error(log);
             }
 
-            std::array<uint8_t, edid_len> ret{};
-            for (int i = 0; i < len; i++)
-                ret[i] = edid[i];
-            return ret;
+            std::array<uint8_t, edid_base_block_size> out;
+            std::copy_n(&edid[0], edid_base_block_size, out.begin());
+
+            return out;
         }();
 
         auto gamma_c = xcb_randr_get_crtc_gamma_size(conn.get(), output_r->crtc);

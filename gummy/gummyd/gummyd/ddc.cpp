@@ -1,7 +1,9 @@
 // Copyright 2021-2023 Francesco Fusco
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include <algorithm>
+#include <vector>
+#include <ranges>
+#include <string>
 #include <ddcutil_c_api.h>
 #include <ddcutil_macros.h>
 #include <ddcutil_status_codes.h>
@@ -47,7 +49,7 @@ std::vector<ddc::display> ddc::get_displays() {
     return vec;
 }
 
-std::vector<ddc::display> ddc::get_displays(std::vector<std::array<uint8_t, 256>> edids) {
+std::vector<ddc::display> ddc::get_displays(std::vector<std::array<uint8_t, 128>> edids) {
     ddca_set_max_tries(DDCA_WRITE_READ_TRIES, ddca_max_max_tries());
     ddca_set_max_tries(DDCA_MULTI_PART_TRIES, ddca_max_max_tries());
     ddca_enable_verify(false);
@@ -64,22 +66,20 @@ std::vector<ddc::display> ddc::get_displays(std::vector<std::array<uint8_t, 256>
     }
 
     for (const auto &edid : edids) {
-        for (size_t i = 0; i < edids.size(); ++i) {
+        for (int i = 0; i < list.get()->ct; ++i) {
             const auto &display_data = list.get()->info[i];
 
-            if (std::equal(edid.begin(), edid.begin() + 128, std::begin(display_data.edid_bytes), std::end(display_data.edid_bytes))) {
+            if (std::ranges::equal(edid, display_data.edid_bytes)) {
                 vec.emplace_back(display_data.dref);
                 spdlog::info("[ddc] found: {}-{}-{}", display_data.mfg_id, display_data.model_name, display_data.sn);
                 break;
             }
 
-            if (i == edids.size() - 1) {
+            if (i == list.get()->ct - 1) {
                 const auto ddc_edid_strings = [&list] {
                     std::vector<std::string> ret(list.get()->ct);
-                    for (int i = 0; i < list.get()->ct; ++i) {
-                        const auto &display_data = list.get()->info[i];
-                        ret[i] = fmt::format("{:02x}\n\n", fmt::join(display_data.edid_bytes, " "));
-                    }
+                    for (int i = 0; i < list.get()->ct; ++i)
+                        ret[i] = fmt::format("{:02x}\n\n", fmt::join(list.get()->info[i].edid_bytes, " "));
                     return ret;
                 }();
                 throw std::runtime_error(
