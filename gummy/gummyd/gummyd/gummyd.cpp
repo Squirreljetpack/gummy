@@ -156,6 +156,10 @@ void run(std::vector<xcb::randr::output> &randr_outputs,
                 threads.emplace_back(als_client, std::ref(als_ch), idx, model, fn, conf.als.adaptation_ms);
                 break;
             case SCREENLIGHT:
+                if (screenlight_channels.empty()) {
+                    spdlog::warn("[{}] screenlight unavailable, skipping", scr_model_id);
+                    break;
+                }
                 spdlog::debug("[{}] starting screenlight_client", scr_model_id);
                 threads.emplace_back(screenlight_client, std::ref(screenlight_channels.back()), idx, model, fn, conf.screenshot.adaptation_ms);
                 break;
@@ -193,21 +197,14 @@ void run(std::vector<xcb::randr::output> &randr_outputs,
 
 int message_loop() {
     std::vector randr_outputs = [] {
-        //if (!gummyd::env("WAYLAND_DISPLAY").empty())
-        //    return std::vector<xcb::randr::output>();
-        try {
-            xcb::connection conn;
-            return xcb::randr::outputs(conn, conn.first_screen());
-        } catch (std::runtime_error &e) {
+        if (!gummyd::env("WAYLAND_DISPLAY").empty()) {
             return std::vector<xcb::randr::output>();
         }
+        xcb::connection conn;
+        return xcb::randr::outputs(conn, conn.first_screen());
     } ();
 
     const std::vector randr_edids = [&randr_outputs] {
-        // xwayland randr does not retrieve edids
-        if (!gummyd::env("WAYLAND_DISPLAY").empty()) {
-            return std::vector<decltype(xcb::randr::output::edid)>();
-        }
         std::vector<decltype(xcb::randr::output::edid)> vec(randr_outputs.size());
         std::ranges::transform(randr_outputs, vec.begin(), &xcb::randr::output::edid);
         return vec;
