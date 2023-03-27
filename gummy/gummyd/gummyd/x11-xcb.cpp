@@ -124,18 +124,18 @@ std::vector<randr::output> randr::outputs(const connection &conn, xcb_screen_t *
             throw_if(err, "xcb_randr_get_output_property");
 
             const std::span edid(
-            xcb_randr_get_output_property_data(outprop_r.get()),
-            xcb_randr_get_output_property_data_length(outprop_r.get()));
+                        xcb_randr_get_output_property_data(outprop_r.get()),
+                        xcb_randr_get_output_property_data_length(outprop_r.get()));
 
             const auto log = fmt::format("[x11] {} edid is {} bytes", dsp_id, edid.size());
-            if (edid.size() >= edid_base_block_size) {
-                spdlog::info(log);
-            } else {
-                throw std::runtime_error(log);
-            }
 
             std::array<uint8_t, edid_base_block_size> out;
-            std::copy_n(edid.begin(), edid_base_block_size, out.begin());
+            if (edid.size() >= edid_base_block_size) {
+                spdlog::info(log);
+                std::copy_n(edid.begin(), edid_base_block_size, out.begin());
+            } else {
+                spdlog::warn(log);
+            }
 
             return out;
         }();
