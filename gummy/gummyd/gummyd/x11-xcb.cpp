@@ -168,51 +168,49 @@ void randr::set_gamma(const connection &conn, xcb_randr_crtc_t crtc, const std::
     throw_if(xcb_request_check(conn.get(), req), "xcb_randr_set_crtc_gamma_checked");
 }
 
-shared_image::shared_image(shared_memory &shmem, unsigned int width, unsigned int height)
-    : shmem_(&shmem),
-      image(xcb_image_create_native(
+shared_image::shared_image()
+    : shmem_(xcb::screen_size(conn_.first_screen())),
+      image_(xcb_image_create_native(
                 conn_.get(),
-                width, height,
+                conn_.first_screen()->width_in_pixels,
+                conn_.first_screen()->height_in_pixels,
                 XCB_IMAGE_FORMAT_Z_PIXMAP,
                 conn_.first_screen()->root_depth,
-                shmem_->addr(),
+                shmem_.addr(),
                 xcb::screen_size(conn_.first_screen()),
                 nullptr))
 {
 }
 
 shared_image::~shared_image() {
-    // fails with "free(): invalid pointer"
+    // fails with "free(): invalid pointer".
+    // this is not needed, shared memory takes care of it.
     //xcb_image_destroy(image);
 }
 
-shared_image::buffer shared_image::get(int16_t x, int16_t y, uint16_t w, uint16_t h, uint32_t offset) {
+int shared_image::get(int16_t x, int16_t y, uint16_t w, uint16_t h, std::function<int(std::span<uint8_t>)> fn) {
+    std::lock_guard lk(mutex_);
     auto image_c = xcb_shm_get_image(
                 conn_.get(),
                 conn_.first_screen()->root,
                 x, y,
                 w, h,
                 ~0, XCB_IMAGE_FORMAT_Z_PIXMAP,
-	            shmem_->seg(), offset);
+                shmem_.seg(), 0);
 
     xcb_generic_error_t *err;
-
     auto image_r = xcb_shm_get_image_reply(conn_.get(), image_c, &err);
-
     if (!image_r) {
-        return { nullptr, err->error_code };
+        return err ? err->error_code : -1;
     }
 
     SPDLOG_TRACE("[XSHM] got image: {} * {} | x: {} y: {} size: {}", w, h, x, y, image_r->size);
 
-    return {
-        image->data,
-        image_r->size,
-    };
+    return fn(std::span(image_->data, image_r->size));
 }
 
 size_t shared_image::size() const {
-	return image->size;
+    return image_->size;
 }
 
 } // namespace xcb

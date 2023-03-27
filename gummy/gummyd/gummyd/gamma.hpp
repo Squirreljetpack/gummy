@@ -10,19 +10,18 @@
 
 namespace gummyd {
 class gamma_state {
-	struct values {
+    struct settings {
         int brightness = gummyd::constants::brt_steps_max;
 		int temperature = 6500;
 	};
+    std::vector<xcb::randr::output> randr_outputs_;
+    std::vector<settings> screen_settings_;
 
-	display_server *dsp_;
-	std::vector<values> screens_;
-
-	static values sanitize(values);
-    void set(size_t screen_idx, values);
+    static settings sanitize(settings);
+    void set(size_t screen_idx, settings);
 public:
-	gamma_state(display_server &dsp);
-    gamma_state(display_server &dsp, std::vector<gummyd::config::screen> conf);
+    gamma_state(std::vector<xcb::randr::output>);
+    gamma_state(std::vector<xcb::randr::output>, std::vector<gummyd::config::screen> conf);
 
     void store_brightness(size_t screen_idx, int val);
     void set_brightness(size_t screen_idx, int val);
@@ -30,7 +29,7 @@ public:
     void store_temperature(size_t screen_idx, int val);
     void set_temperature(size_t screen_idx, int val);
 
-    void reset();
+    void reset_gamma();
 };
 }
 

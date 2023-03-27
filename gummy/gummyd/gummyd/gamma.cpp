@@ -12,26 +12,24 @@
 
 using namespace gummyd;
 
-gamma_state::gamma_state(display_server &dsp)
-:	dsp_(&dsp),
-    screens_(dsp.scr_count()) {
+gamma_state::gamma_state(std::vector<xcb::randr::output> outputs)
+:    randr_outputs_(outputs), screen_settings_(outputs.size()) {
 }
 
-gamma_state::gamma_state(display_server &dsp, std::vector<config::screen> conf)
-:	dsp_(&dsp),
-    screens_(dsp.scr_count()) {
-	for (size_t i = 0; i < conf.size(); ++i) {
-		using enum config::screen::mode;
-		using enum config::screen::model_id;
-		const auto &brt_model  = conf[i].models[size_t(BRIGHTNESS)];
-		const auto &temp_model = conf[i].models[size_t(TEMPERATURE)];
-		if (brt_model.mode == MANUAL) {
-			screens_[i].brightness = brt_model.val;
-		}
-		if (temp_model.mode == MANUAL) {
-			screens_[i].temperature = temp_model.val;
-		}
-	}
+gamma_state::gamma_state(std::vector<xcb::randr::output> outputs, std::vector<config::screen> conf)
+:    randr_outputs_(outputs), screen_settings_(outputs.size()) {
+    for (size_t i = 0; i < conf.size(); ++i) {
+        using enum config::screen::mode;
+        using enum config::screen::model_id;
+        const auto &brt_model  = conf[i].models[size_t(BRIGHTNESS)];
+        const auto &temp_model = conf[i].models[size_t(TEMPERATURE)];
+        if (brt_model.mode == MANUAL) {
+            screen_settings_[i].brightness = brt_model.val;
+        }
+        if (temp_model.mode == MANUAL) {
+            screen_settings_[i].temperature = temp_model.val;
+        }
+    }
 }
 
 // Color ramp by Ingo Thies.
@@ -120,10 +118,12 @@ double calc_brt_scale(int step, size_t ramp_sz) {
 // [ 0, 32, 64, 96, ... UINT16_MAX - 32 ]
 // So, when ramp_sz = 2048, each value is increased in steps of 32,
 // When ramp_sz = 1024, it's 64, and so on.
-void gamma_state::set(size_t screen_index, values vals) {
+void gamma_state::set(size_t screen_index, settings vals) {
+    if (screen_index > randr_outputs_.size() - 1)
+        return;
     vals = gamma_state::sanitize(vals);
 
-    const size_t sz = dsp_->ramp_size(screen_index);
+    const size_t sz = randr_outputs_[screen_index].ramp_size;
     std::vector<uint16_t> ramps(sz * 3);
     uint16_t* const r = &ramps[0 * sz];
     uint16_t* const g = &ramps[1 * sz];
@@ -141,10 +141,10 @@ void gamma_state::set(size_t screen_index, values vals) {
 
     SPDLOG_TRACE("[screen {}] set_gamma_ramp(brt: {}, temp: {})", screen_index, vals.brightness, vals.temperature);
 
-	dsp_->set_gamma_ramp(screen_index, ramps);
+    xcb::randr::set_gamma(xcb::connection(), randr_outputs_[screen_index].crtc_id, ramps);
 }
 
-gamma_state::values gamma_state::sanitize(values vals) {
+gamma_state::settings gamma_state::sanitize(settings vals) {
     using namespace constants;
 	return {
 		std::clamp(vals.brightness, brt_steps_min, brt_steps_max),
@@ -153,29 +153,29 @@ gamma_state::values gamma_state::sanitize(values vals) {
 }
 
 void gamma_state::store_brightness(size_t idx, int val) {
-    values values = std::atomic_ref(screens_[idx]).load();
+    settings values = std::atomic_ref(screen_settings_[idx]).load();
     values.brightness = val;
-    std::atomic_ref(screens_[idx]).store(values);
+    std::atomic_ref(screen_settings_[idx]).store(values);
 }
 
 void gamma_state::store_temperature(size_t idx, int val) {
-    values values = std::atomic_ref(screens_[idx]).load();
+    settings values = std::atomic_ref(screen_settings_[idx]).load();
     values.temperature = val;
-    std::atomic_ref(screens_[idx]).store(values);
+    std::atomic_ref(screen_settings_[idx]).store(values);
 }
 
 void gamma_state::set_brightness(size_t idx, int val) {
     store_brightness(idx, val);
-    set(idx, std::atomic_ref(screens_[idx]).load());
+    set(idx, std::atomic_ref(screen_settings_[idx]).load());
 }
 
 void gamma_state::set_temperature(size_t idx, int val) {
     store_temperature(idx, val);
-    set(idx, std::atomic_ref(screens_[idx]).load());
+    set(idx, std::atomic_ref(screen_settings_[idx]).load());
 }
 
-void gamma_state::reset() {
-    for (size_t i = 0; i < screens_.size(); ++i) {
-        set(i, std::atomic_ref(screens_[i]).load());
+void gamma_state::reset_gamma() {
+    for (size_t i = 0; i < screen_settings_.size(); ++i) {
+        set(i, std::atomic_ref(screen_settings_[i]).load());
     }
 }
