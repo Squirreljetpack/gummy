@@ -25,6 +25,7 @@ class connection {
 public:
     connection();
     ~connection();
+    connection(const connection&&) = delete;
     xcb_connection_t* get() const;
     xcb_screen_t* first_screen() const;
     bool extension_present(std::string name) const;
