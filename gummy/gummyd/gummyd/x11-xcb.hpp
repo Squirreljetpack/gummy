@@ -4,6 +4,7 @@
 #ifndef X11_XCB_HPP
 #define X11_XCB_HPP
 
+#include <span>
 #include <xcb/xcb.h>
 #include <xcb/randr.h>
 #include <xcb/shm.h>
@@ -40,8 +41,7 @@ public:
     uint8_t* addr() const;
 };
 
-class randr {
-public:
+namespace randr {
     struct output {
         std::string id;
         std::array<uint8_t, 128> edid;
@@ -55,24 +55,22 @@ public:
 
     std::vector<output> outputs(const connection &conn, xcb_screen_t *screen);
     void set_gamma(const connection &conn, xcb_randr_crtc_t crtc, const std::vector<uint16_t> &ramps);
-};
+} // namespace randr
 
 class shared_image {
     connection conn_;
-    shared_memory *shmem_;
-    xcb_image_t *image;
+    shared_memory shmem_;
+    xcb_image_t *image_;
+    std::mutex mutex_;
 public:
-    struct buffer {
-        uint8_t *data;
-        size_t size;
-    };
-    shared_image(shared_memory &shmem, unsigned int width, unsigned int height);
+    shared_image();
+    shared_image(shared_image&&) = delete;
     ~shared_image();
-	buffer get(int16_t x, int16_t y, uint16_t w, uint16_t h, uint32_t offset = 0);
+    int get(int16_t x, int16_t y, uint16_t w, uint16_t h, std::function<int(std::span<uint8_t>)> fn);
 	size_t size() const;
 };
 
-}
-}
+} // namespace xcb
+} // namespace gummyd
 
 #endif // X11_XCB_HPP

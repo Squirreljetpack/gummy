@@ -50,6 +50,9 @@ std::vector<ddc::display> ddc::get_displays() {
 }
 
 std::vector<ddc::display> ddc::get_displays(std::vector<std::array<uint8_t, 128>> edids) {
+    if (edids.size() == 0)
+        return ddc::get_displays();
+
     ddca_set_max_tries(DDCA_WRITE_READ_TRIES, ddca_max_max_tries());
     ddca_set_max_tries(DDCA_MULTI_PART_TRIES, ddca_max_max_tries());
     ddca_enable_verify(false);

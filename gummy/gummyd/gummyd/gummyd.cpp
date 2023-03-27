@@ -1,5 +1,11 @@
-// Copyright 2021-2023 Francesco Fusco
+﻿// Copyright 2021-2023 Francesco Fusco
 // SPDX-License-Identifier: GPL-3.0-or-later
+
+#include <vector>
+#include <functional>
+#include <thread>
+#include <optional>
+#include <ranges>
 
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
@@ -20,13 +26,16 @@
 
 using namespace gummyd;
 
-void run(display_server &dsp,
+std::optional<xcb::shared_image> shared_image(bool cond) {
+    return cond ? std::optional<xcb::shared_image>(std::in_place) : std::nullopt;
+}
+
+void run(std::vector<xcb::randr::output> &randr_outputs,
          std::vector<sysfs::backlight> &sysfs_backlights,
          std::vector<sysfs::als>       &sysfs_als,
          std::vector<ddc::display>     &ddc_displays,
          config conf,
          std::stop_token stoken) {
-	assert(dsp.scr_count() == conf.screens.size());
 
     const size_t screenlight_clients = conf.clients_for(config::screen::mode::SCREENLIGHT);
     const size_t als_clients         = conf.clients_for(config::screen::mode::ALS);
@@ -38,6 +47,12 @@ void run(display_server &dsp,
     std::vector<channel<int>> screenlight_channels;
     screenlight_channels.reserve(screenlight_clients);
     std::vector<std::jthread> threads;
+
+    std::optional gamma_state = [&randr_outputs] {
+        return randr_outputs.size() > 0 ?
+                    std::optional<gummyd::gamma_state>(randr_outputs) : std::nullopt;
+    }();
+    std::optional shared_screen_image = shared_image(screenlight_clients > 0 && randr_outputs.size() > 0);
 
 	if (time_clients > 0) {
         spdlog::debug("starting time_server...");
@@ -53,14 +68,12 @@ void run(display_server &dsp,
 		});
 	}
 
-	gamma_state gamma_state(dsp, conf.screens);
-
 	for (size_t idx = 0; idx < conf.screens.size(); ++idx) {
 
-        if (conf.clients_for(config::screen::mode::SCREENLIGHT, idx) > 0) {
+        if (conf.clients_for(config::screen::mode::SCREENLIGHT, idx) > 0 && idx < randr_outputs.size()) {
             spdlog::debug("[screen {}] starting screenlight server", idx);
             screenlight_channels.emplace_back(-1);
-            threads.emplace_back(screenlight_server, std::ref(dsp), idx, std::ref(screenlight_channels.back()), conf.screenshot, stoken);
+            threads.emplace_back(screenlight_server, std::ref(*shared_screen_image), std::ref(randr_outputs[idx]), std::ref(screenlight_channels.back()), conf.screenshot, stoken);
 		}
 
         using std::placeholders::_1;
@@ -81,10 +94,12 @@ void run(display_server &dsp,
             case BACKLIGHT:
                 break;
             case BRIGHTNESS:
-                model_fn = std::bind(&gamma_state::store_brightness, &gamma_state, idx, _1);
+                if (gamma_state.has_value())
+                    model_fn = std::bind(&gamma_state::store_brightness, gamma_state.value(), idx, _1);
                 break;
             case TEMPERATURE:
-                model_fn = std::bind(&gamma_state::store_temperature, &gamma_state, idx, _1);
+                if (gamma_state.has_value())
+                    model_fn = std::bind(&gamma_state::store_temperature, gamma_state.value(), idx, _1);
                 break;
             }
 
@@ -116,10 +131,12 @@ void run(display_server &dsp,
                 }
                 break;
             case BRIGHTNESS:
-                fn = std::bind(&gamma_state::set_brightness, &gamma_state, idx, _1);
+                if (gamma_state.has_value())
+                    fn = std::bind(&gamma_state::set_brightness, &gamma_state.value(), idx, _1);
                 break;
             case TEMPERATURE:
-                fn = std::bind(&gamma_state::set_temperature, &gamma_state, idx, _1);
+                if (gamma_state.has_value())
+                    fn = std::bind(&gamma_state::set_temperature, &gamma_state.value(), idx, _1);
                 break;
             }
 
@@ -150,18 +167,20 @@ void run(display_server &dsp,
         }
 	}
 
-	threads.emplace_back([&] {
-        spdlog::debug("[gamma refresh] start");
-		while (true) {
-            jthread_wait_until(std::chrono::seconds(10), stoken);
-            spdlog::trace("gamma refresh");
-            gamma_state.reset();
-            if (stoken.stop_requested()) {
-                spdlog::debug("[gamma refresh] stop requested");
-				return;
+    if (gamma_state.has_value()) {
+        threads.emplace_back([&] {
+            spdlog::debug("[gamma refresh] start");
+            while (true) {
+                jthread_wait_until(std::chrono::seconds(10), stoken);
+                spdlog::trace("gamma refresh");
+                gamma_state->reset_gamma();
+                if (stoken.stop_requested()) {
+                    spdlog::debug("[gamma refresh] stop requested");
+                    return;
+                }
             }
-		}
-	});
+        });
+    }
 
     spdlog::debug("joining {} threads", threads.size());
     for (auto &t : threads) {
@@ -173,28 +192,56 @@ void run(display_server &dsp,
 }
 
 int message_loop() {
-    display_server dsp;
-    std::vector<ddc::display> ddc_displays = ddc::get_displays(dsp.get_edids());
+    std::vector randr_outputs = [] {
+        try {
+            xcb::connection conn;
+            return xcb::randr::outputs(conn, conn.first_screen());
+        } catch (std::runtime_error &e) {
+            return std::vector<xcb::randr::output>();
+        }
+    } ();
 
-    std::vector<sysfs::als> sysfs_als              = sysfs::get_als();
-    std::vector<sysfs::backlight> sysfs_backlights = sysfs::get_backlights();
+    const std::vector randr_edids = [&randr_outputs] {
+        std::vector<decltype(xcb::randr::output::edid)> vec(randr_outputs.size());
+        std::ranges::transform(randr_outputs, vec.begin(), &xcb::randr::output::edid);
+        return vec;
+    }();
+    std::vector ddc_displays     = ddc::get_displays(randr_edids);
+    std::vector sysfs_als        = sysfs::get_als();
+    std::vector sysfs_backlights = sysfs::get_backlights();
 
-    spdlog::info("[display_server] found {} screen(s)", dsp.scr_count());
+    spdlog::info("[x11] found {} screen(s)", randr_outputs.size());
     spdlog::info("[sysfs] backlights: {}, als: {}", sysfs_backlights.size(), sysfs_als.size());
 
     if (ddc_displays.size() == 0) {
         spdlog::warn("No DDC displays found. i2c-dev module not loaded?");
-    } else if (dsp.scr_count() != ddc_displays.size()) {
-        throw std::runtime_error(fmt::format("display count mismatch: randr: {}, ddc {}", dsp.scr_count(), ddc_displays.size()));
+    } else if (randr_outputs.size() > 0 && randr_outputs.size() != ddc_displays.size()) {
+        throw std::runtime_error(fmt::format("display count mismatch: x11: {}, ddc {}", randr_outputs.size(), ddc_displays.size()));
+    }
+
+    const size_t screen_count = [&] {
+        if (ddc_displays.size() > 0)
+            return ddc_displays.size();
+        if (randr_outputs.size() > 0)
+            return randr_outputs.size();
+        if (sysfs_backlights.size() > 0)
+            return sysfs_backlights.size();
+        return 0ul;
+    }();
+
+    if (screen_count == 0) {
+        fmt::print("No displays detected. There is nothing to do!\n");
+        exit(EXIT_SUCCESS);
     }
 
     // restore default gamma on exit.
-    // in the unlikely event that display_server throws, gamma state is already at default
+    // in the unlikely event that the X connection throws, gamma is already at default
     std::atexit([] () {
-        display_server dsp;
-        gamma_state(dsp).reset();
+        xcb::connection conn;
+        gamma_state(xcb::randr::outputs(conn, conn.first_screen())).reset_gamma();
     });
-    config conf(dsp.scr_count());
+
+    config conf(screen_count);
 
     const std::filesystem::path pipe_filepath = xdg_runtime_dir() / constants::fifo_filename;
 
@@ -210,7 +257,7 @@ int message_loop() {
 	while (true) {
 
 		std::jthread thr([&] (std::stop_token stoken) {
-            run(dsp, sysfs_backlights, sysfs_als, ddc_displays, conf, stoken);
+            run(randr_outputs, sysfs_backlights, sysfs_als, ddc_displays, conf, stoken);
 		});
 
         const std::string data(file_read(pipe_filepath));
@@ -234,7 +281,7 @@ int message_loop() {
 			continue;
 		}
 
-		conf = config(msg, dsp.scr_count());
+        conf = config(msg, screen_count);
 	}
 
 	return EXIT_SUCCESS;

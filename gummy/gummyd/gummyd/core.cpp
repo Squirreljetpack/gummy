@@ -1,6 +1,7 @@
 // Copyright 2021-2023 Francesco Fusco
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <span>
 #include <filesystem>
 #include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
@@ -32,19 +33,20 @@ void gummyd::jthread_wait_until(std::chrono::milliseconds ms, std::stop_token st
             .wait_until(lock, stoken, system_clock::now() + ms, [&] { return stoken.stop_requested(); });
 }
 
-void gummyd::screenlight_server(display_server &dsp, size_t screen_idx, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken)
+void gummyd::screenlight_server(xcb::shared_image &shimg, xcb::randr::output &output, channel<int> &ch, struct config::screenshot conf, std::stop_token stoken)
 {
     int cur = constants::brt_steps_max;
 	int prev;
 	int delta = 0;
 	while (true) {
-		prev = cur;
+        prev = cur;
 
 		const int brightness = [&] {
-			for (int tries = 0; tries < 10; ++tries) {
-				const int ret = dsp.shared_image_data(screen_idx, [] (xcb::shared_image::buffer b) { return image_brightness(b.data, b.size); });
-				if (ret > -1)
-					return ret;
+            for (int tries = 0; tries < 10; ++tries) {
+                const auto ret = shimg.get(output.x, output.y, output.width, output.height,
+                                           [] (std::span<uint8_t> buf) { return image_brightness(buf.data(), buf.size()); });
+                if (ret > -1)
+                    return ret;
 				spdlog::error("failed to get screen data [error: {}], retrying ({})...", ret, tries + 1);
 				std::this_thread::sleep_for(std::chrono::milliseconds(500));
 			}
@@ -56,7 +58,7 @@ void gummyd::screenlight_server(display_server &dsp, size_t screen_idx, channel<
 
 		if (delta > 8) {
 			delta = 0;
-			spdlog::debug("[screenlight_server (scr: {})] sending: {}", screen_idx, cur);
+            spdlog::debug("[screenlight_server (scr: {})] sending: {}", output.id, cur);
 			ch.send(cur);
 		}
 

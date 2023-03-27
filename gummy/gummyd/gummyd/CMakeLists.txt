@@ -4,8 +4,6 @@ target_sources(${PROJECT_NAME}
 	PRIVATE
 	gamma.cpp
 	gamma.hpp
-	display.cpp
-	display.hpp
     sd-dbus.hpp
     sd-dbus.cpp
     sd-sysfs.hpp
