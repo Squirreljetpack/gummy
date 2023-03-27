@@ -14,6 +14,7 @@ class gamma_state {
         int brightness = gummyd::constants::brt_steps_max;
 		int temperature = 6500;
 	};
+    xcb::connection x_connection_;
     std::vector<xcb::randr::output> randr_outputs_;
     std::vector<settings> screen_settings_;
 

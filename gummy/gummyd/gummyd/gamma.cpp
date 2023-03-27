@@ -141,7 +141,7 @@ void gamma_state::set(size_t screen_index, settings vals) {
 
     SPDLOG_TRACE("[screen {}] set_gamma_ramp(brt: {}, temp: {})", screen_index, vals.brightness, vals.temperature);
 
-    xcb::randr::set_gamma(xcb::connection(), randr_outputs_[screen_index].crtc_id, ramps);
+    xcb::randr::set_gamma(x_connection_, randr_outputs_[screen_index].crtc_id, ramps);
 }
 
 gamma_state::settings gamma_state::sanitize(settings vals) {

@@ -50,7 +50,7 @@ void run(std::vector<xcb::randr::output> &randr_outputs,
 
     std::optional gamma_state = [&randr_outputs] {
         return randr_outputs.size() > 0 ?
-                    std::optional<gummyd::gamma_state>(randr_outputs) : std::nullopt;
+                    std::optional<gummyd::gamma_state>(std::in_place, randr_outputs) : std::nullopt;
     }();
     std::optional shared_screen_image = shared_image(screenlight_clients > 0 && randr_outputs.size() > 0);
 
@@ -95,11 +95,11 @@ void run(std::vector<xcb::randr::output> &randr_outputs,
                 break;
             case BRIGHTNESS:
                 if (gamma_state.has_value())
-                    model_fn = std::bind(&gamma_state::store_brightness, gamma_state.value(), idx, _1);
+                    model_fn = std::bind(&gamma_state::store_brightness, &gamma_state.value(), idx, _1);
                 break;
             case TEMPERATURE:
                 if (gamma_state.has_value())
-                    model_fn = std::bind(&gamma_state::store_temperature, gamma_state.value(), idx, _1);
+                    model_fn = std::bind(&gamma_state::store_temperature, &gamma_state.value(), idx, _1);
                 break;
             }
 
