@@ -193,6 +193,8 @@ void run(std::vector<xcb::randr::output> &randr_outputs,
 
 int message_loop() {
     std::vector randr_outputs = [] {
+        //if (!gummyd::env("WAYLAND_DISPLAY").empty())
+        //    return std::vector<xcb::randr::output>();
         try {
             xcb::connection conn;
             return xcb::randr::outputs(conn, conn.first_screen());
@@ -202,6 +204,10 @@ int message_loop() {
     } ();
 
     const std::vector randr_edids = [&randr_outputs] {
+        // xwayland randr does not retrieve edids
+        if (!gummyd::env("WAYLAND_DISPLAY").empty()) {
+            return std::vector<decltype(xcb::randr::output::edid)>();
+        }
         std::vector<decltype(xcb::randr::output::edid)> vec(randr_outputs.size());
         std::ranges::transform(randr_outputs, vec.begin(), &xcb::randr::output::edid);
         return vec;
@@ -234,12 +240,12 @@ int message_loop() {
         exit(EXIT_SUCCESS);
     }
 
-    // restore default gamma on exit.
-    // in the unlikely event that the X connection throws, gamma is already at default
-    std::atexit([] () {
-        xcb::connection conn;
-        gamma_state(xcb::randr::outputs(conn, conn.first_screen())).reset_gamma();
-    });
+    if (randr_outputs.size() > 0) {
+        std::atexit([] () {
+            xcb::connection conn;
+            gamma_state(xcb::randr::outputs(conn, conn.first_screen())).reset_gamma();
+        });
+    }
 
     config conf(screen_count);
 
