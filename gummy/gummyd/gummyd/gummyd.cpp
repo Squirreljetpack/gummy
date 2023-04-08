@@ -187,9 +187,7 @@ void run(std::vector<xcb::randr::output> &randr_outputs,
     }
 
     spdlog::debug("joining {} threads", threads.size());
-    for (auto &t : threads) {
-		t.join();
-    }
+    std::ranges::for_each(threads, &std::jthread::join);
 
     spdlog::debug("{:=^60}", "end");
     spdlog::flush_on(spdlog::level::info);
