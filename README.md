@@ -9,9 +9,17 @@ It provides a CLI for adjusting:
 - color temperature
 
 These settings can be set manually or automatically, based on any of these inputs:
+
 - **ALS**: your laptop's ambient light sensor, if available.
 - **Screenlight**: screen lightness, i.e. the brightness of the contents being displayed on your screen.
 - **Time**: a time range for the day (e.g. from 06:00 to 18:00).
+
+## Wayland
+gummy works on Wayland as of version 0.5.2. However, the following features do not work yet:
+
+- pixel brightness
+- color temperature
+- screenlight
 
 ## Installation
 
