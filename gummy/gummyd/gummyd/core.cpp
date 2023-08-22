@@ -211,9 +211,9 @@ void gummyd::time_server(channel<time_data> &ch, struct config::time conf, std::
 		jthread_wait_until(time_to_next, stoken);
 
 		if (stoken.stop_requested()) {
-			ch.send({-1, -1, -1});
+            ch.send({-2, -2, -2});
             spdlog::debug("[time_server] exit");
-			return;
+            return;
 		}
 	}
 }
