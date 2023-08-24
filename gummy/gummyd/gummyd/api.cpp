@@ -35,25 +35,20 @@ bool daemon_start() {
 }
 
 bool daemon_stop() {
-    try {
-        lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename);
-        return false;
-    } catch (std::runtime_error &e) {
+    if (daemon_is_running()) {
         daemon_send("stop");
         return true;
     }
+    return false;
 }
 
 bool daemon_is_running() {
-    try {
-        lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename);
-        return false;
-    } catch (std::runtime_error &e) {
-        return true;
-    }
+    lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename, false);
+    return flock.locked();
 }
 
 void daemon_send(const std::string &s) {
+    lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename_cli, true);
     file_write(xdg_runtime_dir() / gummyd::constants::fifo_filename, s);
 }
 

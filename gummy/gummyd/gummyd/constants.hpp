@@ -9,6 +9,7 @@
 namespace gummyd {
 namespace constants {
 extern const std::string_view flock_filename;
+extern const std::string_view flock_filename_cli;
 extern const std::string_view fifo_filename;
 extern const std::string_view config_filename;
 extern const int brt_steps_min;
