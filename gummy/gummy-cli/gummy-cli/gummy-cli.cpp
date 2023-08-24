@@ -13,6 +13,7 @@
 
 #include <gummyd/api.hpp>
 #include <gummyd/utils.hpp>
+#include <gummyd/file.hpp>
 
 void start() {
     if (!gummyd::daemon_start())

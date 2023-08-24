@@ -301,7 +301,10 @@ int main(int argc, char **argv) {
     spdlog::flush_every(std::chrono::seconds(10));
     spdlog::info("gummyd v{}", VERSION);
 
-    lockfile flock(xdg_runtime_dir() / constants::flock_filename);
+    lockfile flock(xdg_runtime_dir() / constants::flock_filename, false);
+    if (flock.locked()) {
+        return -1;
+    }
 
     return message_loop();
 }
