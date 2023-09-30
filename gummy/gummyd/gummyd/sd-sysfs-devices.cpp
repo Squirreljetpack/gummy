@@ -15,6 +15,7 @@
 #include <gummyd/utils.hpp>
 #include <gummyd/constants.hpp>
 #include <spdlog/spdlog.h>
+#include <gummyd/file.hpp>
 
 namespace gummyd::constants {
 namespace {
@@ -54,14 +55,30 @@ std::vector<sysfs::backlight> sysfs::get_backlights() {
 
 std::vector<sysfs::als> sysfs::get_als() {
 	using namespace std::filesystem;
+
+    if (!exists(constants::als::path)) {
+        return {};
+    }
+
 	std::vector<als> vec;
-	if (exists(constants::als::path)) {
-		for (const auto &s : directory_iterator(constants::als::path)) {
-            const std::string stem = s.path().stem();
-			if (stem.find(constants::als::name) != std::string::npos)
-				vec.emplace_back(s.path());
-		}
-	}
+
+    for (const auto &dir : directory_iterator(constants::als::path)) {
+
+        const std::string filename = dir.path().filename();
+
+        if (filename.find(constants::als::name) == std::string::npos) {
+            continue;
+        }
+
+        try {
+            const std::string device_name = gummyd::file_read(dir.path() / "name");
+            if (device_name == "acpi-als" || device_name == "als") {
+                vec.emplace_back(dir.path());
+            }
+        } catch (const std::exception &e) {
+            spdlog::error(e.what());
+        }
+    }
 
 	return vec;
 }
@@ -104,7 +121,7 @@ sysfs::als::als(std::filesystem::path path)
 	}
 
 	if (_lux_filename.empty()) {
-		throw std::runtime_error(fmt::format("Lux data not found for ALS at path: {}", path));
+        throw std::runtime_error(fmt::format("Lux data not found for ALS device at path: {}", path));
 	}
 
 	_lux_scale = [this] {
