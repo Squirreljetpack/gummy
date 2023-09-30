@@ -71,10 +71,16 @@ std::vector<sysfs::als> sysfs::get_als() {
         }
 
         try {
-            const std::string device_name = gummyd::file_read(dir.path() / "name");
+            const std::string device_name = [&] {
+                auto x = gummyd::file_read(dir.path() / "name");
+                x.pop_back(); // \n
+                return x;
+            }();
+
             if (device_name == "acpi-als" || device_name == "als") {
                 vec.emplace_back(dir.path());
             }
+
         } catch (const std::exception &e) {
             spdlog::error(e.what());
         }
