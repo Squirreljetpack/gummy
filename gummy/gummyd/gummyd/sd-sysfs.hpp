@@ -17,6 +17,7 @@ class device {
 public:
 	device(std::filesystem::path path);
     ~device();
+    device(device &&o);
     std::string path() const;
     std::string get(std::string_view attr) const;
 	int set(std::string_view attr, std::string_view val);
