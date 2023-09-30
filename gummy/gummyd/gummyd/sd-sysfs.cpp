@@ -22,6 +22,10 @@ device::~device() {
 	sd_device_unref(addr_);
 };
 
+device::device(device &&o) : addr_(o.addr_) {
+    o.addr_ = nullptr;
+}
+
 std::string device::path() const {
 	const char *path = nullptr;
 	const int ret = sd_device_get_syspath(addr_, &path);
