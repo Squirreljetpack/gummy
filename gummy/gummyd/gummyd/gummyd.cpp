@@ -216,8 +216,8 @@ int message_loop() {
 
     if (ddc_displays.size() == 0) {
         spdlog::warn("No DDC displays found. i2c-dev module not loaded?");
-    } else if (randr_outputs.size() > 0 && randr_outputs.size() != ddc_displays.size()) {
-        throw std::runtime_error(fmt::format("display count mismatch: x11: {}, ddc {}", randr_outputs.size(), ddc_displays.size()));
+    } else if (randr_outputs.size() > 0 && randr_outputs.size() > ddc_displays.size()) {
+        throw std::runtime_error(fmt::format("could not match all x11 displays with ddc. x11: {}, ddc {}", randr_outputs.size(), ddc_displays.size()));
     }
 
     const size_t screen_count = [&] {

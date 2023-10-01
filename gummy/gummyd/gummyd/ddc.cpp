@@ -63,12 +63,13 @@ std::vector<ddc::display> ddc::get_displays(std::vector<std::array<uint8_t, 128>
         return {};
 
     if (size_t(list.get()->ct) != edids.size()) {
-        throw std::runtime_error(fmt::format("[ddc] edid count mismatch: {} vs DDC: {}", edids.size(), list.get()->ct));
+        spdlog::warn("[ddc] display count mismatch. input: {} DDC: {}.", edids.size(), list.get()->ct);
     }
 
     std::vector<ddc::display> vec;
     vec.reserve(list.get()->ct);
 
+    // Displays not found in the input vector will be ignored.
     for (const auto &edid : edids) {
         for (const auto &display_data : std::span(list.get()->info, list.get()->ct)) {
             if (std::ranges::equal(edid, display_data.edid_bytes)) {
