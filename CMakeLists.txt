@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(gummy VERSION 0.5.5 LANGUAGES CXX)
+project(gummy VERSION 0.5.6 LANGUAGES CXX)
 set(GUMMY_VERSION ${PROJECT_VERSION})
 include(GNUInstallDirs)
 include(FetchContent)
