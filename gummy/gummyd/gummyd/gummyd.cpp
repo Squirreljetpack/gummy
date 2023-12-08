@@ -261,7 +261,24 @@ int message_loop() {
             run(randr_outputs, sysfs_backlights, sysfs_als, ddc_displays, conf, stoken);
 		});
 
+        soft_reset:
         const std::string data(file_read(pipe_filepath));
+
+        if (data == "status") {
+            std::vector<uint16_t> ddc_brightness_values;
+            for (const auto &x : ddc_displays) {
+                ddc_brightness_values.push_back([&] {
+                    const auto brt = x.get_brightness_vcp();
+                    return brt.sh << 8 | brt.sl;
+                }());
+            }
+            std::ostringstream os;
+            for (size_t i = 0; i < ddc_brightness_values.size(); ++i) {
+                os << fmt::format("[screen {}] backlight: {}\n", i, ddc_brightness_values[i]);
+            }
+            file_write(pipe_filepath, os.str());
+            goto soft_reset;
+        }
 
 		if (data == "stop")
 			break;
