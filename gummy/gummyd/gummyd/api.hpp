@@ -12,6 +12,7 @@ namespace gummyd {
     bool daemon_stop();
     bool daemon_is_running();
     void daemon_send(const std::string &s);
+    std::string daemon_get(std::string_view s);
 
     nlohmann::json config_get_current();
     void config_write(nlohmann::json);

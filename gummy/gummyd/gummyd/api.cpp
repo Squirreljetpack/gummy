@@ -52,6 +52,12 @@ void daemon_send(const std::string &s) {
     file_write(xdg_runtime_dir() / gummyd::constants::fifo_filename, s);
 }
 
+std::string daemon_get(std::string_view s) {
+    lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename_cli, true);
+    file_write(xdg_runtime_dir() / gummyd::constants::fifo_filename, s.data());
+    return file_read((xdg_runtime_dir() / gummyd::constants::fifo_filename));
+}
+
 nlohmann::json config_get_current() {
     std::ifstream ifs(xdg_config_dir() / gummyd::constants::config_filename);
     ifs.exceptions(std::fstream::failbit);
