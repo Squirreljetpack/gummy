@@ -13,8 +13,6 @@
 
 #include <gummyd/api.hpp>
 #include <gummyd/utils.hpp>
-#include <gummyd/file.hpp>
-#include <gummyd/constants.hpp>
 
 void start() {
     if (!gummyd::daemon_start())
@@ -33,9 +31,7 @@ void stop() {
 
 void status() {
     if (gummyd::daemon_is_running()) {
-        //std::puts("running");
-        gummyd::daemon_send("status");
-        fmt::print("{}", gummyd::file_read(gummyd::xdg_runtime_dir() / gummyd::constants::fifo_filename));
+        fmt::print("{}", gummyd::daemon_get("status"));
     } else {
         std::puts("not running");
     }

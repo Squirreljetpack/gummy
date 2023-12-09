@@ -276,6 +276,7 @@ int message_loop() {
             for (size_t i = 0; i < ddc_brightness_values.size(); ++i) {
                 os << fmt::format("[screen {}] backlight: {}\n", i, ddc_brightness_values[i]);
             }
+            // Will block execution until the client reads from the pipe.
             file_write(pipe_filepath, os.str());
             goto soft_reset;
         }
