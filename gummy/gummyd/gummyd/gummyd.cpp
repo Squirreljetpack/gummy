@@ -30,7 +30,13 @@ std::optional<xcb::shared_image> shared_image(bool cond) {
     return cond ? std::optional<xcb::shared_image>(std::in_place) : std::nullopt;
 }
 
+std::optional<gummyd::gamma_state> gamma_state (std::vector<gummyd::xcb::randr::output> randr_outputs) {
+    return randr_outputs.size() > 0 ?
+                std::optional<gummyd::gamma_state>(std::in_place, randr_outputs) : std::nullopt;
+};
+
 void run(std::vector<xcb::randr::output> &randr_outputs,
+         std::optional<gummyd::gamma_state> &gamma_state,
          std::vector<sysfs::backlight> &sysfs_backlights,
          std::vector<sysfs::als>       &sysfs_als,
          std::vector<ddc::display>     &ddc_displays,
@@ -48,10 +54,6 @@ void run(std::vector<xcb::randr::output> &randr_outputs,
     screenlight_channels.reserve(screenlight_clients);
     std::vector<std::jthread> threads;
 
-    std::optional gamma_state = [&randr_outputs] {
-        return randr_outputs.size() > 0 ?
-                    std::optional<gummyd::gamma_state>(std::in_place, randr_outputs) : std::nullopt;
-    }();
     std::optional shared_screen_image = shared_image(screenlight_clients > 0 && randr_outputs.size() > 0);
 
 	if (time_clients > 0) {
@@ -79,40 +81,6 @@ void run(std::vector<xcb::randr::output> &randr_outputs,
         using std::placeholders::_1;
         using enum config::screen::model_id;
         using enum config::screen::mode;
-        const auto state_dir = xdg_state_dir() / fmt::format("gummyd/screen-{}", idx);
-
-        // individual gamma settings must be already stored to avoid screen flickering,
-        // when multiple threads are modifying gamma
-        for (size_t model_idx = 0; model_idx < conf.screens[idx].models.size(); ++model_idx) {
-
-            const auto &model = conf.screens[idx].models[model_idx];
-
-            // dummy function
-            std::function<void(int)> model_fn = [] ([[maybe_unused]] int val) {};
-
-            switch (config::screen::model_id(model_idx)) {
-            case BACKLIGHT:
-                break;
-            case BRIGHTNESS:
-                if (gamma_state.has_value())
-                    model_fn = std::bind(&gamma_state::store_brightness, &gamma_state.value(), idx, _1);
-                break;
-            case TEMPERATURE:
-                if (gamma_state.has_value())
-                    model_fn = std::bind(&gamma_state::store_temperature, &gamma_state.value(), idx, _1);
-                break;
-            }
-
-            model_fn([&model, &state_dir] {
-                if (model.mode == MANUAL)
-                    return model.val;
-                try {
-                    return std::stoi(file_read(state_dir / config::screen::model_name(model.id)));
-                } catch (std::exception &e) {
-                    return model.max;
-                }
-            }());
-        }
 
         for (size_t model_idx = 0; model_idx < conf.screens[idx].models.size(); ++model_idx) {
 
@@ -238,7 +206,7 @@ int message_loop() {
     if (randr_outputs.size() > 0) {
         std::atexit([] () {
             xcb::connection conn;
-            gamma_state(xcb::randr::outputs(conn, conn.first_screen())).reset_gamma();
+            gummyd::gamma_state(xcb::randr::outputs(conn, conn.first_screen())).reset_gamma();
         });
     }
 
@@ -255,10 +223,12 @@ int message_loop() {
             file_write(pipe_filepath, "reset");
     });
 
-	while (true) {
+    std::optional<gummyd::gamma_state> gamma_state(randr_outputs);
+
+    while (true) {
 
 		std::jthread thr([&] (std::stop_token stoken) {
-            run(randr_outputs, sysfs_backlights, sysfs_als, ddc_displays, conf, stoken);
+            run(randr_outputs, gamma_state, sysfs_backlights, sysfs_als, ddc_displays, conf, stoken);
 		});
 
         soft_reset:
