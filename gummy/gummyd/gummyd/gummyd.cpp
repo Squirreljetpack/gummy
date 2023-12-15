@@ -236,8 +236,24 @@ int message_loop() {
 
         if (data == "status") {
             std::string result;
+
+            const std::vector<gummyd::gamma_state::settings> gamma_settings = [&gamma_state] {
+                if (gamma_state.has_value()) {
+                    return gamma_state.value().get_settings();
+                } else {
+                    return std::vector<gummyd::gamma_state::settings>();
+                }
+            }();
+
             for (size_t idx = 0; const auto &x : ddc_displays) {
-                fmt::format_to(std::back_inserter(result), "[screen {}] backlight: {}\n", idx++, x.get_brightness_string());
+                fmt::format_to(std::back_inserter(result),
+                "[screen {}] backlight: {}, brightness: {}, temperature: {}\n",
+                idx,
+                x.get_brightness_string(),
+                !gamma_settings.empty() ? std::to_string(gamma_settings[idx].brightness / 10) + "%" : "N/A",
+                !gamma_settings.empty() ? std::to_string(gamma_settings[idx].temperature) + "K" : "N/A");
+
+                ++idx;
             }
             // Will block execution until the client reads from the pipe.
             file_write(pipe_filepath, result);

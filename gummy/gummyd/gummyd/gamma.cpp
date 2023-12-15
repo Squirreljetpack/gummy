@@ -179,3 +179,7 @@ void gamma_state::reset_gamma() {
         set(i, std::atomic_ref(screen_settings_[i]).load());
     }
 }
+
+std::vector<gamma_state::settings> gamma_state::get_settings() {
+    return screen_settings_;
+}
