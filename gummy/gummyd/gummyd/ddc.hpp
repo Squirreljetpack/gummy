@@ -24,6 +24,7 @@ public:
     DDCA_Display_Handle get() const;
     DDCA_Non_Table_Vcp_Value get_brightness_vcp() const;
     void set_brightness_step(int val);
+    std::string get_brightness_string() const;
 };
 
 std::vector<display> get_displays();

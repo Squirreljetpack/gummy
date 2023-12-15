@@ -265,19 +265,12 @@ int message_loop() {
         const std::string data(file_read(pipe_filepath));
 
         if (data == "status") {
-            std::vector<uint16_t> ddc_brightness_values;
-            for (const auto &x : ddc_displays) {
-                ddc_brightness_values.push_back([&] {
-                    const auto brt = x.get_brightness_vcp();
-                    return brt.sh << 8 | brt.sl;
-                }());
-            }
-            std::ostringstream os;
-            for (size_t i = 0; i < ddc_brightness_values.size(); ++i) {
-                os << fmt::format("[screen {}] backlight: {}\n", i, ddc_brightness_values[i]);
+            std::string result;
+            for (size_t idx = 0; const auto &x : ddc_displays) {
+                fmt::format_to(std::back_inserter(result), "[screen {}] backlight: {}\n", idx++, x.get_brightness_string());
             }
             // Will block execution until the client reads from the pipe.
-            file_write(pipe_filepath, os.str());
+            file_write(pipe_filepath, result);
             goto soft_reset;
         }
 
