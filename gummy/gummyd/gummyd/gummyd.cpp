@@ -245,15 +245,23 @@ int message_loop() {
                 }
             }();
 
-            for (size_t idx = 0; const auto &x : ddc_displays) {
+            for (size_t idx = 0; idx < screen_count; ++idx) {
+
+                std::string backlight_str = [&] {
+                    if (idx < sysfs_backlights.size()) {
+                        return fmt::format("{}%", sysfs_backlights[idx].step() / 10);
+                    } else if (idx < ddc_displays.size()) {
+                        return fmt::format("{}%", ddc_displays[idx].get_brightness_string());
+                    }
+                    return std::string("N/A");
+                }();
+
                 fmt::format_to(std::back_inserter(result),
                 "[screen {}] backlight: {}, brightness: {}, temperature: {}\n",
                 idx,
-                x.get_brightness_string(),
+                backlight_str,
                 !gamma_settings.empty() ? std::to_string(gamma_settings[idx].brightness / 10) + "%" : "N/A",
                 !gamma_settings.empty() ? std::to_string(gamma_settings[idx].temperature) + "K" : "N/A");
-
-                ++idx;
             }
             // Will block execution until the client reads from the pipe.
             file_write(pipe_filepath, result);
