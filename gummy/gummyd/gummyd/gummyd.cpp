@@ -30,7 +30,7 @@ std::optional<xcb::shared_image> shared_image(bool cond) {
     return cond ? std::optional<xcb::shared_image>(std::in_place) : std::nullopt;
 }
 
-std::optional<gummyd::gamma_state> gamma_state (std::vector<gummyd::xcb::randr::output> randr_outputs) {
+std::optional<gummyd::gamma_state> opt_gamma_state (std::vector<gummyd::xcb::randr::output> randr_outputs) {
     return randr_outputs.size() > 0 ?
                 std::optional<gummyd::gamma_state>(std::in_place, randr_outputs) : std::nullopt;
 };
@@ -223,7 +223,7 @@ int message_loop() {
             file_write(pipe_filepath, "reset");
     });
 
-    std::optional<gummyd::gamma_state> gamma_state(randr_outputs);
+    std::optional gamma_state = opt_gamma_state(randr_outputs);
 
     while (true) {
 
