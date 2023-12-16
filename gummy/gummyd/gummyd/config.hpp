@@ -66,6 +66,7 @@ public:
 
 		std::array<model, 3> models;
         static std::string model_name(model_id);
+        static std::string mode_name(mode);
 
 		screen();
 		screen(nlohmann::json data);
