@@ -235,7 +235,6 @@ int message_loop() {
         const std::string data(file_read(pipe_filepath));
 
         if (data == "status") {
-            std::string result;
 
             const std::vector<gummyd::gamma_state::settings> gamma_settings = [&gamma_state] {
                 if (gamma_state.has_value()) {
@@ -247,49 +246,38 @@ int message_loop() {
 
             using enum config::screen::model_id;
 
+            const auto mode_str = [&conf](size_t screen_idx, config::screen::model_id id){
+                const std::string mode = config::screen::mode_name(conf.screens[screen_idx].models[size_t(id)].mode);
+                if (mode == "manual") {
+                    return std::string("");
+                } else {
+                    return fmt::format(" [{}]", mode);
+                }
+            };
+
+            std::string result;
+
             for (size_t idx = 0; idx < screen_count; ++idx) {
-
                 const std::string backlight_str = [&] {
-                    std::string mode = std::to_string(int(conf.screens[idx].models[size_t(BACKLIGHT)].mode));
-                    if (mode == "0") {
-                        mode.clear();
-                    } else {
-                        mode = fmt::format(" [{}]", mode);
-                    }
-
                     if (idx < sysfs_backlights.size()) {
-                        return fmt::format("{}%{}", sysfs_backlights[idx].step() / 10, mode);
+                        return fmt::format("{}%{}", sysfs_backlights[idx].step() / 10, mode_str(idx, BACKLIGHT));
                     } else if (idx < ddc_displays.size()) {
-                        return fmt::format("{}%{}", ddc_displays[idx].get_brightness_string(), mode);
+                        return fmt::format("{}%{}", ddc_displays[idx].get_brightness_string(), mode_str(idx, BACKLIGHT));
                     }
                     return std::string("N/A");
                 }();
 
                 const std::string brightness_str = [&] {
-                    std::string mode = std::to_string(int(conf.screens[idx].models[size_t(BRIGHTNESS)].mode));
-                    if (mode == "0") {
-                        mode.clear();
-                    } else {
-                        mode = fmt::format(" [{}]", mode);
-                    }
-
                     if (!gamma_settings.empty()) {
-                        return fmt::format("{}%{}", gamma_settings[idx].brightness / 10, mode);
+                        return fmt::format("{}%{}", gamma_settings[idx].brightness / 10, mode_str(idx, BRIGHTNESS));
                     } else {
                         return std::string("N/A");
                     }
                 }();
 
                 const std::string temperature_str = [&] {
-                    std::string mode = std::to_string(int(conf.screens[idx].models[size_t(TEMPERATURE)].mode));
-                    if (mode == "0") {
-                        mode.clear();
-                    } else {
-                        mode = fmt::format(" [{}]", mode);
-                    }
-
                     if (!gamma_settings.empty()) {
-                        return fmt::format("{}K{}", gamma_settings[idx].temperature, mode);
+                        return fmt::format("{}K{}", gamma_settings[idx].temperature, mode_str(idx, TEMPERATURE));
                     } else {
                         return std::string("N/A");
                     }
@@ -299,6 +287,7 @@ int message_loop() {
                 "[screen {}] backlight: {}, brightness: {}, temperature: {}\n",
                 idx, backlight_str, brightness_str, temperature_str);
             }
+
             // Will block execution until the client reads from the pipe.
             file_write(pipe_filepath, result);
             goto soft_reset;
