@@ -80,6 +80,21 @@ std::string config::screen::model_name(model_id id) {
     return "error: more models than keys";
 }
 
+std::string config::screen::mode_name(mode id) {
+    using enum config::screen::mode;
+    switch (id) {
+    case MANUAL:
+        return "manual";
+    case SCREENLIGHT:
+        return "screenlight";
+    case ALS:
+        return "ALS";
+    case TIME:
+        return "time";
+    }
+    return "error: more modes than keys";
+}
+
 json config::screen::to_json() const
 {
 	using enum config::screen::model_id;
