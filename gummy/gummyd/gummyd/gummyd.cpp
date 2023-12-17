@@ -251,7 +251,7 @@ int message_loop() {
                 if (mode == "manual") {
                     return std::string("");
                 } else {
-                    return fmt::format(" [{}]", mode);
+                    return fmt::format(" ({})", mode);
                 }
             };
 
