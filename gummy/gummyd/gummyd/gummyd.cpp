@@ -260,7 +260,7 @@ int message_loop() {
             for (size_t idx = 0; idx < screen_count; ++idx) {
                 const std::string backlight_str = [&] {
                     if (idx < sysfs_backlights.size()) {
-                        return fmt::format("{}%{}", sysfs_backlights[idx].step() / 10, mode_str(idx, BACKLIGHT));
+                        return fmt::format("{}%{}", std::ceil(sysfs_backlights[idx].perc()), mode_str(idx, BACKLIGHT));
                     } else if (idx < ddc_displays.size()) {
                         return fmt::format("{}%{}", ddc_displays[idx].get_brightness_string(), mode_str(idx, BACKLIGHT));
                     }

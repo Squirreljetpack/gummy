@@ -19,7 +19,7 @@ public:
     backlight(std::filesystem::path path);
 	int val() const;
 	int max() const;
-	int step() const;
+    double perc() const;
 	void set_step(int);
 };
 
