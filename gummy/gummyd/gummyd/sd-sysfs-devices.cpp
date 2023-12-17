@@ -108,8 +108,8 @@ int sysfs::backlight::val() const {
 	return _val;
 }
 
-int sysfs::backlight::step() const {
-    return remap(_val, 0, _max, 0, constants::brt_steps_max);
+double sysfs::backlight::perc() const {
+    return remap(_val, 0, _max, 0, 100);
 }
 
 int sysfs::backlight::max() const {
