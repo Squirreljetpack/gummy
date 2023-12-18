@@ -250,7 +250,7 @@ int message_loop() {
             for (size_t idx = 0; idx < screen_count; ++idx) {
                 out[idx]["bl"] = [&] {
                     if (idx < sysfs_backlights.size()) {
-                        return int(std::ceil(sysfs_backlights[idx].perc()));
+                        return int(std::round(sysfs_backlights[idx].perc()));
                     } else if (idx < ddc_displays.size()) {
                         return ddc_displays[idx].get_brightness();
                     }
