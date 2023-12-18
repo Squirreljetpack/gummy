@@ -30,11 +30,58 @@ void stop() {
 }
 
 void status() {
-    if (gummyd::daemon_is_running()) {
-        fmt::print("{}", gummyd::daemon_get("status"));
-    } else {
+    if (!gummyd::daemon_is_running()) {
         std::puts("not running");
+        std::exit(EXIT_SUCCESS);
     }
+
+    const auto mode_str = [] (int mode) {
+        switch (mode) {
+        case 0: return "";
+        case 1: return " (screenlight)";
+        case 2: return " (ALS)";
+        case 3: return " (time)";
+        }
+        return "error";
+    };
+
+    const std::string data = gummyd::daemon_get("status");
+    const std::vector<uint8_t> b_data = std::vector<uint8_t>(data.begin(), data.end());
+    const nlohmann::json screens = nlohmann::json::from_cbor(b_data);
+    std::string result;
+
+    static constexpr std::string not_available = "N/A";
+
+    for (size_t idx = 0; idx < screens.size(); ++idx) {
+        const std::string backlight_str = [&] {
+            if (screens[idx]["bl"].get<int>() > - 1) {
+                return fmt::format("{}%{}", screens[idx]["bl"].get<int>(), mode_str(screens[idx]["bl_mode"].get<int>()));
+            } else {
+                return not_available;
+            }
+        }();
+        const std::string brightness_str = [&] {
+            if (screens[idx]["brt"].get<int>() > - 1) {
+                return fmt::format("{}%{}", screens[idx]["brt"].get<int>(), mode_str(screens[idx]["brt_mode"].get<int>()));
+            } else {
+                return not_available;
+            }
+        }();
+        const std::string temperature_str = [&] {
+            if (screens[idx]["temp"].get<int>() > - 1) {
+                return fmt::format("{}K{}", screens[idx]["temp"].get<int>(), mode_str(screens[idx]["temp_mode"].get<int>()));
+            } else {
+                return not_available;
+            }
+        }();
+
+        fmt::format_to(std::back_inserter(result),
+                       "[screen {}] backlight: {}, brightness: {}, temperature: {}\n",
+                       idx, backlight_str, brightness_str, temperature_str);
+
+    }
+
+    fmt::print("{}", result);
 	std::exit(EXIT_SUCCESS);
 }
 

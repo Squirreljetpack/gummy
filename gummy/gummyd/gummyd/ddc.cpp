@@ -95,12 +95,12 @@ DDCA_Display_Handle ddc::display::get() const {
     return handle_;
 }
 
-std::string ddc::display::get_brightness_string() const {
+int ddc::display::get_brightness() const {
     try {
         const DDCA_Non_Table_Vcp_Value brightness = get_brightness_vcp();
-        return std::to_string(brightness.sh << 8 | brightness.sl);
+        return (brightness.sh << 8 | brightness.sl);
     } catch (std::runtime_error &e) {
-        return "N/A";
+        return -1;
     }
 }
 
