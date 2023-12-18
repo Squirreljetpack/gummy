@@ -235,7 +235,6 @@ int message_loop() {
         const std::string data(file_read(pipe_filepath));
 
         if (data == "status") {
-
             const std::vector<gummyd::gamma_state::settings> gamma_settings = [&gamma_state] {
                 if (gamma_state.has_value()) {
                     return gamma_state.value().get_settings();
@@ -246,50 +245,40 @@ int message_loop() {
 
             using enum config::screen::model_id;
 
-            const auto mode_str = [&conf](size_t screen_idx, config::screen::model_id id){
-                const std::string mode = config::screen::mode_name(conf.screens[screen_idx].models[size_t(id)].mode);
-                if (mode == "manual") {
-                    return std::string("");
-                } else {
-                    return fmt::format(" ({})", mode);
-                }
-            };
-
-            std::string result;
+            nlohmann::json out;
 
             for (size_t idx = 0; idx < screen_count; ++idx) {
-                const std::string backlight_str = [&] {
+                out[idx]["bl"] = [&] {
                     if (idx < sysfs_backlights.size()) {
-                        return fmt::format("{}%{}", std::ceil(sysfs_backlights[idx].perc()), mode_str(idx, BACKLIGHT));
+                        return int(std::ceil(sysfs_backlights[idx].perc()));
                     } else if (idx < ddc_displays.size()) {
-                        return fmt::format("{}%{}", ddc_displays[idx].get_brightness_string(), mode_str(idx, BACKLIGHT));
+                        return ddc_displays[idx].get_brightness();
                     }
-                    return std::string("N/A");
-                }();
-
-                const std::string brightness_str = [&] {
+                    return -1;
+                } ();
+                out[idx]["brt"] = [&] {
                     if (!gamma_settings.empty()) {
-                        return fmt::format("{}%{}", gamma_settings[idx].brightness / 10, mode_str(idx, BRIGHTNESS));
+                        return gamma_settings[idx].brightness / 10;
                     } else {
-                        return std::string("N/A");
+                        return -1;
                     }
-                }();
-
-                const std::string temperature_str = [&] {
+                } ();
+                out[idx]["temp"] = [&] {
                     if (!gamma_settings.empty()) {
-                        return fmt::format("{}K{}", gamma_settings[idx].temperature, mode_str(idx, TEMPERATURE));
+                        return gamma_settings[idx].temperature;
                     } else {
-                        return std::string("N/A");
+                        return -1;
                     }
-                }();
-
-                fmt::format_to(std::back_inserter(result),
-                "[screen {}] backlight: {}, brightness: {}, temperature: {}\n",
-                idx, backlight_str, brightness_str, temperature_str);
+                } ();
+                out[idx]["bl_mode"]   = conf.screens[idx].models[size_t(BACKLIGHT)].mode;
+                out[idx]["brt_mode"]  = conf.screens[idx].models[size_t(BRIGHTNESS)].mode;
+                out[idx]["temp_mode"] = conf.screens[idx].models[size_t(TEMPERATURE)].mode;
             }
 
+            const std::vector<uint8_t> serialized_data = nlohmann::json::to_cbor(out);
+
             // Will block execution until the client reads from the pipe.
-            file_write(pipe_filepath, result);
+            file_write(pipe_filepath, std::string(serialized_data.begin(), serialized_data.end()));
             goto soft_reset;
         }
 
