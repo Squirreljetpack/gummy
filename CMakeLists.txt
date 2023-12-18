@@ -12,10 +12,10 @@ FetchContent_Declare(json
     URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
 )
 FetchContent_Declare(fmt
-    URL https://github.com/fmtlib/fmt/releases/download/9.1.0/fmt-9.1.0.zip
+    URL https://github.com/fmtlib/fmt/releases/download/10.1.1/fmt-10.1.1.zip
 )
 FetchContent_Declare(spdlog
-    URL https://github.com/gabime/spdlog/archive/refs/tags/v1.11.0.tar.gz
+    URL https://github.com/gabime/spdlog/archive/refs/tags/v1.12.0.tar.gz
 )
 FetchContent_Declare(cli11
     GIT_REPOSITORY https://github.com/CLIUtils/CLI11
