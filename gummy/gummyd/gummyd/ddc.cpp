@@ -124,7 +124,8 @@ void ddc::display::set_brightness_step(int val) {
         }
     }
 
-    const uint16_t out_val = std::clamp(uint16_t(gummyd::remap(val, 0, gummyd::constants::brt_steps_max, 0, max_brightness_)), uint16_t(0), max_brightness_);
+    const double tmp = gummyd::remap(val, 0, gummyd::constants::brt_steps_max, 0, max_brightness_);
+    const uint16_t out_val = std::clamp(uint16_t(std::round(tmp)), uint16_t(0), max_brightness_);
     spdlog::debug("[ddc] setting brightness: {}/{}", out_val, max_brightness_);
 
     const DDCA_Status st = ddca_set_non_table_vcp_value(handle_, ddc::brightness_code, out_val >> 8, out_val & 0xFF);

@@ -401,6 +401,8 @@ int interface(int argc, char **argv)
         update_screen_conf(scr_idx);
     }
 
+    fmt::println("{}", config_json["screens"][0]["backlight"]["val"].get<int>());
+
     if (gummyd::daemon_is_running()) {
         spdlog::debug("writing to daemon...");
         gummyd::daemon_send(config_json.dump());
