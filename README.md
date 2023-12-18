@@ -1,18 +1,16 @@
 # gummy
 
-gummy is a screen manager for Linux. It was mainly written to allow adaptive screen adjustments, but allows manual configuration as well.
-
-It provides a CLI for adjusting:
+gummy is a simple screen manager for Linux. It provides an easy-to-use CLI for quickly modifying:
 
 - backlight brightness
 - pixel brightness
 - color temperature
 
-These settings can be set manually or automatically, based on any of these inputs:
+Automatic adjustments are also available, based on any of these inputs:
 
-- **ALS**: your laptop's ambient light sensor, if available.
-- **Screenlight**: screen lightness, i.e. the brightness of the contents being displayed on your screen.
-- **Time**: a time range for the day (e.g. from 06:00 to 18:00).
+- ALS: your laptop's ambient light sensor, if available.
+- Screenlight: screen lightness, i.e. the brightness of the contents being displayed on your screen.
+- Time: a time range for the day (e.g. from 06:00 to 18:00).
 
 ## Wayland
 gummy works on Wayland as of version 0.5.2. However, the following features do not work yet:
@@ -29,8 +27,9 @@ gummy works on Wayland as of version 0.5.2. However, the following features do n
 | Arch    | AUR ([stable](https://aur.archlinux.org/packages/gummy/) - [latest](https://aur.archlinux.org/packages/gummy-git/)) |
 | NixOS   | [nixpkgs](https://search.nixos.org/packages?channel=unstable&show=gummy&query=gummy) |
 
-For NixOS users: you must add the following line to `configuration.nix`: `services.udev.packages = [ pkgs.gummy ];`
+**Debian users**: the Debian package is provided by me for convenience. It's based on Ubuntu 22.04 and may not work on your particular Debian-based distro. Maintainers welcome!
 
+**NixOS users**: you must add the following line to `configuration.nix`: `services.udev.packages = [ pkgs.gummy ];`
 
 gummy uses the ddcutil library on your system for managing backlights of external monitors. The kernel module **i2c-dev** is needed if you want this functionality. 
 
@@ -55,6 +54,7 @@ Quick guide:
 | Command | Explanation |
 |---------|--------|
 | `gummy start`   | Starts the background process responsible for screen adjustments. |
+| `gummy status`   | Lists current screen settings. |
 | `gummy -b 50`   | Sets backlight brightness to 50%. |
 | `gummy -b +50`  | Increases backlight brightness by 50%. |
 | `gummy -t 3400` | Sets the color temperature to 3400K. |
