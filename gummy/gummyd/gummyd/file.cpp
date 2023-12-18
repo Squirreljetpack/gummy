@@ -71,6 +71,12 @@ void file_write(std::filesystem::path filepath, const std::string &data) {
     fs.write(data.c_str(), data.size());
 }
 
+void file_write(std::filesystem::path filepath, const std::vector<uint8_t> &data) {
+    std::ofstream fs(filepath, std::ios::binary);
+    fs.exceptions(std::ifstream::failbit);
+    fs.write(reinterpret_cast<const char*>(data.data()), data.size());
+}
+
 std::string env(std::string_view var) {
     const auto s = std::getenv(var.data());
     return s ? s : "";

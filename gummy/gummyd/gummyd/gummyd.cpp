@@ -275,10 +275,8 @@ int message_loop() {
                 out[idx]["temp_mode"] = conf.screens[idx].models[size_t(TEMPERATURE)].mode;
             }
 
-            const std::vector<uint8_t> serialized_data = nlohmann::json::to_cbor(out);
-
             // Will block execution until the client reads from the pipe.
-            file_write(pipe_filepath, std::string(serialized_data.begin(), serialized_data.end()));
+            file_write(pipe_filepath, nlohmann::json::to_cbor(out));
             goto soft_reset;
         }
 

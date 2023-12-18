@@ -45,12 +45,10 @@ void status() {
         return "error";
     };
 
-    const std::string data = gummyd::daemon_get("status");
-    const std::vector<uint8_t> b_data = std::vector<uint8_t>(data.begin(), data.end());
-    const nlohmann::json screens = nlohmann::json::from_cbor(b_data);
-    std::string result;
-
     static constexpr std::string not_available = "N/A";
+
+    const nlohmann::json screens = nlohmann::json::from_cbor(gummyd::daemon_get("status"));
+    std::string rows;
 
     for (size_t idx = 0; idx < screens.size(); ++idx) {
         const std::string backlight_str = [&] {
@@ -75,13 +73,13 @@ void status() {
             }
         }();
 
-        fmt::format_to(std::back_inserter(result),
+        fmt::format_to(std::back_inserter(rows),
                        "[screen {}] backlight: {}, brightness: {}, temperature: {}\n",
                        idx, backlight_str, brightness_str, temperature_str);
 
     }
 
-    fmt::print("{}", result);
+    fmt::print("{}", rows);
 	std::exit(EXIT_SUCCESS);
 }
 

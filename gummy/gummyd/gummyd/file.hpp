@@ -4,6 +4,7 @@
 #ifndef FILE_HPP
 #define FILE_HPP
 
+#include <vector>
 #include <string>
 #include <string_view>
 #include <filesystem>
@@ -32,6 +33,7 @@ public:
 
 std::string file_read(std::filesystem::path filepath);
 void file_write(std::filesystem::path filepath, const std::string &data);
+void file_write(std::filesystem::path filepath, const std::vector<uint8_t> &data);
 
 std::string env(std::string_view var);
 
