@@ -40,7 +40,6 @@ endif()
 if (GUMMY_EXTERNAL_FMT)
 find_package(fmt 9.0.0 REQUIRED)
 else()
-set(CLI11_PRECOMPILED ON)
 FetchContent_Declare(fmt
     URL https://github.com/fmtlib/fmt/releases/download/10.1.1/fmt-10.1.1.zip
 )
@@ -59,6 +58,7 @@ endif()
 if (GUMMY_EXTERNAL_CLI11)
 find_package(CLI11 2.1.2 REQUIRED)
 else()
+set(CLI11_PRECOMPILED ON)
 FetchContent_Declare(cli11
     GIT_REPOSITORY https://github.com/CLIUtils/CLI11
     GIT_TAG 291c58789c031208f08f4f261a858b5b7083e8e2 #v2.3.2
