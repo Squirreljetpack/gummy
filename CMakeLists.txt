@@ -5,7 +5,9 @@ include(GNUInstallDirs)
 include(FetchContent)
 
 # Fix obnoxious warnings when using FetchContent on new CMake versions
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
 cmake_policy(SET CMP0135 NEW)
+endif()
 
 set(JSON_ImplicitConversions OFF)
 set(SPDLOG_FMT_EXTERNAL ON)
