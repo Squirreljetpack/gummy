@@ -5,28 +5,61 @@ include(GNUInstallDirs)
 include(FetchContent)
 
 set(JSON_ImplicitConversions OFF)
-set(CLI11_PRECOMPILED ON)
 set(SPDLOG_FMT_EXTERNAL ON)
 
+option(GUMMY_EXTERNAL_LIBS
+"Use system packages for all libs.
+When OFF, CMake will download some required libs. You may then toggle this behavior on single libs with the other GUMMY_EXTERNAL_* options." ON)
+
+option(GUMMY_EXTERNAL_JSON   "" OFF)
+option(GUMMY_EXTERNAL_FMT    "" OFF)
+option(GUMMY_EXTERNAL_SPDLOG "" OFF)
+option(GUMMY_EXTERNAL_CLI11  "" OFF)
+
+if (GUMMY_EXTERNAL_LIBS)
+set(GUMMY_EXTERNAL_JSON ON)
+set(GUMMY_EXTERNAL_FMT ON)
+set(GUMMY_EXTERNAL_SPDLOG ON)
+set(GUMMY_EXTERNAL_CLI11 ON)
+endif()
+
+if (GUMMY_EXTERNAL_JSON)
+find_package(nlohmann_json 3.10.5 REQUIRED)
+else()
 FetchContent_Declare(json
     URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
 )
+FetchContent_MakeAvailable(json)
+endif()
+
+if (GUMMY_EXTERNAL_FMT)
+find_package(fmt 9.0.0 REQUIRED)
+else()
+set(CLI11_PRECOMPILED ON)
 FetchContent_Declare(fmt
     URL https://github.com/fmtlib/fmt/releases/download/10.1.1/fmt-10.1.1.zip
 )
+FetchContent_MakeAvailable(fmt)
+endif()
+
+if (GUMMY_EXTERNAL_SPDLOG)
+find_package(spdlog 1.11.0 REQUIRED)
+else()
 FetchContent_Declare(spdlog
     URL https://github.com/gabime/spdlog/archive/refs/tags/v1.12.0.tar.gz
 )
+FetchContent_MakeAvailable(spdlog)
+endif()
+
+if (GUMMY_EXTERNAL_CLI11)
+find_package(CLI11 2.1.2 REQUIRED)
+else()
 FetchContent_Declare(cli11
     GIT_REPOSITORY https://github.com/CLIUtils/CLI11
     GIT_TAG 291c58789c031208f08f4f261a858b5b7083e8e2 #v2.3.2
 )
-FetchContent_MakeAvailable(
-    json
-    fmt
-    spdlog
-    cli11
-)
+FetchContent_MakeAvailable(cli11)
+endif()
 
 set(
     CPACK_INSTALL_DEFAULT_DIRECTORY_PERMISSIONS
