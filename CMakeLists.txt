@@ -4,6 +4,9 @@ set(GUMMY_VERSION ${PROJECT_VERSION})
 include(GNUInstallDirs)
 include(FetchContent)
 
+# Fix obnoxious warnings when using FetchContent on new CMake versions
+cmake_policy(SET CMP0135 NEW)
+
 set(JSON_ImplicitConversions OFF)
 set(SPDLOG_FMT_EXTERNAL ON)
 
