@@ -67,9 +67,9 @@ Quick guide:
 
 ## Troubleshooting
 
-If you experience screen flickering: disable any program that might change screen gamma, such as Redshift. Some system daemons might also cause screen flickering, such as colord. Check if it's running in your system, and try disabling it. I may add functionality to disable gamma control in the future (while keeping backlight control), so that gummy can work with any other gamma-adjusting software.
+If backlight adjustments don't work, make sure that DDC/CI is enabled in your screen's control panel. Your screen might not support DDC/CI: in that case, you might want to use pixel brightness (gamma) as a substitute.
 
-If backlight adjustments don't work, make sure DDC/CI is enabled in your screen's control panel. Your screen might not support DDC/CI: in that case, you might want to use pixel brightness as a substitute.
+If you experience frequent screen flickers, it means that some other program is updating gamma. You can disable gamma functionality with `gummy --gamma-enable 0` to use gummy's backlight control alongside other gamma software, e.g. Redshift, Night Light, etc.
 
 ## Building from source
 
