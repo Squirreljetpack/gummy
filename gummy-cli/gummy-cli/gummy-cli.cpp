@@ -183,10 +183,13 @@ int interface(int argc, char **argv)
 
         ALS_SCALE,
         ALS_POLL_MS,
-        ALS_ADAPTATION_MS
+        ALS_ADAPTATION_MS,
+
+        GAMMA_ENABLED,
+        GAMMA_REFRESH_S,
     };
 
-    constexpr int option_count = 23;
+    constexpr int option_count = 25;
     const std::array<std::array<std::string, 2>, option_count> options {{
     {"-v,--version", "Print version and exit"},
     {"-s,--screen", "Index on which to apply screen-related settings. If omitted, any changes will be applied on all screens."},
@@ -217,6 +220,9 @@ int interface(int argc, char **argv)
     {"--als-scale", "ALS signal multiplier. Useful for calibration."},
     {"--als-poll-ms", "Time interval between each sensor reading."},
     {"--als-adaptation-ms", "Adaptation speed in milliseconds."},
+
+    {"--gamma-enable", "Toggle gamma functionality. A value of 0 allows gummy to co-exist with other programs that handle gamma."},
+    {"--gamma-refresh-s", "Interval between each gamma refresh. A value of 0 disables refreshes."},
     }};
     std::array<bool, option_count> rel_fl {};
 
@@ -269,6 +275,9 @@ int interface(int argc, char **argv)
        int adaptation_minutes;
     };
 
+    int gamma_enabled   (invalid_val);
+    int gamma_refresh_s (invalid_val);
+
     sensor  als { double(invalid_val), invalid_val, invalid_val };
     sensor  screenlight { double(invalid_val), invalid_val, invalid_val };
     service time {"", "", invalid_val};
@@ -319,6 +328,9 @@ int interface(int argc, char **argv)
     app.add_option(options[TIME_END][0], time.end, options[TIME_END][1])->check(check_time_format)->group(service_grp[2]);
     app.add_option(options[TIME_ADAPTATION_MINUTES][0], time.adaptation_minutes, options[TIME_ADAPTATION_MINUTES][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[TIME_ADAPTATION_MINUTES], time_range_adaptation_minutes); }, time_range_adaptation_minutes.desc()))->group(service_grp[2]);
 
+    app.add_option(options[GAMMA_ENABLED][0], gamma_enabled, options[GAMMA_ENABLED][1])->check(CLI::Range(0, 1));
+    app.add_option(options[GAMMA_REFRESH_S][0], gamma_refresh_s, options[GAMMA_REFRESH_S][1])->check(CLI::Range(0, 60));
+
     spdlog::debug("parsing options...");
 	try {
 		if (argc == 1) {
@@ -356,6 +368,9 @@ int interface(int argc, char **argv)
     setif(config_json["als"]["scale"], als.scale, rel_fl[ALS_SCALE], als_range_scale);
     setif(config_json["als"]["poll_ms"], als.poll_ms, rel_fl[ALS_POLL_MS], als_range_poll_ms);
     setif(config_json["als"]["adaptation_ms"], als.adaptation_ms, rel_fl[ALS_ADAPTATION_MS], als_range_adaptation_ms);
+
+    setif(config_json["gamma"]["enabled"], gamma_enabled);
+    setif(config_json["gamma"]["refresh_s"], gamma_refresh_s);
 
     const auto update_screen_conf = [&] (size_t idx) {
 
