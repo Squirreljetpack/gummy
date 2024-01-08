@@ -38,7 +38,7 @@ FetchContent_MakeAvailable(json)
 endif()
 
 if (GUMMY_EXTERNAL_FMT)
-find_package(fmt 9.0.0 REQUIRED)
+find_package(fmt 8.1.1 REQUIRED)
 else()
 FetchContent_Declare(fmt
     URL https://github.com/fmtlib/fmt/releases/download/10.1.1/fmt-10.1.1.zip
@@ -47,7 +47,7 @@ FetchContent_MakeAvailable(fmt)
 endif()
 
 if (GUMMY_EXTERNAL_SPDLOG)
-find_package(spdlog 1.11.0 REQUIRED)
+find_package(spdlog 1.9.2 REQUIRED)
 else()
 FetchContent_Declare(spdlog
     URL https://github.com/gabime/spdlog/archive/refs/tags/v1.12.0.tar.gz
