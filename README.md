@@ -75,7 +75,8 @@ If backlight adjustments don't work, make sure DDC/CI is enabled in your screen'
 
 ### Ubuntu 22.04+
 
-`sudo apt install build-essential \
+```
+sudo apt install build-essential \
 cmake \
 libatomic1 \
 libxcb1-dev \
@@ -86,7 +87,8 @@ libsystemd-dev \
 libsdbus-c++-dev \
 libddcutil-dev \
 nlohmann-json3-dev \
-libcli11-dev`
+libcli11-dev
+```
 
 ### Installation
 
