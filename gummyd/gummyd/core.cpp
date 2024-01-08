@@ -3,6 +3,7 @@
 
 #include <span>
 #include <filesystem>
+#include <condition_variable>
 #include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
 
