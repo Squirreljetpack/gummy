@@ -23,6 +23,11 @@ class config {
     std::filesystem::path filepath_;
 public:
 
+    struct gamma {
+    bool enabled;
+    int refresh_s;
+    } gamma;
+
     struct time {
         std::string start;
         std::string end;

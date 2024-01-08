@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
 
 #include <gummyd/config.hpp>
 #include <gummyd/file.hpp>
@@ -26,6 +27,9 @@ void config::defaults()
 	als.scale                = 1.0;
 	als.poll_ms              = 5000;
 	als.adaptation_ms        = 5000;
+
+    gamma.enabled            = true;
+    gamma.refresh_s          = 10;
 }
 
 config::screen::screen()
@@ -153,17 +157,24 @@ void config::from_json(json in)
 		screens.emplace_back(s);
 	}
 
-	time.start               = in["time"]["start"].get<std::string>();
-	time.end                 = in["time"]["end"].get<std::string>();
-	time.adaptation_minutes  = in["time"]["adaptation_minutes"].get<int>();
+    try {
+        time.start               = in["time"]["start"].get<std::string>();
+        time.end                 = in["time"]["end"].get<std::string>();
+        time.adaptation_minutes  = in["time"]["adaptation_minutes"].get<int>();
 
-	screenshot.scale         = in["screenlight"]["scale"].get<double>();
-	screenshot.poll_ms       = in["screenlight"]["poll_ms"].get<int>();
-	screenshot.adaptation_ms = in["screenlight"]["adaptation_ms"].get<int>();
+        screenshot.scale         = in["screenlight"]["scale"].get<double>();
+        screenshot.poll_ms       = in["screenlight"]["poll_ms"].get<int>();
+        screenshot.adaptation_ms = in["screenlight"]["adaptation_ms"].get<int>();
 
-	als.scale                = in["als"]["scale"].get<double>();
-	als.poll_ms              = in["als"]["poll_ms"].get<int>();
-	als.adaptation_ms        = in["als"]["adaptation_ms"].get<int>();
+        als.scale                = in["als"]["scale"].get<double>();
+        als.poll_ms              = in["als"]["poll_ms"].get<int>();
+        als.adaptation_ms        = in["als"]["adaptation_ms"].get<int>();
+
+        gamma.enabled            = in["gamma"]["enabled"].get<bool>();
+        gamma.refresh_s          = in["gamma"]["refresh_s"].get<int>();
+    } catch (const nlohmann::json::exception &e) {
+        spdlog::error(e.what());
+    }
 }
 
 json config::to_json() const
@@ -188,6 +199,11 @@ json config::to_json() const
 				{"poll_ms", als.poll_ms},
 				{"adaptation_ms", als.adaptation_ms}
 		}},
+
+        {"gamma", {
+                {"enabled", gamma.enabled},
+                {"refresh_s", gamma.refresh_s}
+        }},
 	};
 
 	for (const auto &s : screens)
