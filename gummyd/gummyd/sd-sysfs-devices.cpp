@@ -8,7 +8,6 @@
 #include <string>
 #include <string_view>
 #include <filesystem>
-#include <fmt/std.h>
 
 #include <gummyd/sd-sysfs.hpp>
 #include <gummyd/sd-sysfs-devices.hpp>
@@ -127,7 +126,7 @@ sysfs::als::als(std::filesystem::path path)
 	}
 
 	if (_lux_filename.empty()) {
-        throw std::runtime_error(fmt::format("Lux data not found for ALS device at path: {}", path));
+        throw std::runtime_error(fmt::format("Lux data not found for ALS device at path: {}", path.generic_string()));
 	}
 
 	_lux_scale = [this] {
