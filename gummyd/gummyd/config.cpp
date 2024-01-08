@@ -170,7 +170,7 @@ void config::from_json(json in)
         als.poll_ms              = in["als"]["poll_ms"].get<int>();
         als.adaptation_ms        = in["als"]["adaptation_ms"].get<int>();
 
-        gamma.enabled            = in["gamma"]["enabled"].get<bool>();
+        gamma.enabled            = in["gamma"]["enabled"].get<int>();
         gamma.refresh_s          = in["gamma"]["refresh_s"].get<int>();
     } catch (const nlohmann::json::exception &e) {
         spdlog::error(e.what());

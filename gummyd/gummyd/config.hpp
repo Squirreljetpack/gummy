@@ -24,7 +24,7 @@ class config {
 public:
 
     struct gamma {
-    bool enabled;
+    int enabled;
     int refresh_s;
     } gamma;
 
