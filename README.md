@@ -71,34 +71,34 @@ If you experience screen flickering: disable any program that might change scree
 
 If backlight adjustments don't work, make sure DDC/CI is enabled in your screen's control panel. Your screen might not support DDC/CI: in that case, you might want to use pixel brightness as a substitute.
 
-
-
 ## Building from source
 
-System requirements:
+### Ubuntu 22.04+
 
-- C++20 compiler
-- CMake v3.14 or later
-- libxcb (with extensions: randr, shm, image)
-- libsystemd
-- libsdbus-c++
-- libddcutil
-
-### Apt packages
-
-`sudo apt install build-essential cmake libxcb1-dev libxcb-randr0-dev libxcb-shm0-dev libxcb-image0-dev libsystemd-dev libsdbus-c++-dev libddcutil-dev`
+`sudo apt install build-essential \
+cmake \
+libatomic1 \
+libxcb1-dev \
+libxcb-randr0-dev \
+libxcb-shm0-dev \
+libxcb-image0-dev \
+libsystemd-dev \
+libsdbus-c++-dev \
+libddcutil-dev \
+nlohmann-json3-dev \
+libcli11-dev`
 
 ### Installation
 
 ```
-git clone https://github.com/Fushko/gummy.git --depth 1 && cd gummy
+git clone https://github.com/f-fusco/gummy.git --depth 1 && cd gummy
 mkdir build && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE="Release"
 cmake --build . -j && sudo cmake --install .
 ```
 
 ## Credits
-This project makes (hopefully good) use of these excellent libraries:
+This project mostly strings these libraries together:
 
 - JSON [[MIT](https://github.com/nlohmann/json/blob/develop/LICENSE.MIT)]
 - fmt [[MIT](https://github.com/fmtlib/fmt/blob/master/LICENSE.rst)]
@@ -112,10 +112,10 @@ Temperature adjustments use the color ramp provided by [Ingo Thies](https://gith
 
 ## Donations
 
-You can buy me a coffee at: https://coindrop.to/fushko
+You can buy me a coffee at: https://coindrop.to/fusco
 
 ## License
 
-Copyright 2021-2023 Francesco Fusco
+Copyright 2021-2024 Francesco Fusco
 
 Released under the terms of the GNU General Public License v3.0.
