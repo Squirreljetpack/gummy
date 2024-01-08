@@ -99,11 +99,11 @@ void run(std::vector<xcb::randr::output> &randr_outputs,
                 }
                 break;
             case BRIGHTNESS:
-                if (gamma_state.has_value())
+                if (gamma_state.has_value() && conf.gamma.enabled)
                     fn = std::bind(&gamma_state::set_brightness, &gamma_state.value(), idx, _1);
                 break;
             case TEMPERATURE:
-                if (gamma_state.has_value())
+                if (gamma_state.has_value() && conf.gamma.enabled)
                     fn = std::bind(&gamma_state::set_temperature, &gamma_state.value(), idx, _1);
                 break;
             }
@@ -139,12 +139,14 @@ void run(std::vector<xcb::randr::output> &randr_outputs,
         }
 	}
 
-    if (gamma_state.has_value()) {
+    if (gamma_state.has_value()
+    && conf.gamma.enabled
+    && conf.gamma.refresh_s > 0) {
         threads.emplace_back([&] {
             spdlog::debug("[gamma refresh] start");
             while (true) {
-                jthread_wait_until(std::chrono::seconds(10), stoken);
-                spdlog::trace("gamma refresh");
+                jthread_wait_until(std::chrono::seconds(conf.gamma.refresh_s), stoken);
+                spdlog::debug("[gamma refresh] refreshing...");
                 gamma_state->reset_gamma();
                 if (stoken.stop_requested()) {
                     spdlog::debug("[gamma refresh] stop requested");
@@ -235,8 +237,8 @@ int message_loop() {
         const std::string data(file_read(pipe_filepath));
 
         if (data == "status") {
-            const std::vector<gummyd::gamma_state::settings> gamma_settings = [&gamma_state] {
-                if (gamma_state.has_value()) {
+            const std::vector<gummyd::gamma_state::settings> gamma_settings = [&gamma_state, &conf] {
+                if (gamma_state.has_value() && conf.gamma.enabled) {
                     return gamma_state.value().get_settings();
                 } else {
                     return std::vector<gummyd::gamma_state::settings>();
