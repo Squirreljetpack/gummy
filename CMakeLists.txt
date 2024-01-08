@@ -12,21 +12,10 @@ endif()
 set(JSON_ImplicitConversions OFF)
 set(SPDLOG_FMT_EXTERNAL ON)
 
-option(GUMMY_EXTERNAL_LIBS
-"Use system packages for all libs.
-When OFF, CMake will download some required libs. You may then toggle this behavior on single libs with the other GUMMY_EXTERNAL_* options." ON)
-
-option(GUMMY_EXTERNAL_JSON   "" OFF)
-option(GUMMY_EXTERNAL_FMT    "" OFF)
-option(GUMMY_EXTERNAL_SPDLOG "" OFF)
-option(GUMMY_EXTERNAL_CLI11  "" OFF)
-
-if (GUMMY_EXTERNAL_LIBS)
-set(GUMMY_EXTERNAL_JSON ON)
-set(GUMMY_EXTERNAL_FMT ON)
-set(GUMMY_EXTERNAL_SPDLOG ON)
-set(GUMMY_EXTERNAL_CLI11 ON)
-endif()
+option(GUMMY_EXTERNAL_JSON   "" ON)
+option(GUMMY_EXTERNAL_FMT    "" ON)
+option(GUMMY_EXTERNAL_SPDLOG "" ON)
+option(GUMMY_EXTERNAL_CLI11  "" ON)
 
 if (GUMMY_EXTERNAL_JSON)
 find_package(nlohmann_json 3.10.5 REQUIRED)
