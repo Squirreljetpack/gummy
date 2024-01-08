@@ -73,7 +73,7 @@ If you experience frequent screen flickers, it means that some other program is 
 
 ## Building from source
 
-### Ubuntu 22.04+
+### Ubuntu 22.04
 
 ```
 sudo apt install build-essential \
@@ -90,6 +90,20 @@ nlohmann-json3-dev \
 libcli11-dev
 ```
 
+### Fedora 39
+```
+sudo dnf install cmake \
+libddcutil-devel.x86_64 \
+systemd-devel.x86_64 \
+libxcb-devel.x86_64 \
+xcb-util-image-devel.x86_64 \
+sdbus-cpp-devel.x86_64 \
+fmt-devel.x86_64 \
+spdlog-devel.x86_64 \
+cli11-devel.noarch
+```
+
+
 ### Installation
 
 ```
@@ -98,6 +112,9 @@ mkdir build && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE="Release"
 cmake --build . -j && sudo cmake --install .
 ```
+
+On Fedora, the json library does not have a RPM package. Add `-DGUMMY_EXTERNAL_JSON=0` to the `cmake ..` command to fetch it from GitHub.
+
 
 ## Credits
 This project mostly strings these libraries together:
