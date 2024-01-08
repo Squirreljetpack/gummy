@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <fstream>
-#include <fmt/std.h>
 #include <nlohmann/json.hpp>
 
 #include <gummyd/config.hpp>
