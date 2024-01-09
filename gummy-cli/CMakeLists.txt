@@ -1,5 +1,18 @@
 project(gummy-cli LANGUAGES CXX)
 
+option(GUMMY_EXTERNAL_CLI11  "" ON)
+
+if (GUMMY_EXTERNAL_CLI11)
+find_package(CLI11 2.1.2 REQUIRED)
+else()
+set(CLI11_PRECOMPILED ON)
+FetchContent_Declare(cli11
+    GIT_REPOSITORY https://github.com/CLIUtils/CLI11
+    GIT_TAG 291c58789c031208f08f4f261a858b5b7083e8e2 #v2.3.2
+)
+FetchContent_MakeAvailable(cli11)
+endif()
+
 add_executable(${PROJECT_NAME})
 target_sources(${PROJECT_NAME} PRIVATE gummy-cli/gummy-cli.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE
