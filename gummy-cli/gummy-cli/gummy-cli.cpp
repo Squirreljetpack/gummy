@@ -387,7 +387,7 @@ int interface(int argc, char **argv) {
     const auto update_screen_config = [&] (size_t idx) {
         if (idx > config_json["screens"].size() - 1) {
             fmt::print("Invalid screen number. Run `gummy status` to check for valid ones.\n");
-            return;
+            std::exit(EXIT_FAILURE);
         }
 
         const std::function<int(int)> brightness_perc_to_step = [&] (int val) {
