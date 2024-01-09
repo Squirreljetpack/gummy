@@ -33,7 +33,7 @@ target_sources(${PROJECT_NAME}
     gummyd.cpp
 )
 
-find_package(sdbus-c++ REQUIRED)
+find_package(sdbus-c++ 1.1.0 REQUIRED)
 find_library(LIBDDCUTIL "ddcutil" REQUIRED)
 
 # udev
