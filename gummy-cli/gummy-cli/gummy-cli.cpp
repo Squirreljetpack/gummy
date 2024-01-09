@@ -3,8 +3,9 @@
 
 #include <array>
 #include <regex>
-#include <nlohmann/json.hpp>
+#include <limits>
 
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <spdlog/cfg/env.h>
 #include <CLI/App.hpp>
@@ -107,33 +108,6 @@ struct range {
         return CLI::Range(min, max).get_description();
     }
 };
-
-template <class T>
-void setif(nlohmann::json &val, T new_val) {
-    if (gummyd::config_is_valid(new_val)) {
-		val = new_val;
-	}
-}
-
-void setif(nlohmann::json &val, std::string new_val) {
-    if (val.is_string() && !new_val.empty())
-        val = new_val;
-}
-
-template <class T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, int> = 0>
-void setif(nlohmann::json &val, T new_val, bool relative, range<T> range, std::function<T(T)> fn = [](T x){return x;}) {
-    if (!(gummyd::config_is_valid(new_val))) {
-        return;
-    }
-
-    spdlog::debug("new_val {} is relative: {}", new_val, relative);
-    if (relative) {
-        val = std::clamp(val.get<T>() + fn(new_val), range.min, range.max);
-    } else {
-        spdlog::debug("setting {} to {}", val.get<T>(), fn(new_val));
-        val = fn(new_val);
-	}
-}
 
 template <class T>
 std::string relative_validator(const std::string &str, bool &relative_flag, range<T> range) {
@@ -251,6 +225,60 @@ struct {
     std::array<int, 4> temperature;
 } models;
 
+// Signifies a value not changed by the user and therefore to ignore when updating the config file.
+constexpr int unset (std::numeric_limits<int>().min());
+
+// What is this, PHP?
+bool isset(int x) {
+    return x != unset;
+}
+
+// Bad, but at least it's explicit
+bool isset(double x) {
+    return int(x) != unset;
+}
+
+bool isset(std::string_view x) {
+    return !x.empty();
+}
+
+template <class T>
+void setif(nlohmann::json &val, T new_val) {
+    if (isset(new_val)) {
+        val = new_val;
+    }
+}
+
+void setif(nlohmann::json &val, const std::string &new_val) {
+    if (!val.is_string()) {
+        throw std::runtime_error("updating non-string configuration with a string");
+    }
+
+    if (isset(new_val)) {
+        val = new_val;
+    }
+}
+
+// The callback is currently used by the caller when we need to convert
+// the backlight/brightness percentage to the config format.
+// Otherwise it does nothing.
+template <class T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, int> = 0>
+void setif(nlohmann::json &val, T new_val, bool relative, range<T> range, std::function<T(T)> fn = [](T x){ return x; }) {
+    if (!isset(new_val)) {
+        return;
+    }
+
+    const T fn_val = fn(new_val);
+
+    if (relative) {
+        spdlog::debug("adding: {} + {}", val.get<T>(), fn_val);
+        val = std::clamp(val.get<T>() + fn_val, range.min, range.max);
+    } else {
+        spdlog::debug("setting {} to {}", val.get<T>(), fn_val);
+        val = fn_val;
+    }
+}
+
 int interface(int argc, char **argv) {
     CLI::App app("Screen manager for X11.", "gummy");
 	app.add_subcommand("start", "Start the background process.")->callback(start);
@@ -262,11 +290,7 @@ int interface(int argc, char **argv) {
 		std::exit(0);
 	}, options[VERS][1]);
 
-    const int unset = gummyd::config_invalid_val();
-
-    int screen_idx = unset;
-    app.add_option(options[SCREEN_NUM][0], screen_idx, options[SCREEN_NUM][1])->check(CLI::Range(0, 99));
-
+    int screen_idx (unset);
     models.backlight.fill(unset);
     models.brightness.fill(unset);
     models.temperature.fill(unset);
@@ -293,6 +317,9 @@ int interface(int argc, char **argv) {
     // Flags signaling relative increments/decrements.
     std::array<bool, option_count> rel_fl {};
 
+    app.add_option(options[SCREEN_NUM][0], screen_idx, options[SCREEN_NUM][1])->check(CLI::Range(0, 99));
+
+    // Per-screen settings
     app.add_option(options[BACKLIGHT_MODE][0], models.backlight[0], options[BACKLIGHT_MODE][1])->check(mode_range)->group(screen_group_strings[0]);
     app.add_option(options[BACKLIGHT_PERC][0], models.backlight[1], options[BACKLIGHT_PERC][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[BACKLIGHT_PERC], brightness_range); }, brightness_range.desc()))->group(screen_group_strings[0]);
     app.add_option(options[BACKLIGHT_MIN][0], models.backlight[2], options[BACKLIGHT_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[BACKLIGHT_MIN], brightness_range);    }, brightness_range.desc()))->group(screen_group_strings[0]);
@@ -308,6 +335,7 @@ int interface(int argc, char **argv) {
     app.add_option(options[TEMP_MIN][0], models.temperature[2], options[TEMP_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[TEMP_MIN], temp_range); }, temp_range.desc()))->group(screen_group_strings[2]);
     app.add_option(options[TEMP_MAX][0], models.temperature[3], options[TEMP_MAX][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[TEMP_MAX], temp_range); }, temp_range.desc()))->group(screen_group_strings[2]);
 
+    // Global settings
     app.add_option(options[ALS_SCALE][0], als.scale, options[ALS_SCALE][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[ALS_SCALE], als_range_scale); }, als_range_scale.desc()))->group(service_group_strings[0]);
     app.add_option(options[ALS_POLL_MS][0], als.poll_ms, options[ALS_POLL_MS][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[ALS_POLL_MS], als_range_poll_ms); }, als_range_poll_ms.desc()))->group(service_group_strings[0]);
     app.add_option(options[ALS_ADAPTATION_MS][0], als.adaptation_ms, options[ALS_ADAPTATION_MS][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[ALS_ADAPTATION_MS], als_range_adaptation_ms); }, als_range_adaptation_ms.desc()))->group(service_group_strings[0]);
@@ -323,7 +351,7 @@ int interface(int argc, char **argv) {
     app.add_option(options[GAMMA_ENABLED][0], gamma_enabled, options[GAMMA_ENABLED][1])->check(CLI::Range(0, 1));
     app.add_option(options[GAMMA_REFRESH_S][0], gamma_refresh_s, options[GAMMA_REFRESH_S][1])->check(CLI::Range(0, 60));
 
-    spdlog::debug("parsing options...");
+    spdlog::debug("parsing options");
 	try {
 		if (argc == 1) {
 			app.parse("-h");
@@ -334,19 +362,15 @@ int interface(int argc, char **argv) {
 		return app.exit(e);
 	}
 
-    spdlog::debug("getting config...");
+    spdlog::debug("getting config");
     nlohmann::json config_json = [&] {
         try {
             return gummyd::config_get_current();
-        } catch (nlohmann::json::exception &e) {
-            return nlohmann::json {{"error", e.what()}};
+        } catch (const nlohmann::json::exception &e) {
+            fmt::print("Error: {}\n", e.what());
+            std::exit(EXIT_FAILURE);
         }
     }();
-
-    if (config_json.contains("error")) {
-        spdlog::error("error while retrieving config: {}", config_json["error"].get<std::string>());
-		return EXIT_FAILURE;
-	}
 
 	setif(config_json["time"]["start"], time.start);
 	setif(config_json["time"]["end"], time.end);
@@ -362,57 +386,65 @@ int interface(int argc, char **argv) {
 
     const auto update_screen_config = [&] (size_t idx) {
         if (idx > config_json["screens"].size() - 1) {
+            fmt::print("Invalid screen number. Run `gummy status` to check for valid ones.\n");
             return;
         }
 
         const std::function<int(int)> brightness_perc_to_step = [&] (int val) {
             const int abs_clamped_val = std::clamp(std::abs(val), brightness_range.min, brightness_range.max);
             const int out_val = gummyd::remap(abs_clamped_val, brightness_range.min, brightness_range.max, brt_range_pair.first, brt_range_pair.second);
-            spdlog::debug("{} -> {}", val, out_val);
+            spdlog::debug("{}% -> {}", val, out_val);
             return val >= 0 ? out_val : -out_val;
         };
 
         auto &scr = config_json["screens"][idx];
 
         setif(scr["backlight"]["mode"], models.backlight[0]);
-        setif(scr["backlight"]["val"], models.backlight[1], rel_fl[BACKLIGHT_PERC], brightness_range_real, brightness_perc_to_step);
-        setif(scr["backlight"]["min"], models.backlight[2], rel_fl[BACKLIGHT_MIN], brightness_range_real, brightness_perc_to_step);
-        setif(scr["backlight"]["max"], models.backlight[3], rel_fl[BACKLIGHT_MAX], brightness_range_real, brightness_perc_to_step);
+        setif(scr["backlight"]["val"],  models.backlight[1], rel_fl[BACKLIGHT_PERC], brightness_range_real, brightness_perc_to_step);
+        setif(scr["backlight"]["min"],  models.backlight[2], rel_fl[BACKLIGHT_MIN], brightness_range_real, brightness_perc_to_step);
+        setif(scr["backlight"]["max"],  models.backlight[3], rel_fl[BACKLIGHT_MAX], brightness_range_real, brightness_perc_to_step);
+
         setif(scr["brightness"]["mode"], models.brightness[0]);
-        setif(scr["brightness"]["val"], models.brightness[1], rel_fl[BRT_PERC], brightness_range_real, brightness_perc_to_step);
-        setif(scr["brightness"]["min"], models.brightness[2], rel_fl[BRT_MIN], brightness_range_real, brightness_perc_to_step);
-        setif(scr["brightness"]["max"], models.brightness[3], rel_fl[BRT_MAX], brightness_range_real, brightness_perc_to_step);
-        setif(scr["temperature"]["mode"], models.temperature[0]);
+        setif(scr["brightness"]["val"],  models.brightness[1], rel_fl[BRT_PERC], brightness_range_real, brightness_perc_to_step);
+        setif(scr["brightness"]["min"],  models.brightness[2], rel_fl[BRT_MIN], brightness_range_real, brightness_perc_to_step);
+        setif(scr["brightness"]["max"],  models.brightness[3], rel_fl[BRT_MAX], brightness_range_real, brightness_perc_to_step);
+
+        setif(scr["temperature"]["mode"],models.temperature[0]);
         setif(scr["temperature"]["val"], models.temperature[1], rel_fl[TEMP_KELV], temp_range);
         setif(scr["temperature"]["min"], models.temperature[2], rel_fl[TEMP_MIN], temp_range);
         setif(scr["temperature"]["max"], models.temperature[3], rel_fl[TEMP_MAX], temp_range);
 
-        if (gummyd::config_is_valid(models.backlight[1]))
+        // If the user passed a manual backlight value, set backlight mode to manual.
+        if (isset(models.backlight[1])) {
             scr["backlight"]["mode"] = 0;
-        if (gummyd::config_is_valid(models.brightness[1]))
+        }
+        if (isset(models.brightness[1])) {
             scr["brightness"]["mode"] = 0;
-        if (gummyd::config_is_valid(models.temperature[1]))
+        }
+        if (isset(models.temperature[1])) {
             scr["temperature"]["mode"] = 0;
+        }
     };
 
-    if (screen_idx == unset) {
+    if (isset(screen_idx)) {
+        spdlog::debug("updating screen {}", screen_idx);
+        update_screen_config(screen_idx);
+    } else {
         spdlog::debug("updating all screens");
         for (size_t i = 0; i < config_json["screens"].size(); ++i) {
             update_screen_config(i);
         }
-    } else {
-        spdlog::debug("updating screen {}", screen_idx);
-        update_screen_config(screen_idx);
     }
 
     if (gummyd::daemon_is_running()) {
-        spdlog::debug("writing to daemon...");
+        spdlog::debug("sending config to daemon");
         gummyd::daemon_send(config_json.dump());
-    } else {
-        spdlog::debug("daemon not running, updating config instead");
-        gummyd::config_write(config_json);
-        std::puts("Configuration updated. Run 'gummy start' to apply.");
+        return EXIT_SUCCESS;
     }
+
+    spdlog::debug("daemon not running, updating config file instead");
+    gummyd::config_write(config_json);
+    std::puts("Configuration updated. Run 'gummy start' to apply.");
 
 	return EXIT_SUCCESS;
 }
