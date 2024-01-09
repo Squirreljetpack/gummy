@@ -16,15 +16,29 @@
 
 namespace gummyd {
 
-bool daemon_start() {
+namespace {
+void _daemon_send(const std::string &s) {
+    lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename_cli, true);
+    file_write(xdg_runtime_dir() / gummyd::constants::fifo_filename, s);
+}
 
-    if (daemon_is_running())
+std::string _daemon_get(std::string_view s) {
+    lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename_cli, true);
+    file_write(xdg_runtime_dir() / gummyd::constants::fifo_filename, s.data());
+    return file_read((xdg_runtime_dir() / gummyd::constants::fifo_filename));
+}
+}
+
+bool daemon_start() {
+    if (daemon_is_running()) {
         return false;
+    }
 
     const pid_t pid = fork();
 
-    if (pid > 0)
+    if (pid > 0) {
         return true;
+    }
 
     if (pid == 0) {
         execl(CMAKE_INSTALL_DAEMON_PATH, "", nullptr);
@@ -36,10 +50,14 @@ bool daemon_start() {
 
 bool daemon_stop() {
     if (daemon_is_running()) {
-        daemon_send("stop");
+        _daemon_send("stop");
         return true;
     }
     return false;
+}
+
+nlohmann::json daemon_screen_status() {
+    return nlohmann::json::from_cbor(_daemon_get("status"));
 }
 
 bool daemon_is_running() {
@@ -47,18 +65,7 @@ bool daemon_is_running() {
     return flock.locked();
 }
 
-void daemon_send(const std::string &s) {
-    lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename_cli, true);
-    file_write(xdg_runtime_dir() / gummyd::constants::fifo_filename, s);
-}
-
-std::string daemon_get(std::string_view s) {
-    lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename_cli, true);
-    file_write(xdg_runtime_dir() / gummyd::constants::fifo_filename, s.data());
-    return file_read((xdg_runtime_dir() / gummyd::constants::fifo_filename));
-}
-
-nlohmann::json config_get_current() {
+nlohmann::json config_get() {
     std::ifstream ifs(xdg_config_dir() / gummyd::constants::config_filename);
     ifs.exceptions(std::fstream::failbit);
     nlohmann::json ret;
@@ -66,10 +73,14 @@ nlohmann::json config_get_current() {
     return ret;
 }
 
-void config_write(nlohmann::json json) {
+void config_write(nlohmann::json &json) {
     std::ofstream fs(xdg_config_dir() / gummyd::constants::config_filename);
     fs.exceptions(std::fstream::failbit);
     fs << std::setw(4) << json;
+}
+
+void daemon_send_config(nlohmann::json &json) {
+    _daemon_send(json.dump());
 }
 
 std::pair<int, int> brightness_range() {

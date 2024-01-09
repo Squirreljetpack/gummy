@@ -47,7 +47,7 @@ void status() {
 
     static constexpr std::string not_available = "N/A";
 
-    const nlohmann::json screens = nlohmann::json::from_cbor(gummyd::daemon_get("status"));
+    const nlohmann::json screens = gummyd::daemon_screen_status();
     std::string rows;
 
     for (size_t idx = 0; idx < screens.size(); ++idx) {
@@ -365,7 +365,7 @@ int interface(int argc, char **argv) {
     spdlog::debug("getting config");
     nlohmann::json config_json = [&] {
         try {
-            return gummyd::config_get_current();
+            return gummyd::config_get();
         } catch (const nlohmann::json::exception &e) {
             fmt::print("Error: {}\n", e.what());
             std::exit(EXIT_FAILURE);
@@ -431,7 +431,7 @@ int interface(int argc, char **argv) {
 
     if (gummyd::daemon_is_running()) {
         spdlog::debug("sending config to daemon");
-        gummyd::daemon_send(config_json.dump());
+        gummyd::daemon_send_config(config_json);
         return EXIT_SUCCESS;
     }
 
