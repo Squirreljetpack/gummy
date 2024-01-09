@@ -16,10 +16,6 @@ namespace gummyd {
 
     nlohmann::json config_get_current();
     void config_write(nlohmann::json);
-    int config_invalid_val();
-    bool config_is_valid(int);
-    bool config_is_valid(double);
-    bool config_is_valid(std::string);
 
     std::pair<int, int> brightness_range();
     std::pair<int, int> temperature_range();

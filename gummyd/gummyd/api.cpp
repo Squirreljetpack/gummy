@@ -71,22 +71,6 @@ void config_write(nlohmann::json json) {
     fs << std::setw(4) << json;
 }
 
-int config_invalid_val() {
-    return std::numeric_limits<int>().min();
-}
-
-bool config_is_valid(int val) {
-    return val > config_invalid_val();
-}
-
-bool config_is_valid(double val) {
-    return val > config_invalid_val();
-}
-
-bool config_is_valid(std::string val) {
-    return !val.empty();
-}
-
 std::pair<int, int> brightness_range() {
     return {0, gummyd::constants::brt_steps_max};
 }
