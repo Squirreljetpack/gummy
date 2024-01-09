@@ -15,7 +15,6 @@ set(SPDLOG_FMT_EXTERNAL ON)
 option(GUMMY_EXTERNAL_JSON   "" ON)
 option(GUMMY_EXTERNAL_FMT    "" ON)
 option(GUMMY_EXTERNAL_SPDLOG "" ON)
-option(GUMMY_EXTERNAL_CLI11  "" ON)
 
 if (GUMMY_EXTERNAL_JSON)
 find_package(nlohmann_json 3.10.5 REQUIRED)
@@ -42,17 +41,6 @@ FetchContent_Declare(spdlog
     URL https://github.com/gabime/spdlog/archive/refs/tags/v1.12.0.tar.gz
 )
 FetchContent_MakeAvailable(spdlog)
-endif()
-
-if (GUMMY_EXTERNAL_CLI11)
-find_package(CLI11 2.1.2 REQUIRED)
-else()
-set(CLI11_PRECOMPILED ON)
-FetchContent_Declare(cli11
-    GIT_REPOSITORY https://github.com/CLIUtils/CLI11
-    GIT_TAG 291c58789c031208f08f4f261a858b5b7083e8e2 #v2.3.2
-)
-FetchContent_MakeAvailable(cli11)
 endif()
 
 set(
