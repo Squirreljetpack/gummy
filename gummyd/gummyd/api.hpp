@@ -19,6 +19,9 @@ namespace gummyd {
 
     std::pair<int, int> brightness_range();
     std::pair<int, int> temperature_range();
+
+    // Convert backlight/brightness percentage to the format used by the daemon.
+    extern std::function<int(int)> brightness_perc_to_step;
 }
 
 #endif // API_HPP
