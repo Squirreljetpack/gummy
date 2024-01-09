@@ -12,6 +12,7 @@
 #include <gummyd/api.hpp>
 #include <gummyd/file.hpp>
 #include <gummyd/constants.hpp>
+#include <gummyd/utils.hpp>
 
 namespace gummyd {
 
@@ -78,5 +79,17 @@ std::pair<int, int> brightness_range() {
 std::pair<int, int> temperature_range() {
     return {gummyd::constants::temp_k_min, gummyd::constants::temp_k_max};
 }
+
+std::function<int(int)> brightness_perc_to_step = [] (int perc) {
+    const std::pair<int, int> brt_range_real = gummyd::brightness_range();
+    const std::pair<int, int> brt_perc_range = {0, brt_range_real.second / 10};
+
+    const int abs_val     = std::abs(perc);
+    const int clamped_val = std::clamp(abs_val, brt_perc_range.first, brt_perc_range.second);
+    const int out_val     = gummyd::remap(clamped_val,
+                                          brt_perc_range.first, brt_perc_range.second,
+                                          brt_range_real.first, brt_range_real.second);
+    return perc >= 0 ? out_val : -out_val;
+};
 
 }

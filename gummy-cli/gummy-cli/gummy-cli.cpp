@@ -13,7 +13,6 @@
 #include <CLI/Config.hpp>
 
 #include <gummyd/api.hpp>
-#include <gummyd/utils.hpp>
 
 void start() {
     if (!gummyd::daemon_start())
@@ -269,6 +268,7 @@ void setif(nlohmann::json &val, T new_val, bool relative, range<T> range, std::f
     }
 
     const T fn_val = fn(new_val);
+    spdlog::debug("fn({} -> {})", new_val, fn_val);
 
     if (relative) {
         spdlog::debug("adding: {} + {}", val.get<T>(), fn_val);
@@ -304,7 +304,7 @@ int interface(int argc, char **argv) {
     const std::pair<int, int> temp_range_pair = gummyd::temperature_range();
     const CLI::Range mode_range(0, 3);
     const range brightness_range_real(brt_range_pair.first, brt_range_pair.second);
-    const range brightness_range(0, brightness_range_real.max / 10);
+    const range brightness_range_perc(0, brightness_range_real.max / 10);
     const range temp_range(temp_range_pair.first, temp_range_pair.second);
     const range als_range_scale(0.0, 10.0);
     const range als_range_poll_ms(1, 10000 * 60 * 60);
@@ -321,14 +321,14 @@ int interface(int argc, char **argv) {
 
     // Per-screen settings
     app.add_option(options[BACKLIGHT_MODE][0], models.backlight[0], options[BACKLIGHT_MODE][1])->check(mode_range)->group(screen_group_strings[0]);
-    app.add_option(options[BACKLIGHT_PERC][0], models.backlight[1], options[BACKLIGHT_PERC][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[BACKLIGHT_PERC], brightness_range); }, brightness_range.desc()))->group(screen_group_strings[0]);
-    app.add_option(options[BACKLIGHT_MIN][0], models.backlight[2], options[BACKLIGHT_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[BACKLIGHT_MIN], brightness_range);    }, brightness_range.desc()))->group(screen_group_strings[0]);
-    app.add_option(options[BACKLIGHT_MAX][0], models.backlight[3], options[BACKLIGHT_MAX][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[BACKLIGHT_MAX], brightness_range);    }, brightness_range.desc()))->group(screen_group_strings[0]);
+    app.add_option(options[BACKLIGHT_PERC][0], models.backlight[1], options[BACKLIGHT_PERC][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[BACKLIGHT_PERC], brightness_range_perc); }, brightness_range_perc.desc()))->group(screen_group_strings[0]);
+    app.add_option(options[BACKLIGHT_MIN][0], models.backlight[2], options[BACKLIGHT_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[BACKLIGHT_MIN], brightness_range_perc);    }, brightness_range_perc.desc()))->group(screen_group_strings[0]);
+    app.add_option(options[BACKLIGHT_MAX][0], models.backlight[3], options[BACKLIGHT_MAX][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[BACKLIGHT_MAX], brightness_range_perc);    }, brightness_range_perc.desc()))->group(screen_group_strings[0]);
 
     app.add_option(options[BRT_MODE][0], models.brightness[0], options[BRT_MODE][1])->check(mode_range)->group(screen_group_strings[1]);
-    app.add_option(options[BRT_PERC][0], models.brightness[1], options[BRT_PERC][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[BRT_PERC], brightness_range); }, brightness_range.desc()))->group(screen_group_strings[1]);
-    app.add_option(options[BRT_MIN][0], models.brightness[2], options[BRT_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[BRT_MIN], brightness_range); }, brightness_range.desc()))->group(screen_group_strings[1]);
-    app.add_option(options[BRT_MAX][0], models.brightness[3], options[BRT_MAX][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[BRT_MAX], brightness_range); }, brightness_range.desc()))->group(screen_group_strings[1]);
+    app.add_option(options[BRT_PERC][0], models.brightness[1], options[BRT_PERC][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[BRT_PERC], brightness_range_perc); }, brightness_range_perc.desc()))->group(screen_group_strings[1]);
+    app.add_option(options[BRT_MIN][0], models.brightness[2], options[BRT_MIN][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[BRT_MIN], brightness_range_perc); }, brightness_range_perc.desc()))->group(screen_group_strings[1]);
+    app.add_option(options[BRT_MAX][0], models.brightness[3], options[BRT_MAX][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[BRT_MAX], brightness_range_perc); }, brightness_range_perc.desc()))->group(screen_group_strings[1]);
 
     app.add_option(options[TEMP_MODE][0], models.temperature[0], options[TEMP_MODE][1])->check(mode_range)->group(screen_group_strings[2]);
     app.add_option(options[TEMP_KELV][0], models.temperature[1], options[TEMP_KELV][1])->check(CLI::Validator([&] (const std::string &s) { return relative_validator(s, rel_fl[TEMP_KELV], temp_range); }, temp_range.desc()))->group(screen_group_strings[2]);
@@ -390,24 +390,17 @@ int interface(int argc, char **argv) {
             std::exit(EXIT_FAILURE);
         }
 
-        const std::function<int(int)> brightness_perc_to_step = [&] (int val) {
-            const int abs_clamped_val = std::clamp(std::abs(val), brightness_range.min, brightness_range.max);
-            const int out_val = gummyd::remap(abs_clamped_val, brightness_range.min, brightness_range.max, brt_range_pair.first, brt_range_pair.second);
-            spdlog::debug("{}% -> {}", val, out_val);
-            return val >= 0 ? out_val : -out_val;
-        };
-
         auto &scr = config_json["screens"][idx];
 
         setif(scr["backlight"]["mode"], models.backlight[0]);
-        setif(scr["backlight"]["val"],  models.backlight[1], rel_fl[BACKLIGHT_PERC], brightness_range_real, brightness_perc_to_step);
-        setif(scr["backlight"]["min"],  models.backlight[2], rel_fl[BACKLIGHT_MIN], brightness_range_real, brightness_perc_to_step);
-        setif(scr["backlight"]["max"],  models.backlight[3], rel_fl[BACKLIGHT_MAX], brightness_range_real, brightness_perc_to_step);
+        setif(scr["backlight"]["val"],  models.backlight[1], rel_fl[BACKLIGHT_PERC], brightness_range_real, gummyd::brightness_perc_to_step);
+        setif(scr["backlight"]["min"],  models.backlight[2], rel_fl[BACKLIGHT_MIN], brightness_range_real, gummyd::brightness_perc_to_step);
+        setif(scr["backlight"]["max"],  models.backlight[3], rel_fl[BACKLIGHT_MAX], brightness_range_real, gummyd::brightness_perc_to_step);
 
         setif(scr["brightness"]["mode"], models.brightness[0]);
-        setif(scr["brightness"]["val"],  models.brightness[1], rel_fl[BRT_PERC], brightness_range_real, brightness_perc_to_step);
-        setif(scr["brightness"]["min"],  models.brightness[2], rel_fl[BRT_MIN], brightness_range_real, brightness_perc_to_step);
-        setif(scr["brightness"]["max"],  models.brightness[3], rel_fl[BRT_MAX], brightness_range_real, brightness_perc_to_step);
+        setif(scr["brightness"]["val"],  models.brightness[1], rel_fl[BRT_PERC], brightness_range_real, gummyd::brightness_perc_to_step);
+        setif(scr["brightness"]["min"],  models.brightness[2], rel_fl[BRT_MIN], brightness_range_real, gummyd::brightness_perc_to_step);
+        setif(scr["brightness"]["max"],  models.brightness[3], rel_fl[BRT_MAX], brightness_range_real, gummyd::brightness_perc_to_step);
 
         setif(scr["temperature"]["mode"],models.temperature[0]);
         setif(scr["temperature"]["val"], models.temperature[1], rel_fl[TEMP_KELV], temp_range);
