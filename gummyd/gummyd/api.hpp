@@ -4,8 +4,9 @@
 #ifndef API_HPP
 #define API_HPP
 
+#include <utility>
+#include <functional>
 #include <nlohmann/json_fwd.hpp>
-#include <spdlog/spdlog.h>
 
 namespace gummyd {
     // Get current configuration from disk.

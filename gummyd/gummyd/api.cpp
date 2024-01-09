@@ -1,14 +1,14 @@
 // Copyright 2021-2023 Francesco Fusco
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <functional>
 #include <stdexcept>
-#include <limits>
 #include <fstream>
+#include <utility>
 #include <unistd.h>
 
 #include <nlohmann/json.hpp>
 #include <fmt/core.h>
-#include <spdlog/spdlog.h>
 #include <gummyd/api.hpp>
 #include <gummyd/file.hpp>
 #include <gummyd/constants.hpp>
