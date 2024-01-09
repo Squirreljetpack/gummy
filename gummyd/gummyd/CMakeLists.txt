@@ -34,25 +34,26 @@ target_sources(${PROJECT_NAME}
 )
 
 find_package(sdbus-c++ 1.1.0 REQUIRED)
-find_library(LIBDDCUTIL "ddcutil" REQUIRED)
 
-# udev
-find_library(LIBSYSTEMD "systemd" REQUIRED)
-
-# XCB
-find_library(LIBXCB "xcb" REQUIRED)
+# C Libraries
+find_library(LIBDDCUTIL   "ddcutil"   REQUIRED)
+find_library(LIBSYSTEMD   "systemd"   REQUIRED)
+find_library(LIBXCB       "xcb"       REQUIRED)
 find_library(LIBXCB-RANDR "xcb-randr" REQUIRED)
-find_library(LIBXCB-SHM "xcb-shm" REQUIRED)
+find_library(LIBXCB-SHM   "xcb-shm"   REQUIRED)
 find_library(LIBXCB-IMAGE "xcb-image" REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBXCB} ${LIBXCB-RANDR} ${LIBXCB-SHM} ${LIBXCB-IMAGE})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
 	nlohmann_json::nlohmann_json
 	fmt::fmt
     spdlog::spdlog
     SDBusCpp::sdbus-c++
-    ${LIBSYSTEMD}
     ${LIBDDCUTIL}
+    ${LIBSYSTEMD}
+    ${LIBXCB}
+    ${LIBXCB-RANDR}
+    ${LIBXCB-SHM}
+    ${LIBXCB-IMAGE}
     -latomic
 )
 
