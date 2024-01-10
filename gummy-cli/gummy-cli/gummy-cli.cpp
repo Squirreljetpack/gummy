@@ -45,7 +45,7 @@ void status() {
         return "error";
     };
 
-    static constexpr std::string not_available = "N/A";
+    const std::string not_available = "N/A";
 
     const nlohmann::json screens = gummyd::daemon_screen_status();
     std::string rows;
