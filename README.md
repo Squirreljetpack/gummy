@@ -15,7 +15,7 @@ Automatic adjustments are also available, based on any of these inputs:
 
 ## How it works
 
-It mostly strings together ddcutil (external backlights), xrandr (brightness, temperature, screen contents) and udev (internal backlights, sensors), in a simple, unified interface.
+It mostly strings together ddcutil (external backlights), xrandr (brightness, temperature, screen contents) and sysfs (internal backlights, sensors), in a simple, unified interface.
 
 ## Building from source
 
