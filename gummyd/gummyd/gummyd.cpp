@@ -218,12 +218,20 @@ int message_loop() {
 
     named_pipe pipe(pipe_filepath);
 
-    const auto proxy = dbus::on_system_sleep([&pipe_filepath] (sdbus::Signal &sig) {
-	    bool sleep;
-	    sig >> sleep;
-	    if (!sleep)
-            file_write(pipe_filepath, "reset");
-    });
+    const auto proxy = [&] {
+        try {
+            return dbus::on_system_sleep([&pipe_filepath] (sdbus::Signal &sig) {
+                bool sleep;
+                sig >> sleep;
+                if (!sleep) {
+                    file_write(pipe_filepath, "reset");
+                }
+            });
+        } catch (const sdbus::Error &e) {
+            spdlog::error("[dbus] on_system_sleep error: {}.", e.what());
+            return std::unique_ptr<sdbus::IProxy>();
+        }
+    }();
 
     std::optional gamma_state = opt_gamma_state(randr_outputs);
 
