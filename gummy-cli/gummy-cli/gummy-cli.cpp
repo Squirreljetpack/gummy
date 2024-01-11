@@ -3,7 +3,7 @@
 
 #include <array>
 #include <regex>
-#include <limits>
+#include <utility>
 
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
@@ -225,16 +225,16 @@ struct {
 } models;
 
 // Signifies a value not changed by the user and therefore to ignore when updating the config file.
-constexpr int unset (std::numeric_limits<int>().min());
+constexpr int unset (-9999);
+constexpr double unset_fp (-9999.);
 
 // What is this, PHP?
 bool isset(int x) {
     return x != unset;
 }
 
-// Bad, but at least it's explicit
 bool isset(double x) {
-    return int(x) != unset;
+    return x != unset_fp;
 }
 
 bool isset(std::string_view x) {
@@ -296,8 +296,8 @@ int interface(int argc, char **argv) {
     models.temperature.fill(unset);
     int gamma_enabled   (unset);
     int gamma_refresh_s (unset);
-    sensor  als { double(unset), unset, unset };
-    sensor  screenlight { double(unset), unset, unset };
+    sensor  als { unset_fp, unset, unset };
+    sensor  screenlight { unset_fp, unset, unset };
     service time {"", "", unset};
 
     const std::pair<int, int> brt_range_pair  = gummyd::brightness_range();
