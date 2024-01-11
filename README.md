@@ -2,7 +2,7 @@
 
 *Noun*
 1. A small coloured sweet that needs to be chewed a lot.
-2. A basic screen backlight and temperature utility for Linux.
+2. A simple tool for display configuration on Linux.
 
 ## Links
 
