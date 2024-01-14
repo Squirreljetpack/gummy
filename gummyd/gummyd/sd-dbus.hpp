@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Francesco Fusco
+// Copyright 2021-2024 Francesco Fusco
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #ifndef SD_DBUS_HPP
