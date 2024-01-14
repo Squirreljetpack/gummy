@@ -1,4 +1,7 @@
-﻿project(gummyd LANGUAGES CXX)
+﻿# Copyright 2021-2024 Francesco Fusco
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+project(gummyd LANGUAGES CXX)
 
 # API
 add_library(libgummyd STATIC gummyd/api.hpp gummyd/api.cpp gummyd/file.cpp gummyd/constants.cpp gummyd/utils.cpp)

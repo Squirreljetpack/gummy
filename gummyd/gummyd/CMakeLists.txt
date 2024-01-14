@@ -1,4 +1,7 @@
-﻿add_executable(${PROJECT_NAME})
+﻿# Copyright 2021-2024 Francesco Fusco
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+add_executable(${PROJECT_NAME})
 
 target_sources(${PROJECT_NAME}
 	PRIVATE
