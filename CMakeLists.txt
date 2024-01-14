@@ -1,3 +1,6 @@
+# Copyright 2021-2024 Francesco Fusco
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 cmake_minimum_required(VERSION 3.14)
 project(gummy VERSION 0.5.7 LANGUAGES CXX)
 set(GUMMY_VERSION ${PROJECT_VERSION})

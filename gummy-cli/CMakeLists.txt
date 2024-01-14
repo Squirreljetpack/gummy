@@ -1,3 +1,6 @@
+# Copyright 2021-2024 Francesco Fusco
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 project(gummy-cli LANGUAGES CXX)
 
 option(GUMMY_EXTERNAL_CLI11  "" ON)
