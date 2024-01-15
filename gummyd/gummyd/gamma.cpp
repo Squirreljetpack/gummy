@@ -9,6 +9,7 @@
 #include <gummyd/config.hpp>
 #include <gummyd/display.hpp>
 #include <gummyd/constants.hpp>
+#include <gummyd/sd-dbus.hpp>
 
 using namespace gummyd;
 
@@ -16,20 +17,8 @@ gamma_state::gamma_state(std::vector<xcb::randr::output> outputs)
 :    randr_outputs_(outputs), screen_settings_(outputs.size()) {
 }
 
-gamma_state::gamma_state(std::vector<xcb::randr::output> outputs, std::vector<config::screen> conf)
-:    randr_outputs_(outputs), screen_settings_(outputs.size()) {
-    for (size_t i = 0; i < conf.size(); ++i) {
-        using enum config::screen::mode;
-        using enum config::screen::model_id;
-        const auto &brt_model  = conf[i].models[size_t(BRIGHTNESS)];
-        const auto &temp_model = conf[i].models[size_t(TEMPERATURE)];
-        if (brt_model.mode == MANUAL) {
-            screen_settings_[i].brightness = brt_model.val;
-        }
-        if (temp_model.mode == MANUAL) {
-            screen_settings_[i].temperature = temp_model.val;
-        }
-    }
+gamma_state::gamma_state(std::vector<dbus::mutter::output> outputs)
+:    mutter_outputs_(outputs), screen_settings_(outputs.size()) {
 }
 
 // Color ramp by Ingo Thies.
@@ -118,30 +107,45 @@ double calc_brt_scale(int step, size_t ramp_sz) {
 // [ 0, 32, 64, 96, ... UINT16_MAX - 32 ]
 // So, when ramp_sz = 2048, each value is increased in steps of 32,
 // When ramp_sz = 1024, it's 64, and so on.
-void gamma_state::set(size_t screen_index, settings vals) {
-    if (screen_index > randr_outputs_.size() - 1)
-        return;
-    vals = gamma_state::sanitize(vals);
+std::vector<uint16_t> gamma_state::create_ramps(gamma_state::settings settings, size_t sz) {
+    settings = gamma_state::sanitize(settings);
 
-    const size_t sz = randr_outputs_[screen_index].ramp_size;
     std::vector<uint16_t> ramps(sz * 3);
-    uint16_t* const r = &ramps[0 * sz];
-    uint16_t* const g = &ramps[1 * sz];
-    uint16_t* const b = &ramps[2 * sz];
+    uint16_t* const r (&ramps[0]);
+    uint16_t* const g (&ramps[sz]);
+    uint16_t* const b (&ramps[sz * 2]);
 
-    const double brt_scale = calc_brt_scale(vals.brightness, sz);
-    const auto   rgb_scale = kelvin_to_rgb(vals.temperature);
+    const double brt_scale (calc_brt_scale(settings.brightness, sz));
+    const auto   rgb_scale (kelvin_to_rgb(settings.temperature));
 
-	for (size_t i = 0; i < sz; ++i) {
+    for (size_t i = 0; i < sz; ++i) {
         const int val = std::min(int(i * brt_scale), UINT16_MAX);
         r[i] = uint16_t(val * rgb_scale[0]);
         g[i] = uint16_t(val * rgb_scale[1]);
         b[i] = uint16_t(val * rgb_scale[2]);
-	}
+    }
 
-    SPDLOG_TRACE("[screen {}] set_gamma_ramp(brt: {}, temp: {})", screen_index, vals.brightness, vals.temperature);
+    return ramps;
+}
 
-    xcb::randr::set_gamma(x_connection_, randr_outputs_[screen_index].crtc_id, ramps);
+void gamma_state::set(size_t screen_index, gamma_state::settings settings) {
+    SPDLOG_TRACE("[screen {}] set_gamma_ramp(brt: {}, temp: {})", screen_index, settings.brightness, settings.temperature);
+
+    if (randr_outputs_.size() > 0) {
+        if (screen_index > randr_outputs_.size() - 1) {
+            throw std::runtime_error("[gamma_state] screen index out of bounds");
+        }
+        return xcb::randr::set_gamma(x_connection_,
+                                     randr_outputs_[screen_index].crtc_id,
+                                     gamma_state::create_ramps(settings, randr_outputs_[screen_index].ramp_size));
+    }
+    if (mutter_outputs_.size() > 0) {
+        return dbus::mutter::set_gamma(
+                    mutter_outputs_[screen_index].serial,
+                    mutter_outputs_[screen_index].crtc,
+                    gamma_state::create_ramps(settings, 1024)
+        );
+    }
 }
 
 gamma_state::settings gamma_state::sanitize(settings vals) {
