@@ -9,6 +9,7 @@
 #include <sdbus-c++/sdbus-c++.h>
 #include <spdlog/spdlog.h>
 #include <gummyd/sd-dbus.hpp>
+#include <ranges>
 
 namespace gummyd {
 namespace dbus {
@@ -105,13 +106,15 @@ std::vector<mutter::output> mutter::display_config_get_resources() {
 }
 
 void mutter::set_gamma(sdbus::IConnection &conn, uint32_t serial, uint32_t crtc, const std::vector<uint16_t> &ramps) {
-    const size_t sz = ramps.size() / 3;
-    const std::vector<uint16_t> red   (ramps.begin(), ramps.begin() + sz);
-    const std::vector<uint16_t> green (ramps.begin() + sz, ramps.begin() + (sz * 2));
-    const std::vector<uint16_t> blue  (ramps.begin() + (sz * 2), ramps.end());
+    using ramp_t = std::vector<uint16_t>;
 
-    std::tuple<uint32_t, uint32_t, std::vector<uint16_t>, std::vector<uint16_t>, std::vector<uint16_t>> args {
-        serial, crtc, red, green, blue
+    const size_t sz (ramps.size() / 3);
+    const std::tuple<uint32_t, uint32_t, ramp_t, ramp_t, ramp_t> args {
+        serial,
+        crtc,
+        ramp_t(ramps.begin(), ramps.begin() + sz),
+        ramp_t(ramps.begin() + sz, ramps.begin() + (sz * 2)),
+        ramp_t(ramps.begin() + (sz * 2), ramps.end())
     };
 
     const std::string destination ("org.gnome.Mutter.DisplayConfig");
