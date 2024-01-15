@@ -43,7 +43,7 @@ std::optional<gummyd::gamma_state> opt_gamma_state (
     }
 
     return std::nullopt;
-};
+}
 
 void run(std::vector<xcb::randr::output> &randr_outputs,
          std::optional<gummyd::gamma_state> &gamma_state,
@@ -217,13 +217,6 @@ int message_loop() {
         exit(EXIT_SUCCESS);
     }
 
-    if (randr_outputs.size() > 0) {
-        std::atexit([] () {
-            xcb::connection conn;
-            gummyd::gamma_state(xcb::randr::outputs(conn, conn.first_screen())).reset_gamma();
-        });
-    }
-
     config conf(screen_count);
 
     const std::filesystem::path pipe_filepath = xdg_runtime_dir() / constants::fifo_filename;
@@ -245,7 +238,7 @@ int message_loop() {
         }
     }();
 
-    std::optional gamma_state = opt_gamma_state(randr_outputs, mutter_outputs);
+    std::optional gamma_state (opt_gamma_state(randr_outputs, mutter_outputs));
 
     while (true) {
 
