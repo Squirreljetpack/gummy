@@ -81,7 +81,6 @@ void run(std::vector<xcb::randr::output> &randr_outputs,
 	}
 
 	for (size_t idx = 0; idx < conf.screens.size(); ++idx) {
-
         if (conf.clients_for(config::screen::mode::SCREENLIGHT, idx) > 0 && idx < randr_outputs.size()) {
             spdlog::debug("[screen {}] starting screenlight server", idx);
             screenlight_channels.emplace_back(-1);
@@ -174,39 +173,63 @@ void run(std::vector<xcb::randr::output> &randr_outputs,
 }
 
 int message_loop() {
-    std::vector mutter_outputs (dbus::mutter::display_config_get_resources());
-
-    std::vector randr_outputs = [] {
+    std::vector randr_outputs ([] {
         if (!gummyd::env("WAYLAND_DISPLAY").empty()) {
             return std::vector<xcb::randr::output>();
+        } else {
+            xcb::connection conn;
+            return xcb::randr::outputs(conn, conn.first_screen());
         }
-        xcb::connection conn;
-        return xcb::randr::outputs(conn, conn.first_screen());
-    } ();
+    }());
+    std::vector mutter_outputs (dbus::mutter::display_config_get_resources());
 
-    const std::vector randr_edids = [&randr_outputs] {
-        std::vector<decltype(xcb::randr::output::edid)> vec(randr_outputs.size());
-        std::ranges::transform(randr_outputs, vec.begin(), &xcb::randr::output::edid);
-        return vec;
-    }();
-    std::vector ddc_displays     = ddc::get_displays(randr_edids);
+    // If we are on X11/mutter
+    if (randr_outputs.size() > 0 && mutter_outputs.size() > 0) {
+        // Sort mutter's outputs based on randr's order. They should already line up, but let's do it just in case.
+        // This is bad and unnecessary if we used map lookups.
+        std::vector<dbus::mutter::output> temp;
+        for (const auto &randr_output : randr_outputs) {
+            for (const auto &mutter_output : mutter_outputs) {
+                if (randr_output.edid == mutter_output.edid) {
+                    temp.push_back(mutter_output);
+                }
+            }
+        }
+        mutter_outputs = temp;
+
+        if (mutter_outputs.size() != randr_outputs.size()) {
+            throw std::runtime_error(fmt::format("randr and mutter display mismatch ({} vs {}).\n", randr_outputs.size(), mutter_outputs.size()));
+        }
+    }
+
+    // Will be empty if we are neither on X11 or Wayland/Mutter.
+    std::vector<std::array<uint8_t, 128>> edids;
+    if (randr_outputs.size() > 0) {
+        std::ranges::transform(randr_outputs, std::back_inserter(edids), &xcb::randr::output::edid);
+    } else {
+        std::ranges::transform(mutter_outputs, std::back_inserter(edids), &dbus::mutter::output::edid);
+    }
+
+    std::vector ddc_displays     = ddc::get_displays(edids);
     std::vector sysfs_als        = sysfs::get_als();
     std::vector sysfs_backlights = sysfs::get_backlights();
 
     spdlog::info("[x11] found {} screen(s)", randr_outputs.size());
+    spdlog::info("[dbus] found {} screen(s)", mutter_outputs.size());
     spdlog::info("[sysfs] backlights: {}, als: {}", sysfs_backlights.size(), sysfs_als.size());
 
     if (ddc_displays.size() == 0) {
         spdlog::warn("No DDC displays found. i2c-dev module not loaded?");
-    } else if (randr_outputs.size() > 0 && randr_outputs.size() > ddc_displays.size()) {
-        throw std::runtime_error(fmt::format("could not match all x11 displays with ddc. x11: {}, ddc {}", randr_outputs.size(), ddc_displays.size()));
     }
 
     const size_t screen_count = [&] {
+        // unlikely that we go past the first check.
         if (ddc_displays.size() > 0)
             return ddc_displays.size();
         if (randr_outputs.size() > 0)
             return randr_outputs.size();
+        if (mutter_outputs.size() > 0)
+            return mutter_outputs.size();
         if (sysfs_backlights.size() > 0)
             return sysfs_backlights.size();
         return 0ul;
