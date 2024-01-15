@@ -14,12 +14,19 @@ namespace gummyd {
 class gamma_state {
 public:
     struct settings {
-        int brightness = gummyd::constants::brt_steps_max;
-        int temperature = 6500;
+        int brightness;
+        int temperature;
+    };
+    settings default_settings {
+        gummyd::constants::brt_steps_max,
+        6500
     };
 
     gamma_state(std::vector<xcb::randr::output>);
     gamma_state(std::vector<dbus::mutter::output>);
+    ~gamma_state();
+    gamma_state(const gamma_state &) = delete;
+    gamma_state(gamma_state &&) = delete;
 
     void store_brightness(size_t screen_idx, int val);
     void set_brightness(size_t screen_idx, int val);
@@ -34,8 +41,8 @@ private:
     xcb::connection x_connection_;
     std::vector<xcb::randr::output> randr_outputs_;
     std::vector<dbus::mutter::output> mutter_outputs_;
+    std::vector<settings> outputs_settings_;
 
-    std::vector<settings> screen_settings_;
     std::vector<uint16_t> create_ramps(gamma_state::settings settings, size_t sz);
     static gamma_state::settings sanitize(settings);
     void set(size_t screen_idx, settings);

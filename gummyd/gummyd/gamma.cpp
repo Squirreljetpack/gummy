@@ -14,11 +14,11 @@
 using namespace gummyd;
 
 gamma_state::gamma_state(std::vector<xcb::randr::output> outputs)
-:    randr_outputs_(outputs), screen_settings_(outputs.size()) {
+:    randr_outputs_(outputs), outputs_settings_(outputs.size(), default_settings) {
 }
 
 gamma_state::gamma_state(std::vector<dbus::mutter::output> outputs)
-:    mutter_outputs_(outputs), screen_settings_(outputs.size()) {
+:    mutter_outputs_(outputs), outputs_settings_(outputs.size(), default_settings) {
 }
 
 // Color ramp by Ingo Thies.
@@ -157,33 +157,38 @@ gamma_state::settings gamma_state::sanitize(settings vals) {
 }
 
 void gamma_state::store_brightness(size_t idx, int val) {
-    settings values = std::atomic_ref(screen_settings_[idx]).load();
+    settings values = std::atomic_ref(outputs_settings_[idx]).load();
     values.brightness = val;
-    std::atomic_ref(screen_settings_[idx]).store(values);
+    std::atomic_ref(outputs_settings_[idx]).store(values);
 }
 
 void gamma_state::store_temperature(size_t idx, int val) {
-    settings values = std::atomic_ref(screen_settings_[idx]).load();
+    settings values = std::atomic_ref(outputs_settings_[idx]).load();
     values.temperature = val;
-    std::atomic_ref(screen_settings_[idx]).store(values);
+    std::atomic_ref(outputs_settings_[idx]).store(values);
 }
 
 void gamma_state::set_brightness(size_t idx, int val) {
     store_brightness(idx, val);
-    set(idx, std::atomic_ref(screen_settings_[idx]).load());
+    set(idx, std::atomic_ref(outputs_settings_[idx]).load());
 }
 
 void gamma_state::set_temperature(size_t idx, int val) {
     store_temperature(idx, val);
-    set(idx, std::atomic_ref(screen_settings_[idx]).load());
+    set(idx, std::atomic_ref(outputs_settings_[idx]).load());
 }
 
 void gamma_state::reset_gamma() {
-    for (size_t i = 0; i < screen_settings_.size(); ++i) {
-        set(i, std::atomic_ref(screen_settings_[i]).load());
+    for (size_t i = 0; i < outputs_settings_.size(); ++i) {
+        set(i, std::atomic_ref(outputs_settings_[i]).load());
     }
 }
 
 std::vector<gamma_state::settings> gamma_state::get_settings() {
-    return screen_settings_;
+    return outputs_settings_;
+}
+
+gamma_state::~gamma_state() {
+    outputs_settings_.assign(outputs_settings_.size(), default_settings);
+    reset_gamma();
 }
