@@ -17,10 +17,6 @@ public:
         int brightness;
         int temperature;
     };
-    settings default_settings {
-        gummyd::constants::brt_steps_max,
-        6500
-    };
 
     gamma_state(std::vector<xcb::randr::output>);
     gamma_state(std::vector<dbus::mutter::output>);
@@ -38,6 +34,11 @@ public:
     std::vector<settings> get_settings();
 
 private:
+    settings default_settings {
+        gummyd::constants::brt_steps_max,
+        6500
+    };
+
     xcb::connection x_connection_;
     std::vector<xcb::randr::output> randr_outputs_;
     std::vector<dbus::mutter::output> mutter_outputs_;
