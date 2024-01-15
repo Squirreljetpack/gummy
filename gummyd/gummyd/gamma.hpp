@@ -41,7 +41,7 @@ private:
         6500
     };
 
-    xcb::connection x_connection_;
+    std::unique_ptr<xcb::connection> x_connection_;
     std::unique_ptr<sdbus::IConnection> dbus_connection_;
     std::vector<xcb::randr::output> randr_outputs_;
     std::vector<dbus::mutter::output> mutter_outputs_;

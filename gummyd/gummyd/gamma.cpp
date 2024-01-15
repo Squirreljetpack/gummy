@@ -15,7 +15,9 @@
 using namespace gummyd;
 
 gamma_state::gamma_state(const std::vector<xcb::randr::output> &outputs)
-:    randr_outputs_(outputs), outputs_settings_(outputs.size(), default_settings) {
+: x_connection_(),
+  randr_outputs_(outputs),
+  outputs_settings_(outputs.size(), default_settings) {
 }
 
 gamma_state::gamma_state(const std::vector<dbus::mutter::output> &outputs)
@@ -144,7 +146,7 @@ void gamma_state::set(size_t screen_index, gamma_state::settings settings) {
     }
 
     if (randr_outputs_.size() > 0) {
-        return xcb::randr::set_gamma(x_connection_,
+        return xcb::randr::set_gamma(*x_connection_,
                                      randr_outputs_[screen_index].crtc_id,
                                      gamma_state::create_ramps(settings, randr_outputs_[screen_index].ramp_size));
     }
