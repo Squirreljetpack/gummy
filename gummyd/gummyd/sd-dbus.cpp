@@ -34,6 +34,25 @@ std::unique_ptr<sdbus::IProxy> on_system_sleep(std::function<void(sdbus::Signal 
             fn);
 }
 
+size_t mutter::get_gamma_ramp_size(uint32_t serial, uint32_t crtc) {
+    std::tuple<std::vector<uint16_t>, std::vector<uint16_t>, std::vector<uint16_t>> reply;
+    {
+        const std::string destination ("org.gnome.Mutter.DisplayConfig");
+        const std::string object_path ("/org/gnome/Mutter/DisplayConfig");
+        const std::string interface   ("org.gnome.Mutter.DisplayConfig");
+        const std::string method      ("GetCrtcGamma");
+        try {
+            auto connection (sdbus::createSessionBusConnection());
+            auto proxy (sdbus::createProxy(*connection, destination, object_path));
+            proxy->callMethod(method).onInterface(interface).withArguments(serial, crtc).storeResultsTo(reply);
+        } catch (const sdbus::Error &e) {
+            spdlog::error(e.what());
+        }
+    }
+    const auto [r, g, b] = reply;
+    return r.size() * 3;
+}
+
 // https://gitlab.gnome.org/GNOME/mutter/-/blob/main/data/dbus-interfaces/org.gnome.Mutter.DisplayConfig.xml
 // https://dbus.freedesktop.org/doc/dbus-specification.html#type-system
 // d-spy signature: (uint32 serial, a(uxiiiiiuaua{sv}) crtcs, a(uxiausauaua{sv}) outputs, a(uxuudu) modes, int32 max_screen_width, int32 max_screen_height)
@@ -71,9 +90,10 @@ std::vector<mutter::output> mutter::display_config_get_resources() {
     for (const output_t &output : outputs) {
         const a_sv properties (output.get<7>());
         mutter::output out;
-        out.serial = serial;
-        out.crtc   = output.get<2>();
-        out.name   = properties.at("display-name").get<std::string>();
+        out.serial     = serial;
+        out.crtc       = output.get<2>();
+        out.ramp_size  = mutter::get_gamma_ramp_size(out.serial, out.crtc);
+        out.name       = properties.at("display-name").get<std::string>();
         const std::vector<uint8_t> edid (properties.at("edid").get<std::vector<uint8_t>>());
         std::copy_n(edid.begin(), 128, out.edid.begin());
 
@@ -83,7 +103,7 @@ std::vector<mutter::output> mutter::display_config_get_resources() {
     return out_vec;
 }
 
-void mutter::set_gamma(int serial, int crtc, const std::vector<uint16_t> &ramps) {
+void mutter::set_gamma(uint32_t serial, uint32_t crtc, const std::vector<uint16_t> &ramps) {
     const size_t sz = ramps.size() / 3;
     const std::vector<uint16_t> red   (ramps.begin(), ramps.begin() + sz);
     const std::vector<uint16_t> green (ramps.begin() + sz, ramps.begin() + (sz * 2));

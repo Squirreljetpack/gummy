@@ -143,7 +143,7 @@ void gamma_state::set(size_t screen_index, gamma_state::settings settings) {
         return dbus::mutter::set_gamma(
                     mutter_outputs_[screen_index].serial,
                     mutter_outputs_[screen_index].crtc,
-                    gamma_state::create_ramps(settings, 1024)
+                    gamma_state::create_ramps(settings, mutter_outputs_[screen_index].ramp_size)
         );
     }
 }
