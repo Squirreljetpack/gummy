@@ -30,9 +30,19 @@ std::optional<xcb::shared_image> shared_image(bool cond) {
     return cond ? std::optional<xcb::shared_image>(std::in_place) : std::nullopt;
 }
 
-std::optional<gummyd::gamma_state> opt_gamma_state (std::vector<gummyd::xcb::randr::output> randr_outputs) {
-    return randr_outputs.size() > 0 ?
-                std::optional<gummyd::gamma_state>(std::in_place, randr_outputs) : std::nullopt;
+std::optional<gummyd::gamma_state> opt_gamma_state (
+    const std::vector<gummyd::xcb::randr::output> &randr_outputs,
+    const std::vector<dbus::mutter::output> &mutter_outputs
+) {
+    if (randr_outputs.size() > 0) {
+        return std::optional<gummyd::gamma_state>(std::in_place, randr_outputs);
+    }
+
+    if (mutter_outputs.size() > 0) {
+        return std::optional<gummyd::gamma_state>(std::in_place, mutter_outputs);
+    }
+
+    return std::nullopt;
 };
 
 void run(std::vector<xcb::randr::output> &randr_outputs,
@@ -164,6 +174,8 @@ void run(std::vector<xcb::randr::output> &randr_outputs,
 }
 
 int message_loop() {
+    std::vector mutter_outputs (dbus::mutter::display_config_get_resources());
+
     std::vector randr_outputs = [] {
         if (!gummyd::env("WAYLAND_DISPLAY").empty()) {
             return std::vector<xcb::randr::output>();
@@ -233,7 +245,7 @@ int message_loop() {
         }
     }();
 
-    std::optional gamma_state = opt_gamma_state(randr_outputs);
+    std::optional gamma_state = opt_gamma_state(randr_outputs, mutter_outputs);
 
     while (true) {
 

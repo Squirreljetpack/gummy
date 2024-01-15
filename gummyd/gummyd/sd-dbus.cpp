@@ -34,6 +34,7 @@ std::unique_ptr<sdbus::IProxy> on_system_sleep(std::function<void(sdbus::Signal 
             fn);
 }
 
+// https://gitlab.gnome.org/GNOME/mutter/-/blob/main/data/dbus-interfaces/org.gnome.Mutter.DisplayConfig.xml
 // https://dbus.freedesktop.org/doc/dbus-specification.html#type-system
 // d-spy signature: (uint32 serial, a(uxiiiiiuaua{sv}) crtcs, a(uxiausauaua{sv}) outputs, a(uxuudu) modes, int32 max_screen_width, int32 max_screen_height)
 // abbreviated:     (ua(uxiiiiiuaua{sv})a(uxiausauaua{sv})a(uxuudu)ii)
@@ -47,44 +48,62 @@ std::vector<mutter::output> mutter::display_config_get_resources() {
     using output_t = sdbus::Struct<uint32_t, int64_t, int32_t, au, std::string, au, au, a_sv>;
     using mode_t   = sdbus::Struct<uint32_t, int64_t, uint32_t, uint32_t, double, uint32_t>;
 
-    const std::string destination ("org.gnome.Mutter.DisplayConfig");
-    const std::string object_path ("/org/gnome/Mutter/DisplayConfig");
-    const std::string interface   ("org.gnome.Mutter.DisplayConfig");
-    const std::string method      ("GetResources");
-
     std::tuple<uint32_t, std::vector<crtc_t>, std::vector<output_t>, std::vector<mode_t>, int32_t, int32_t> reply;
 
-    try {
-        auto connection (sdbus::createSessionBusConnection());
-        auto proxy (sdbus::createProxy(*connection, destination, object_path));
-        proxy->callMethod(method).onInterface(interface).withArguments().storeResultsTo(reply);
-    } catch (const sdbus::Error &e) {
-        spdlog::error(e.what());
+    {
+        const std::string destination ("org.gnome.Mutter.DisplayConfig");
+        const std::string object_path ("/org/gnome/Mutter/DisplayConfig");
+        const std::string interface   ("org.gnome.Mutter.DisplayConfig");
+        const std::string method      ("GetResources");
+        try {
+            auto connection (sdbus::createSessionBusConnection());
+            auto proxy (sdbus::createProxy(*connection, destination, object_path));
+            proxy->callMethod(method).onInterface(interface).withArguments().storeResultsTo(reply);
+        } catch (const sdbus::Error &e) {
+            spdlog::error(e.what());
+        }
     }
 
     const auto [serial, crtcs, outputs, modes, max_width, max_height] = reply;
 
-    std::vector<uint32_t> crtcs_vec;
-    for (const auto &crtc : crtcs) {
-        if (crtc.get<6>() > -1) {
-            crtcs_vec.push_back(crtc.get<0>());
-        }
-    }
-    using edid_t = std::vector<uint8_t>;
-
     std::vector<mutter::output> out_vec;
 
     for (const output_t &output : outputs) {
-        const a_sv dict (output.get<7>());
+        const a_sv properties (output.get<7>());
         mutter::output out;
-        out.name    = dict.at("display-name").get<std::string>();
-        edid_t edid = dict.at("edid").get<edid_t>();
+        out.serial = serial;
+        out.crtc   = output.get<2>();
+        out.name   = properties.at("display-name").get<std::string>();
+        const std::vector<uint8_t> edid (properties.at("edid").get<std::vector<uint8_t>>());
         std::copy_n(edid.begin(), 128, out.edid.begin());
 
         out_vec.push_back(out);
     }
 
     return out_vec;
+}
+
+void mutter::set_gamma(int serial, int crtc, const std::vector<uint16_t> &ramps) {
+    const size_t sz = ramps.size() / 3;
+    const std::vector<uint16_t> red   (ramps.begin(), ramps.begin() + sz);
+    const std::vector<uint16_t> green (ramps.begin() + sz, ramps.begin() + (sz * 2));
+    const std::vector<uint16_t> blue  (ramps.begin() + (sz * 2), ramps.end());
+
+    std::tuple<uint32_t, uint32_t, std::vector<uint16_t>, std::vector<uint16_t>, std::vector<uint16_t>> args {
+        serial, crtc, red, green, blue
+    };
+
+    const std::string destination ("org.gnome.Mutter.DisplayConfig");
+    const std::string object_path ("/org/gnome/Mutter/DisplayConfig");
+    const std::string interface   ("org.gnome.Mutter.DisplayConfig");
+    const std::string method      ("SetCrtcGamma");
+    try {
+        auto connection (sdbus::createSessionBusConnection());
+        auto proxy (sdbus::createProxy(*connection, destination, object_path));
+        proxy->callMethod(method).onInterface(interface).withArguments(args);
+    } catch (const sdbus::Error &e) {
+        spdlog::error(e.what());
+    }
 }
 
 void test_method_call() {

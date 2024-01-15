@@ -26,10 +26,9 @@ struct output {
     std::array<uint8_t, 128> edid;
     std::string name;
     int crtc;
-    uint16_t width;
-    uint16_t height;
 };
 std::vector<mutter::output> display_config_get_resources();
+void set_gamma(int serial, int crtc, const std::vector<uint16_t> &ramps);
 } // namespace mutter
 
 void test_method_call();

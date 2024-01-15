@@ -7,6 +7,7 @@
 #include <gummyd/display.hpp>
 #include <gummyd/config.hpp>
 #include <gummyd/constants.hpp>
+#include <gummyd/sd-dbus.hpp>
 
 namespace gummyd {
 
@@ -18,7 +19,7 @@ public:
     };
 
     gamma_state(std::vector<xcb::randr::output>);
-    gamma_state(std::vector<xcb::randr::output>, std::vector<gummyd::config::screen> conf);
+    gamma_state(std::vector<dbus::mutter::output>);
 
     void store_brightness(size_t screen_idx, int val);
     void set_brightness(size_t screen_idx, int val);
@@ -32,9 +33,11 @@ public:
 private:
     xcb::connection x_connection_;
     std::vector<xcb::randr::output> randr_outputs_;
+    std::vector<dbus::mutter::output> mutter_outputs_;
 
     std::vector<settings> screen_settings_;
-    static settings sanitize(settings);
+    std::vector<uint16_t> create_ramps(gamma_state::settings settings, size_t sz);
+    static gamma_state::settings sanitize(settings);
     void set(size_t screen_idx, settings);
 };
 }
