@@ -20,8 +20,21 @@ std::unique_ptr<sdbus::IProxy> register_signal_handler(
 
 std::unique_ptr<sdbus::IProxy> on_system_sleep(std::function<void(sdbus::Signal &signal)> fn);
 
-}
-}
+namespace mutter {
+struct output {
+    uint32_t serial;
+    std::array<uint8_t, 128> edid;
+    std::string name;
+    int crtc;
+    uint16_t width;
+    uint16_t height;
+};
+std::vector<mutter::output> display_config_get_resources();
+} // namespace mutter
+
+void test_method_call();
+} // namespace dbus
+} // namespace gummyd
 
 #endif // SD_DBUS_HPP
 
