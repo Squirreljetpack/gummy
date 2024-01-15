@@ -80,6 +80,7 @@ std::vector<mutter::output> mutter::display_config_get_resources() {
             proxy->callMethod(method).onInterface(interface).withArguments().storeResultsTo(reply);
         } catch (const sdbus::Error &e) {
             spdlog::error(e.what());
+            return {};
         }
     }
 
