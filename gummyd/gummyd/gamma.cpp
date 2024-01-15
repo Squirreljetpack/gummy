@@ -13,11 +13,11 @@
 
 using namespace gummyd;
 
-gamma_state::gamma_state(std::vector<xcb::randr::output> outputs)
+gamma_state::gamma_state(const std::vector<xcb::randr::output> &outputs)
 :    randr_outputs_(outputs), outputs_settings_(outputs.size(), default_settings) {
 }
 
-gamma_state::gamma_state(std::vector<dbus::mutter::output> outputs)
+gamma_state::gamma_state(const std::vector<dbus::mutter::output> &outputs)
 :    mutter_outputs_(outputs), outputs_settings_(outputs.size(), default_settings) {
 }
 

@@ -18,8 +18,8 @@ public:
         int temperature;
     };
 
-    gamma_state(std::vector<xcb::randr::output>);
-    gamma_state(std::vector<dbus::mutter::output>);
+    gamma_state(const std::vector<xcb::randr::output> &);
+    gamma_state(const std::vector<dbus::mutter::output>&);
     ~gamma_state();
     gamma_state(const gamma_state &) = delete;
     gamma_state(gamma_state &&) = delete;
