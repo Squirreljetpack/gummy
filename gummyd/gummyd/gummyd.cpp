@@ -34,12 +34,12 @@ std::optional<gummyd::gamma_state> opt_gamma_state (
     const std::vector<gummyd::xcb::randr::output> &randr_outputs,
     const std::vector<dbus::mutter::output> &mutter_outputs
 ) {
-    if (randr_outputs.size() > 0) {
-        return std::optional<gummyd::gamma_state>(std::in_place, randr_outputs);
-    }
-
     if (mutter_outputs.size() > 0) {
         return std::optional<gummyd::gamma_state>(std::in_place, mutter_outputs);
+    }
+
+    if (randr_outputs.size() > 0) {
+        return std::optional<gummyd::gamma_state>(std::in_place, randr_outputs);
     }
 
     return std::nullopt;

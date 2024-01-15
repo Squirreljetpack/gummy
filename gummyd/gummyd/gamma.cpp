@@ -3,6 +3,7 @@
 
 #include <array>
 #include <spdlog/spdlog.h>
+#include <sdbus-c++/IConnection.h>
 
 #include <gummyd/utils.hpp>
 #include <gummyd/gamma.hpp>
@@ -18,7 +19,9 @@ gamma_state::gamma_state(const std::vector<xcb::randr::output> &outputs)
 }
 
 gamma_state::gamma_state(const std::vector<dbus::mutter::output> &outputs)
-:    mutter_outputs_(outputs), outputs_settings_(outputs.size(), default_settings) {
+: dbus_connection_(sdbus::createSessionBusConnection()),
+  mutter_outputs_(outputs),
+  outputs_settings_(outputs.size(), default_settings) {
 }
 
 // Color ramp by Ingo Thies.
@@ -129,22 +132,21 @@ std::vector<uint16_t> gamma_state::create_ramps(gamma_state::settings settings, 
 }
 
 void gamma_state::set(size_t screen_index, gamma_state::settings settings) {
-    SPDLOG_TRACE("[screen {}] set_gamma_ramp(brt: {}, temp: {})", screen_index, settings.brightness, settings.temperature);
+    SPDLOG_TRACE("[gamma_state] [screen {}] set(brt: {}, temp: {})", screen_index, settings.brightness, settings.temperature);
 
-    if (randr_outputs_.size() > 0) {
-        if (screen_index > randr_outputs_.size() - 1) {
-            throw std::runtime_error("[gamma_state] screen index out of bounds");
-        }
-        return xcb::randr::set_gamma(x_connection_,
-                                     randr_outputs_[screen_index].crtc_id,
-                                     gamma_state::create_ramps(settings, randr_outputs_[screen_index].ramp_size));
-    }
     if (mutter_outputs_.size() > 0) {
         return dbus::mutter::set_gamma(
+                    *dbus_connection_,
                     mutter_outputs_[screen_index].serial,
                     mutter_outputs_[screen_index].crtc,
                     gamma_state::create_ramps(settings, mutter_outputs_[screen_index].ramp_size)
         );
+    }
+
+    if (randr_outputs_.size() > 0) {
+        return xcb::randr::set_gamma(x_connection_,
+                                     randr_outputs_[screen_index].crtc_id,
+                                     gamma_state::create_ramps(settings, randr_outputs_[screen_index].ramp_size));
     }
 }
 

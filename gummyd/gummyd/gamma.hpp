@@ -4,6 +4,8 @@
 #ifndef GAMMA_HPP
 #define GAMMA_HPP
 
+#include <sdbus-c++/IConnection.h>
+
 #include <gummyd/display.hpp>
 #include <gummyd/config.hpp>
 #include <gummyd/constants.hpp>
@@ -40,6 +42,7 @@ private:
     };
 
     xcb::connection x_connection_;
+    std::unique_ptr<sdbus::IConnection> dbus_connection_;
     std::vector<xcb::randr::output> randr_outputs_;
     std::vector<dbus::mutter::output> mutter_outputs_;
     std::vector<settings> outputs_settings_;

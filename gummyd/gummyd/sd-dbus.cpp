@@ -34,7 +34,7 @@ std::unique_ptr<sdbus::IProxy> on_system_sleep(std::function<void(sdbus::Signal 
             fn);
 }
 
-size_t mutter::get_gamma_ramp_size(uint32_t serial, uint32_t crtc) {
+size_t mutter::get_gamma_ramp_size(sdbus::IConnection &conn, uint32_t serial, uint32_t crtc) {
     std::tuple<std::vector<uint16_t>, std::vector<uint16_t>, std::vector<uint16_t>> reply;
     {
         const std::string destination ("org.gnome.Mutter.DisplayConfig");
@@ -42,15 +42,14 @@ size_t mutter::get_gamma_ramp_size(uint32_t serial, uint32_t crtc) {
         const std::string interface   ("org.gnome.Mutter.DisplayConfig");
         const std::string method      ("GetCrtcGamma");
         try {
-            auto connection (sdbus::createSessionBusConnection());
-            auto proxy (sdbus::createProxy(*connection, destination, object_path));
+            auto proxy (sdbus::createProxy(conn, destination, object_path));
             proxy->callMethod(method).onInterface(interface).withArguments(serial, crtc).storeResultsTo(reply);
         } catch (const sdbus::Error &e) {
             spdlog::error(e.what());
         }
     }
     const auto [r, g, b] = reply;
-    return r.size() * 3;
+    return r.size();
 }
 
 // https://gitlab.gnome.org/GNOME/mutter/-/blob/main/data/dbus-interfaces/org.gnome.Mutter.DisplayConfig.xml
@@ -69,13 +68,14 @@ std::vector<mutter::output> mutter::display_config_get_resources() {
 
     std::tuple<uint32_t, std::vector<crtc_t>, std::vector<output_t>, std::vector<mode_t>, int32_t, int32_t> reply;
 
+    const auto connection (sdbus::createSessionBusConnection());
+
     {
         const std::string destination ("org.gnome.Mutter.DisplayConfig");
         const std::string object_path ("/org/gnome/Mutter/DisplayConfig");
         const std::string interface   ("org.gnome.Mutter.DisplayConfig");
         const std::string method      ("GetResources");
         try {
-            auto connection (sdbus::createSessionBusConnection());
             auto proxy (sdbus::createProxy(*connection, destination, object_path));
             proxy->callMethod(method).onInterface(interface).withArguments().storeResultsTo(reply);
         } catch (const sdbus::Error &e) {
@@ -92,7 +92,7 @@ std::vector<mutter::output> mutter::display_config_get_resources() {
         mutter::output out;
         out.serial     = serial;
         out.crtc       = output.get<2>();
-        out.ramp_size  = mutter::get_gamma_ramp_size(out.serial, out.crtc);
+        out.ramp_size  = mutter::get_gamma_ramp_size(*connection, out.serial, out.crtc);
         out.name       = properties.at("display-name").get<std::string>();
         const std::vector<uint8_t> edid (properties.at("edid").get<std::vector<uint8_t>>());
         std::copy_n(edid.begin(), 128, out.edid.begin());
@@ -103,7 +103,7 @@ std::vector<mutter::output> mutter::display_config_get_resources() {
     return out_vec;
 }
 
-void mutter::set_gamma(uint32_t serial, uint32_t crtc, const std::vector<uint16_t> &ramps) {
+void mutter::set_gamma(sdbus::IConnection &conn, uint32_t serial, uint32_t crtc, const std::vector<uint16_t> &ramps) {
     const size_t sz = ramps.size() / 3;
     const std::vector<uint16_t> red   (ramps.begin(), ramps.begin() + sz);
     const std::vector<uint16_t> green (ramps.begin() + sz, ramps.begin() + (sz * 2));
@@ -118,8 +118,7 @@ void mutter::set_gamma(uint32_t serial, uint32_t crtc, const std::vector<uint16_
     const std::string interface   ("org.gnome.Mutter.DisplayConfig");
     const std::string method      ("SetCrtcGamma");
     try {
-        auto connection (sdbus::createSessionBusConnection());
-        auto proxy (sdbus::createProxy(*connection, destination, object_path));
+        auto proxy (sdbus::createProxy(conn, destination, object_path));
         proxy->callMethod(method).onInterface(interface).withArguments(args);
     } catch (const sdbus::Error &e) {
         spdlog::error(e.what());
