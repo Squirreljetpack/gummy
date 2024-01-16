@@ -3,13 +3,49 @@
 
 #include <string>
 #include <functional>
-#include <sdbus-c++/IProxy.h>
-#include <sdbus-c++/IConnection.h>
-#include <sdbus-c++/Types.h>
-#include <sdbus-c++/sdbus-c++.h>
+#include <span>
+
 #include <spdlog/spdlog.h>
+#include <sdbus-c++/sdbus-c++.h>
 #include <gummyd/sd-dbus.hpp>
-#include <ranges>
+
+// std::span specialization for older versions of sdbus-c++.
+namespace sdbus {
+
+// serialization
+template <typename _ElementType>
+sdbus::Message& operator<<(sdbus::Message& msg, const std::span<_ElementType>& items) {
+    msg.openContainer(sdbus::signature_of<_ElementType>::str());
+    for (const auto& item : items) {
+        msg << item;
+    }
+    msg.closeContainer();
+    return msg;
+}
+
+// deserialization
+template <typename _ElementType>
+sdbus::Message& operator>>(sdbus::Message& msg, std::span<_ElementType>& items) {
+    if (!msg.enterContainer(sdbus::signature_of<_ElementType>::str())) {
+        return msg;
+    }
+    while (true) {
+        _ElementType elem;
+        if (msg >> elem) {
+            items.emplace_back(std::move(elem));
+        } else {
+            break;
+        }
+    }
+    msg.clearFlags();
+    msg.exitContainer();
+    return msg;
+}
+} // namespace sdbus
+
+// signature
+template <typename _Element, std::size_t _Extent>
+struct sdbus::signature_of<std::span<_Element, _Extent>> : sdbus::signature_of<std::vector<_Element>>{};
 
 namespace gummyd {
 namespace dbus {
@@ -105,27 +141,22 @@ std::vector<mutter::output> mutter::display_config_get_resources() {
     return out_vec;
 }
 
-void mutter::set_gamma(sdbus::IConnection &conn, uint32_t serial, uint32_t crtc, const std::vector<uint16_t> &ramps) {
-    using ramp_t = std::vector<uint16_t>;
-
-    const size_t sz (ramps.size() / 3);
-    const std::tuple<uint32_t, uint32_t, ramp_t, ramp_t, ramp_t> args {
-        serial,
-        crtc,
-        ramp_t(ramps.begin(), ramps.begin() + sz),
-        ramp_t(ramps.begin() + sz, ramps.begin() + (sz * 2)),
-        ramp_t(ramps.begin() + (sz * 2), ramps.end())
-    };
-
+void mutter::set_gamma(sdbus::IConnection &conn, uint32_t serial, uint32_t crtc, std::vector<uint16_t> ramps) {
     const std::string destination ("org.gnome.Mutter.DisplayConfig");
     const std::string object_path ("/org/gnome/Mutter/DisplayConfig");
     const std::string interface   ("org.gnome.Mutter.DisplayConfig");
     const std::string method      ("SetCrtcGamma");
+
+    const size_t sz (ramps.size() / 3);
+    const std::span r (ramps.begin(), sz);
+    const std::span g (r.end(), sz);
+    const std::span b (g.end(), sz);
+
     try {
-        auto proxy (sdbus::createProxy(conn, destination, object_path));
-        proxy->callMethod(method).onInterface(interface).withArguments(args);
+        const auto proxy (sdbus::createProxy(conn, destination, object_path));
+        proxy->callMethod(method).onInterface(interface).withArguments(std::tuple{serial, crtc, r, g, b});
     } catch (const sdbus::Error &e) {
-        spdlog::error(e.what());
+        spdlog::error("[mutter] [set_gamma] {} ", e.what());
     }
 }
 
