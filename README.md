@@ -7,4 +7,5 @@
 [Documentation]: https://codeberg.org/fusco/gummy/wiki/Home
 
 Copyright Francesco Fusco 2021-2024
+
 SPDX-License-Identifier: GPL-3.0-or-later
