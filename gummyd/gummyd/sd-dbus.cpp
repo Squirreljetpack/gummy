@@ -9,7 +9,7 @@
 #include <sdbus-c++/sdbus-c++.h>
 #include <gummyd/sd-dbus.hpp>
 
-// std::span specialization for older versions of sdbus-c++.
+// std::span specialization for sdbus-c++ < v1.3.0.
 namespace sdbus {
 
 // serialization
