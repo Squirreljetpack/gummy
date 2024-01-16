@@ -30,7 +30,7 @@ struct output {
 };
 std::vector<mutter::output> display_config_get_resources();
 size_t get_gamma_ramp_size(sdbus::IConnection&, uint32_t serial, uint32_t crtc);
-void   set_gamma(sdbus::IConnection&, uint32_t serial, uint32_t crtc, const std::vector<uint16_t> &ramps);
+void   set_gamma(sdbus::IConnection&, uint32_t serial, uint32_t crtc, std::vector<uint16_t> ramps);
 } // namespace mutter
 
 void test_method_call();
