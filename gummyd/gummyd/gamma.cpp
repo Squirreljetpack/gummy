@@ -115,16 +115,16 @@ double calc_brt_scale(int step, size_t ramp_sz) {
 std::vector<uint16_t> gamma_state::create_ramps(gamma_state::settings settings, size_t sz) {
     settings = gamma_state::sanitize(settings);
 
-    std::vector<uint16_t> ramps(sz * 3);
-    uint16_t* const r (&ramps[0]);
-    uint16_t* const g (&ramps[sz]);
-    uint16_t* const b (&ramps[sz * 2]);
+    std::vector<uint16_t> ramps (sz * 3);
+    const std::span r (ramps.begin(), sz);
+    const std::span g (r.end(), sz);
+    const std::span b (g.end(), sz);
 
     const double brt_scale (calc_brt_scale(settings.brightness, sz));
     const auto   rgb_scale (kelvin_to_rgb(settings.temperature));
 
     for (size_t i = 0; i < sz; ++i) {
-        const int val = std::min(int(i * brt_scale), UINT16_MAX);
+        const int val (std::min(int(i * brt_scale), UINT16_MAX));
         r[i] = uint16_t(val * rgb_scale[0]);
         g[i] = uint16_t(val * rgb_scale[1]);
         b[i] = uint16_t(val * rgb_scale[2]);
