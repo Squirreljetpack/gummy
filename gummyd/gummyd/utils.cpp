@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <gummyd/utils.hpp>
+#include <cassert>
 
 namespace gummyd {
 
@@ -11,6 +12,7 @@ double lerp(double a, double b, double t) {
 }
 
 double invlerp(double x, double a, double b) {
+    assert(b - a > 0.);
     return (x - a) / (b - a);
 }
 
