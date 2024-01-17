@@ -6,16 +6,16 @@
 
 namespace gummyd {
 
-double invlerp(double val, double min, double max) {
-    return (val - min) / (max - min);
-}
-
 double lerp(double a, double b, double t) {
-    return ((1 - t) * a) + (t * b);
+    return (b * t) + (a * (1. - t));
 }
 
-double remap(double val, double min, double max, double new_min, double new_max) {
-    return lerp(new_min, new_max, invlerp(val, min, max));
+double invlerp(double x, double a, double b) {
+    return (x - a) / (b - a);
+}
+
+double remap(double x, double a, double b, double ka, double kb) {
+    return lerp(ka, kb, invlerp(x, a, b));
 }
 
 double mant(double x) {
