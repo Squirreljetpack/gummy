@@ -24,6 +24,9 @@ namespace gummyd {
     // Check if it's running.
     bool daemon_is_running();
 
+    // Reset.
+    void daemon_reset();
+
     // Get current settings for each screen.
     nlohmann::json daemon_screen_status();
 

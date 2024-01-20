@@ -249,11 +249,11 @@ int message_loop() {
 
     const auto proxy = [&] {
         try {
-            return dbus::on_system_sleep([&pipe_filepath] (sdbus::Signal &sig) {
+            return dbus::on_system_sleep([] (sdbus::Signal &sig) {
                 bool sleep;
                 sig >> sleep;
                 if (!sleep) {
-                    file_write(pipe_filepath, "reset");
+                    daemon_reset();
                 }
             });
         } catch (const sdbus::Error &e) {
