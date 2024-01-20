@@ -13,6 +13,7 @@
 #include <CLI/Config.hpp>
 
 #include <gummyd/api.hpp>
+#include <gummyd/file.hpp>
 
 void start() {
     if (!gummyd::daemon_start())
@@ -280,6 +281,8 @@ void setif(nlohmann::json &val, T new_val, bool relative, range<T> range, std::f
 }
 
 int interface(int argc, char **argv) {
+    gummyd::lockfile flock (gummyd::xdg_runtime_dir() / "gummycli-lock");
+
     CLI::App app("Screen manager for X11.", "gummy");
 	app.add_subcommand("start", "Start the background process.")->callback(start);
 	app.add_subcommand("stop", "Stop the background process.")->callback(stop);
