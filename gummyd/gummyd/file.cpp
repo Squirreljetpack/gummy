@@ -28,7 +28,7 @@ named_pipe::~named_pipe() {
     std::filesystem::remove(filepath_);
 }
 
-lockfile::lockfile(std::filesystem::path filepath, bool wait)
+lockfile::lockfile(std::filesystem::path filepath, int command)
     : filepath_(filepath),
       fd_(open(filepath_.c_str(), O_WRONLY | O_CREAT, 0640)) {
 
@@ -40,7 +40,7 @@ lockfile::lockfile(std::filesystem::path filepath, bool wait)
     fl_.l_whence = SEEK_SET;
     fl_.l_start  = 0;
     fl_.l_len    = 1;
-    fnctl_op_    = fcntl(fd_, wait ? F_SETLKW : F_SETLK, &fl_);
+    fnctl_op_    = fcntl(fd_, command, &fl_);
 }
 
 bool lockfile::locked() {
