@@ -17,6 +17,7 @@ class named_pipe {
     std::filesystem::path filepath_;
 public:
     named_pipe(std::filesystem::path filepath);
+    std::filesystem::path path() const;
     ~named_pipe();
 };
 

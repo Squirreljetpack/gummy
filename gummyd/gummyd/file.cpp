@@ -23,6 +23,10 @@ named_pipe::named_pipe(std::filesystem::path filepath) : filepath_(filepath) {
     }
 }
 
+std::filesystem::path named_pipe::path() const {
+    return filepath_;
+}
+
 named_pipe::~named_pipe() {
     close(fd_);
     std::filesystem::remove(filepath_);
