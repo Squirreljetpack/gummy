@@ -23,6 +23,7 @@
 #include <gummyd/sd-sysfs-devices.hpp>
 #include <gummyd/constants.hpp>
 #include <gummyd/ddc.hpp>
+#include <gummyd/api.hpp>
 
 using namespace gummyd;
 
@@ -349,17 +350,16 @@ int main(int argc, char **argv) {
         std::exit(EXIT_SUCCESS);
     }
 
+    if (daemon_is_running()) {
+        return 2;
+    }
+
     std::filesystem::create_directories(xdg_state_dir() / "gummyd");
     spdlog::set_level(spdlog::level::warn);
     spdlog::cfg::load_env_levels();
     spdlog::set_default_logger(spdlog::rotating_logger_mt("gummyd", xdg_state_dir() / "gummyd/logs/gummyd.log", 1048576 * 5, 3));
     spdlog::flush_every(std::chrono::seconds(10));
     spdlog::info("gummyd v{}", VERSION);
-
-    lockfile flock(xdg_runtime_dir() / constants::flock_filename, false);
-    if (flock.locked()) {
-        return -1;
-    }
 
     return message_loop();
 }

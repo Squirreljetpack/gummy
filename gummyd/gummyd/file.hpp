@@ -26,7 +26,7 @@ class lockfile {
 	int fnctl_op_;
 	flock fl_;
 public:
-    lockfile(std::filesystem::path filepath, bool wait);
+    lockfile(std::filesystem::path filepath, int command = F_SETLKW);
     bool locked();
     ~lockfile();
 };

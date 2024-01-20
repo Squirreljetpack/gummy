@@ -58,6 +58,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${LIBXCB-SHM}
     ${LIBXCB-IMAGE}
     -latomic
+    libgummyd
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/gummyd")

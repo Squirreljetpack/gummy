@@ -18,12 +18,12 @@ namespace gummyd {
 
 namespace {
 void _daemon_send(const std::string &s) {
-    lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename_cli, true);
+    lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename_cli);
     file_write(xdg_runtime_dir() / gummyd::constants::fifo_filename, s);
 }
 
 std::string _daemon_get(std::string_view s) {
-    lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename_cli, true);
+    lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename_cli);
     file_write(xdg_runtime_dir() / gummyd::constants::fifo_filename, s.data());
     return file_read((xdg_runtime_dir() / gummyd::constants::fifo_filename));
 }
@@ -61,7 +61,7 @@ nlohmann::json daemon_screen_status() {
 }
 
 bool daemon_is_running() {
-    lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename, false);
+    lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename, F_SETLK);
     return flock.locked();
 }
 
