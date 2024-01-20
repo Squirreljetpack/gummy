@@ -243,9 +243,7 @@ int message_loop() {
 
     config conf(screen_count);
 
-    const std::filesystem::path pipe_filepath = xdg_runtime_dir() / constants::fifo_filename;
-
-    named_pipe pipe(pipe_filepath);
+    const named_pipe pipe (xdg_runtime_dir() / constants::fifo_filename);
 
     const auto proxy = [&] {
         try {
@@ -270,8 +268,8 @@ int message_loop() {
             run(randr_outputs, gamma_state, sysfs_backlights, sysfs_als, ddc_displays, conf, stoken);
 		});
 
-        soft_reset:
-        const std::string data(file_read(pipe_filepath));
+        read:
+        const std::string data (file_read(pipe.path()));
 
         if (data == "status") {
             const std::vector<gummyd::gamma_state::settings> gamma_settings = [&gamma_state, &conf] {
@@ -315,8 +313,11 @@ int message_loop() {
             }
 
             // Will block execution until the client reads from the pipe.
-            file_write(pipe_filepath, nlohmann::json::to_cbor(out));
-            goto soft_reset;
+            // This is bad if the client crashes in the meantime.
+            // Ideally we'd spawn a new thread for the status command.
+            // But we'd need 2 pipes for reading/writing respectively.
+            file_write(pipe.path(), nlohmann::json::to_cbor(out));
+            goto read;
         }
 
 		if (data == "stop")
