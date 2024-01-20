@@ -56,6 +56,12 @@ bool daemon_stop() {
     return false;
 }
 
+void daemon_reset() {
+    if (daemon_is_running()) {
+        _daemon_send("reset");
+    }
+}
+
 nlohmann::json daemon_screen_status() {
     return nlohmann::json::from_cbor(_daemon_get("status"));
 }
