@@ -126,13 +126,14 @@ std::vector<mutter::output> mutter::display_config_get_resources() {
     std::vector<mutter::output> out_vec;
 
     for (const output_t &output : outputs) {
-        const a_sv properties (output.get<7>());
+        const a_sv &properties (output.get<7>());
+        const std::vector<uint8_t> &edid (properties.at("edid").get<std::vector<uint8_t>>());
+
         mutter::output out;
         out.serial     = serial;
         out.crtc       = output.get<2>();
         out.ramp_size  = mutter::get_gamma_ramp_size(*connection, out.serial, out.crtc);
         out.name       = properties.at("display-name").get<std::string>();
-        const std::vector<uint8_t> edid (properties.at("edid").get<std::vector<uint8_t>>());
         std::copy_n(edid.begin(), 128, out.edid.begin());
 
         out_vec.push_back(out);
