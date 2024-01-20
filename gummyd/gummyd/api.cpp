@@ -18,14 +18,12 @@ namespace gummyd {
 
 namespace {
 void _daemon_send(const std::string &s) {
-    lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename_cli);
     file_write(xdg_runtime_dir() / gummyd::constants::fifo_filename, s);
 }
 
 std::string _daemon_get(std::string_view s) {
-    lockfile flock(xdg_runtime_dir() / gummyd::constants::flock_filename_cli);
     file_write(xdg_runtime_dir() / gummyd::constants::fifo_filename, s.data());
-    return file_read((xdg_runtime_dir() / gummyd::constants::fifo_filename));
+    return file_read(xdg_runtime_dir() / gummyd::constants::fifo_filename);
 }
 }
 
