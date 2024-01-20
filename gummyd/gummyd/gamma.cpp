@@ -93,7 +93,7 @@ std::array<double, 3> kelvin_to_rgb(int val) {
     const double idx_lerp (remap(val, constants::temp_k_min, constants::temp_k_max, 0, nrows - 1));
     const size_t idx (std::floor(idx_lerp) * ncols);
 
-    if (idx >= ingo_thies_table.size() - 3) {
+    if (idx >= ingo_thies_table.size() - ncols) {
         return {1.,1.,1.};
     }
 
