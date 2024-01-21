@@ -328,7 +328,7 @@ int init() {
 
         try {
             conf = config(nlohmann::json::parse(data), screen_count);
-        } catch (nlohmann::json::exception &e) {
+        } catch (const nlohmann::json::exception &e) {
             spdlog::error("{}", e.what());
         }
 	}
