@@ -33,7 +33,7 @@ public:
 };
 
 std::string file_read(std::filesystem::path filepath);
-void file_write(std::filesystem::path filepath, const std::string &data);
+void file_write(std::filesystem::path filepath, std::string_view data);
 void file_write(std::filesystem::path filepath, const std::vector<uint8_t> &data);
 
 std::string env(std::string_view var);

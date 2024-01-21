@@ -69,10 +69,10 @@ std::string file_read(std::filesystem::path filepath) {
     return buf.str();
 }
 
-void file_write(std::filesystem::path filepath, const std::string &data) {
+void file_write(std::filesystem::path filepath, std::string_view data) {
     std::ofstream fs(filepath);
     fs.exceptions(std::ifstream::failbit);
-    fs.write(data.c_str(), data.size());
+    fs << data;
 }
 
 void file_write(std::filesystem::path filepath, const std::vector<uint8_t> &data) {

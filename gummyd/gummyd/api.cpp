@@ -17,12 +17,12 @@
 namespace gummyd {
 
 namespace {
-void _daemon_send(const std::string &s) {
-    file_write(xdg_runtime_dir() / gummyd::constants::fifo_filename, s);
+void _daemon_send(std::string_view data) {
+    file_write(xdg_runtime_dir() / gummyd::constants::fifo_filename, data);
 }
 
-std::string _daemon_get(std::string_view s) {
-    file_write(xdg_runtime_dir() / gummyd::constants::fifo_filename, s.data());
+std::string _daemon_get(std::string_view data) {
+    _daemon_send(data);
     return file_read(xdg_runtime_dir() / gummyd::constants::fifo_filename);
 }
 }
