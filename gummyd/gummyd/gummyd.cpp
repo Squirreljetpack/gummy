@@ -211,9 +211,9 @@ int init() {
         std::ranges::transform(mutter_outputs, std::back_inserter(edids), &dbus::mutter::output::edid);
     }
 
-    std::vector ddc_displays     = ddc::get_displays(edids);
-    std::vector sysfs_als        = sysfs::get_als();
-    std::vector sysfs_backlights = sysfs::get_backlights();
+    std::vector ddc_displays (ddc::get_displays(edids));
+    std::vector sysfs_als (sysfs::get_als());
+    std::vector sysfs_backlights (sysfs::get_backlights());
 
     spdlog::info("[x11] found {} screen(s)", randr_outputs.size());
     spdlog::info("[dbus] found {} screen(s)", mutter_outputs.size());
@@ -223,7 +223,7 @@ int init() {
         spdlog::warn("No DDC displays found. i2c-dev module not loaded?");
     }
 
-    const size_t screen_count = [&] {
+    const size_t screen_count ([&] {
         // unlikely that we go past the first check.
         if (ddc_displays.size() > 0)
             return ddc_displays.size();
@@ -234,18 +234,16 @@ int init() {
         if (sysfs_backlights.size() > 0)
             return sysfs_backlights.size();
         return 0ul;
-    }();
+    }());
 
     if (screen_count == 0) {
         fmt::print("No displays detected. There is nothing to do!\n");
         exit(EXIT_SUCCESS);
     }
 
-    config conf (screen_count);
-
     const named_pipe pipe (xdg_runtime_dir() / constants::fifo_filename);
 
-    const auto proxy = [&] {
+    const auto proxy ([&] {
         try {
             return dbus::on_system_sleep([] (sdbus::Signal &sig) {
                 bool sleep;
@@ -258,12 +256,12 @@ int init() {
             spdlog::error("[dbus] on_system_sleep error: {}.", e.what());
             return std::unique_ptr<sdbus::IProxy>();
         }
-    }();
+    }());
 
+    gummyd::config conf (screen_count);
     std::optional gamma_state (opt_gamma_state(randr_outputs, mutter_outputs));
 
     while (true) {
-
 		std::jthread thr([&] (std::stop_token stoken) {
             run(randr_outputs, gamma_state, sysfs_backlights, sysfs_als, ddc_displays, conf, stoken);
 		});
