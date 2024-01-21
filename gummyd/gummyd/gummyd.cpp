@@ -173,7 +173,7 @@ void run(std::vector<xcb::randr::output> &randr_outputs,
     spdlog::flush_on(spdlog::level::info);
 }
 
-int message_loop() {
+int init() {
     std::vector randr_outputs ([] {
         if (!gummyd::env("WAYLAND_DISPLAY").empty()) {
             return std::vector<xcb::randr::output>();
@@ -241,7 +241,7 @@ int message_loop() {
         exit(EXIT_SUCCESS);
     }
 
-    config conf(screen_count);
+    config conf (screen_count);
 
     const named_pipe pipe (xdg_runtime_dir() / constants::fifo_filename);
 
@@ -320,26 +320,19 @@ int message_loop() {
             goto read;
         }
 
-		if (data == "stop")
+        if (data == "stop") {
 			break;
+        }
 
-		if (data == "reset")
+        if (data == "reset") {
 			continue;
+        }
 
-		const nlohmann::json msg = [&] {
-			try {
-				return nlohmann::json::parse(data);
-			} catch (nlohmann::json::exception &e) {
-                return nlohmann::json {{"error", e.what()}};
-			}
-		}();
-
-        if (msg.contains("error")) {
-            spdlog::error("{}", msg["error"].get<std::string>());
-			continue;
-		}
-
-        conf = config(msg, screen_count);
+        try {
+            conf = config(nlohmann::json::parse(data), screen_count);
+        } catch (nlohmann::json::exception &e) {
+            spdlog::error("{}", e.what());
+        }
 	}
 
 	return EXIT_SUCCESS;
@@ -362,5 +355,5 @@ int main(int argc, char **argv) {
     spdlog::flush_every(std::chrono::seconds(10));
     spdlog::info("gummyd v{}", VERSION);
 
-    return message_loop();
+    return init();
 }
