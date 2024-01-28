@@ -10,6 +10,7 @@
 #include <gummyd/sd-dbus.hpp>
 
 // std::span specialization for sdbus-c++ < v1.3.0.
+#ifdef SDBUSCPP_ADD_SPAN_SIGNATURE
 namespace sdbus {
 
 // serialization
@@ -42,10 +43,10 @@ sdbus::Message& operator>>(sdbus::Message& msg, std::span<_ElementType>& items) 
     return msg;
 }
 } // namespace sdbus
-
 // signature
 template <typename _Element, std::size_t _Extent>
 struct sdbus::signature_of<std::span<_Element, _Extent>> : sdbus::signature_of<std::vector<_Element>>{};
+#endif
 
 namespace gummyd {
 namespace dbus {
