@@ -15,7 +15,7 @@
 using namespace gummyd;
 
 gamma_state::gamma_state(const std::vector<xcb::randr::output> &outputs)
-: x_connection_(),
+  : x_connection_(std::make_unique<xcb::connection>()),
   randr_outputs_(outputs),
   outputs_settings_(outputs.size(), default_settings) {
 }
