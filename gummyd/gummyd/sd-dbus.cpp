@@ -128,6 +128,11 @@ std::vector<mutter::output> mutter::display_config_get_resources() {
 
     for (const output_t &output : outputs) {
         const a_sv &properties (output.get<7>());
+
+        if (!properties.contains("edid")) {
+            continue;
+        }
+
         const std::vector<uint8_t> &edid (properties.at("edid").get<std::vector<uint8_t>>());
 
         mutter::output out;
