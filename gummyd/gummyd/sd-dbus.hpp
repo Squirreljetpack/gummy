@@ -18,7 +18,7 @@ std::unique_ptr<sdbus::IProxy> register_signal_handler(
     std::string signal_name,
     std::function<void(sdbus::Signal &signal)> handler);
 
-std::unique_ptr<sdbus::IProxy> on_system_sleep(std::function<void(sdbus::Signal &signal)> fn);
+std::unique_ptr<sdbus::IProxy> on_system_sleep(std::function<void(sdbus::Signal signal)> fn);
 
 namespace mutter {
 struct output {

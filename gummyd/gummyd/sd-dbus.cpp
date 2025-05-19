@@ -9,45 +9,6 @@
 #include <sdbus-c++/sdbus-c++.h>
 #include <gummyd/sd-dbus.hpp>
 
-// std::span specialization for sdbus-c++ < v1.3.0.
-#ifdef SDBUSCPP_ADD_SPAN_SIGNATURE
-namespace sdbus {
-
-// serialization
-template <typename _ElementType>
-sdbus::Message& operator<<(sdbus::Message& msg, const std::span<_ElementType>& items) {
-    msg.openContainer(sdbus::signature_of<_ElementType>::str());
-    for (const auto& item : items) {
-        msg << item;
-    }
-    msg.closeContainer();
-    return msg;
-}
-
-// deserialization
-template <typename _ElementType>
-sdbus::Message& operator>>(sdbus::Message& msg, std::span<_ElementType>& items) {
-    if (!msg.enterContainer(sdbus::signature_of<_ElementType>::str())) {
-        return msg;
-    }
-    while (true) {
-        _ElementType elem;
-        if (msg >> elem) {
-            items.emplace_back(std::move(elem));
-        } else {
-            break;
-        }
-    }
-    msg.clearFlags();
-    msg.exitContainer();
-    return msg;
-}
-} // namespace sdbus
-// signature
-template <typename _Element, std::size_t _Extent>
-struct sdbus::signature_of<std::span<_Element, _Extent>> : sdbus::signature_of<std::vector<_Element>>{};
-#endif
-
 namespace gummyd {
 namespace dbus {
 
@@ -56,14 +17,17 @@ std::unique_ptr<sdbus::IProxy> register_signal_handler(
     std::string obj_path,
     std::string interface,
     std::string signal_name,
-    std::function<void(sdbus::Signal &signal)> handler) {
-    auto proxy = sdbus::createProxy(service, obj_path);
-    proxy->registerSignalHandler(interface, signal_name, handler);
-    proxy->finishRegistration();
+    std::function<void(sdbus::Signal signal)> handler) {
+    auto proxy = sdbus::createProxy(
+        sdbus::ServiceName{ service },
+        sdbus::ObjectPath{ obj_path }
+    );
+
+    proxy->registerSignalHandler(sdbus::InterfaceName{interface}, sdbus::SignalName{signal_name}, handler);
     return proxy;
 }
 
-std::unique_ptr<sdbus::IProxy> on_system_sleep(std::function<void(sdbus::Signal &signal)> fn) {
+std::unique_ptr<sdbus::IProxy> on_system_sleep(std::function<void(sdbus::Signal signal)> fn) {
     return dbus::register_signal_handler(
             "org.freedesktop.login1",
             "/org/freedesktop/login1",
@@ -80,7 +44,7 @@ size_t mutter::get_gamma_ramp_size(sdbus::IConnection &conn, uint32_t serial, ui
         const std::string interface   ("org.gnome.Mutter.DisplayConfig");
         const std::string method      ("GetCrtcGamma");
         try {
-            auto proxy (sdbus::createProxy(conn, destination, object_path));
+            auto proxy (sdbus::createProxy(conn, sdbus::ServiceName{ destination }, sdbus::ObjectPath{ object_path }));
             proxy->callMethod(method).onInterface(interface).withArguments(serial, crtc).storeResultsTo(reply);
         } catch (const sdbus::Error &e) {
             spdlog::error(e.what());
@@ -114,7 +78,7 @@ std::vector<mutter::output> mutter::display_config_get_resources() {
         const std::string interface   ("org.gnome.Mutter.DisplayConfig");
         const std::string method      ("GetResources");
         try {
-            auto proxy (sdbus::createProxy(*connection, destination, object_path));
+            auto proxy (sdbus::createProxy(*connection, sdbus::ServiceName{ destination }, sdbus::ObjectPath{ object_path }));
             proxy->callMethod(method).onInterface(interface).withArguments().storeResultsTo(reply);
         } catch (const sdbus::Error &e) {
             spdlog::error(e.what());
@@ -160,7 +124,7 @@ void mutter::set_gamma(sdbus::IConnection &conn, uint32_t serial, uint32_t crtc,
     const std::span b (g.end(), sz);
 
     try {
-        const auto proxy (sdbus::createProxy(conn, destination, object_path));
+        const auto proxy (sdbus::createProxy(conn, sdbus::ServiceName{ destination }, sdbus::ObjectPath{ object_path }));
         proxy->callMethod(method).onInterface(interface).withArguments(std::tuple{serial, crtc, r, g, b});
     } catch (const sdbus::Error &e) {
         spdlog::error("[mutter] [set_gamma] {} ", e.what());
@@ -174,7 +138,7 @@ void test_method_call() {
     const std::string method_str  ("GetManagedObjects");
 
     auto connection (sdbus::createSessionBusConnection());
-    auto proxy      (sdbus::createProxy(*connection, destination, object_path));
+    auto proxy      (sdbus::createProxy(*connection, sdbus::ServiceName{ destination }, sdbus::ObjectPath{ object_path }));
 
     // return type taken straight from the wiki
     // a{oa{sa{sv}}}
