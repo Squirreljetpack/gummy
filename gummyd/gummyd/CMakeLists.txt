@@ -36,15 +36,9 @@ target_sources(${PROJECT_NAME}
     gummyd.cpp
 )
 
-find_package(sdbus-c++ 1.1.0 REQUIRED)
+find_package(sdbus-c++ 2.1.0 REQUIRED)
 message("sdbus-c++ version: " ${sdbus-c++_VERSION})
 
-if (sdbus-c++_VERSION VERSION_LESS_EQUAL "1.3.0")
-    message("std::span specialization for sdbus-c++ < 1.3.0")
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
-       SDBUSCPP_ADD_SPAN_SIGNATURE
-    )
-endif()
 
 # C Libraries
 find_library(LIBDDCUTIL   "ddcutil"   REQUIRED)
