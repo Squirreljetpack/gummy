@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 cmake_minimum_required(VERSION 3.14)
-project(gummy VERSION 0.6.1 LANGUAGES CXX)
+project(gummy VERSION 0.6.2 LANGUAGES CXX)
 set(GUMMY_VERSION ${PROJECT_VERSION})
 include(GNUInstallDirs)
 include(FetchContent)
@@ -38,7 +38,7 @@ FetchContent_MakeAvailable(fmt)
 endif()
 
 if (GUMMY_EXTERNAL_SPDLOG)
-find_package(spdlog 1.9.2 REQUIRED)
+find_package(spdlog 1.14.0 REQUIRED)
 else()
 FetchContent_Declare(spdlog
     URL https://github.com/gabime/spdlog/archive/refs/tags/v1.12.0.tar.gz
