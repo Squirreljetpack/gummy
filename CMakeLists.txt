@@ -20,7 +20,7 @@ option(GUMMY_EXTERNAL_FMT    "" ON)
 option(GUMMY_EXTERNAL_SPDLOG "" ON)
 
 if (GUMMY_EXTERNAL_JSON)
-find_package(nlohmann_json 3.10.5 REQUIRED)
+find_package(nlohmann_json 3.12 REQUIRED)
 else()
 FetchContent_Declare(json
     URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
@@ -29,7 +29,7 @@ FetchContent_MakeAvailable(json)
 endif()
 
 if (GUMMY_EXTERNAL_FMT)
-find_package(fmt 8.1 REQUIRED)
+find_package(fmt 12 REQUIRED)
 else()
 FetchContent_Declare(fmt
     URL https://github.com/fmtlib/fmt/releases/download/10.1.1/fmt-10.1.1.zip
@@ -38,7 +38,7 @@ FetchContent_MakeAvailable(fmt)
 endif()
 
 if (GUMMY_EXTERNAL_SPDLOG)
-find_package(spdlog 1.15 REQUIRED)
+find_package(spdlog 1.16 REQUIRED)
 else()
 FetchContent_Declare(spdlog
     URL https://github.com/gabime/spdlog/archive/refs/tags/v1.12.0.tar.gz
