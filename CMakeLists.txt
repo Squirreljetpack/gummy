@@ -1,7 +1,7 @@
 # Copyright 2021-2024 Francesco Fusco <f.fusco@pm.me>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 4.0)
 project(gummy VERSION 0.6.2 LANGUAGES CXX)
 set(GUMMY_VERSION ${PROJECT_VERSION})
 include(GNUInstallDirs)
